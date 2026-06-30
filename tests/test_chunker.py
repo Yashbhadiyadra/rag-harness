@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from rag_harness.ingest.chunker import chunk_file, _update_heading_path
+from rag_harness.ingest.chunker import _update_heading_path, chunk_file
 
 
 @pytest.fixture()

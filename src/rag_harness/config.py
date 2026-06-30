@@ -29,4 +29,4 @@ class Settings(BaseSettings):
     threshold_correctness: float = 0.75
 
 
-settings = Settings()  # type: ignore[call-arg]
+settings = Settings()
