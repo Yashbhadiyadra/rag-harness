@@ -1,0 +1,28 @@
+# Environment
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+dist/
+build/
+
+# ChromaDB data
+chroma_db/
+
+# Kubernetes docs clone (fetched at ingest time)
+k8s_docs/
+
+# Test / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Mypy
+.mypy_cache/
+
+# macOS
+.DS_Store
