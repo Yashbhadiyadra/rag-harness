@@ -1,3 +1,5 @@
+"""Load golden cases, run the RAG pipeline per case, and apply the reliability gate."""
+
 import json
 import logging
 from pathlib import Path

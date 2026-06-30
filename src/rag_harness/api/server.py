@@ -19,6 +19,7 @@ _retriever: DenseRetriever | None = None
 
 
 def _get_retriever() -> DenseRetriever:
+    """Return the module-level retriever, initialising it on first call."""
     global _retriever
     if _retriever is None:
         _retriever = DenseRetriever()
@@ -43,6 +44,7 @@ class QueryResponse(BaseModel):
 
 @app.post("/query", response_model=QueryResponse)
 def query(request: QueryRequest) -> QueryResponse:
+    """Retrieve relevant chunks and return a grounded answer with source attribution."""
     if not request.question.strip():
         raise HTTPException(status_code=422, detail="question must not be empty")
 
@@ -57,4 +59,5 @@ def query(request: QueryRequest) -> QueryResponse:
 
 @app.get("/health")
 def health() -> dict[str, str]:
+    """Liveness probe — returns 200 when the service is running."""
     return {"status": "ok"}

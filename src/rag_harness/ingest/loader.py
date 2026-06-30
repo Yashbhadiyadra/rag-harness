@@ -1,3 +1,5 @@
+"""Clone the K8s docs repo at a pinned commit and return markdown file paths."""
+
 import logging
 from pathlib import Path
 

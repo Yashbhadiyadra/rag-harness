@@ -1,3 +1,5 @@
+"""Split markdown files into provenance-annotated Chunks on heading boundaries."""
+
 import logging
 import re
 from pathlib import Path
@@ -17,10 +19,12 @@ _encoder = tiktoken.get_encoding("cl100k_base")
 
 
 def _strip_frontmatter(text: str) -> str:
+    """Remove YAML frontmatter (--- ... ---) from the start of a markdown file."""
     return _FRONTMATTER_RE.sub("", text, count=1).lstrip()
 
 
 def _token_count(text: str) -> int:
+    """Return the cl100k_base token count for a string."""
     return len(_encoder.encode(text))
 
 

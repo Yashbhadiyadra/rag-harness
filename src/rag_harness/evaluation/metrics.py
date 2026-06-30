@@ -1,3 +1,5 @@
+"""Evaluation metrics: deterministic context recall and LLM-as-judge faithfulness/correctness."""
+
 import logging
 
 from openai import OpenAI

@@ -1,3 +1,5 @@
+"""Upsert embedded Chunks into ChromaDB with full provenance metadata."""
+
 import json
 import logging
 
@@ -12,6 +14,7 @@ _UPSERT_BATCH = 256  # ChromaDB handles large batches fine; this keeps memory pr
 
 
 def _get_collection() -> chromadb.Collection:
+    """Open (or create) the ChromaDB collection with cosine similarity configured."""
     client = chromadb.PersistentClient(path=settings.chroma_db_path)
     return client.get_or_create_collection(
         name=settings.chroma_collection,
@@ -20,6 +23,7 @@ def _get_collection() -> chromadb.Collection:
 
 
 def _to_metadata(chunk: Chunk) -> dict[str, str]:
+    """Serialise Chunk provenance fields into a flat dict for ChromaDB metadata storage."""
     # ChromaDB metadata values must be scalar (str/int/float/bool).
     # heading_path is a list, so we serialize it as JSON.
     return {

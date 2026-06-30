@@ -11,9 +11,10 @@ class Settings(BaseSettings):
     embedding_model: str = "text-embedding-3-small"
     generation_model: str = "gpt-4o-mini"
 
-    # Corpus — pinned git commit ensures reproducible ingest (see ADR-0002)
+    # Corpus — pinned to an immutable tag for reproducible ingest (see ADR-0002)
+    # Tag: snapshot-initial-v1.32  SHA: bbb60b97e9bade8f5bd9cf3c4543243c55a4c0ca
     k8s_repo_url: str = "https://github.com/kubernetes/website.git"
-    k8s_git_commit: str = "main"  # replace with a pinned SHA before first ingest
+    k8s_git_commit: str = "bbb60b97e9bade8f5bd9cf3c4543243c55a4c0ca"
     k8s_docs_subpath: str = "content/en/docs"
 
     # Storage
