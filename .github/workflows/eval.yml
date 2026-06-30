@@ -1,0 +1,58 @@
+name: Nightly Eval
+
+on:
+  schedule:
+    - cron: "0 2 * * 1"   # Every Monday at 02:00 UTC
+  workflow_dispatch:        # Allow manual triggering from GitHub UI
+
+jobs:
+  eval:
+    name: Reliability gate
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -e ".[dev,eval]"
+
+      - name: Restore ChromaDB cache
+        id: chroma-cache
+        uses: actions/cache@v4
+        with:
+          path: chroma_db/
+          # Cache key is the pinned commit SHA — invalidates automatically when corpus advances
+          key: chroma-${{ runner.os }}-${{ hashFiles('src/rag_harness/config.py') }}
+
+      - name: Ingest K8s docs
+        if: steps.chroma-cache.outputs.cache-hit != 'true'
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          echo "Cache miss — running full ingest (this will take a few minutes)"
+          python -m rag_harness ingest
+
+      - name: Save ChromaDB cache
+        if: steps.chroma-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: chroma_db/
+          key: chroma-${{ runner.os }}-${{ hashFiles('src/rag_harness/config.py') }}
+
+      - name: Run evaluation suite
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: python -m rag_harness eval --verbose
+
+      - name: Write job summary
+        if: always()
+        run: |
+          echo "## Eval Results" >> $GITHUB_STEP_SUMMARY
+          echo "Corpus pin: \`$(grep k8s_git_commit src/rag_harness/config.py | grep -o '"[^"]*"' | tail -1)\`" >> $GITHUB_STEP_SUMMARY
+          echo "Run: \`python -m rag_harness eval\`" >> $GITHUB_STEP_SUMMARY

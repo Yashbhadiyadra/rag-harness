@@ -27,11 +27,12 @@ dev = [
     "mypy>=1.10",
     "pytest>=8.2",
     "pytest-asyncio>=0.23",
-    "httpx>=0.27",    # FastAPI test client
+    "httpx>=0.27",
+    "pre-commit>=3.7",
 ]
 
 [project.scripts]
-rag-harness = "rag_harness.api.cli:app"
+rag-harness = "rag_harness.api.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

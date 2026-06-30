@@ -1,5 +1,7 @@
 # rag-harness
 
+[![CI](https://github.com/Yashbhadiyadra/rag-harness/actions/workflows/ci.yml/badge.svg)](https://github.com/Yashbhadiyadra/rag-harness/actions/workflows/ci.yml)
+
 A reliability-first Retrieval-Augmented Generation (RAG) system over the [Kubernetes documentation](https://github.com/kubernetes/website). The goal is not just to answer questions — it is to **measure** answer quality and catch regressions.
 
 ## Why
@@ -24,6 +26,7 @@ cd rag-harness
 
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev,eval]"
+pre-commit install          # wire up local commit hooks
 
 cp .env.example .env
 # add your OPENAI_API_KEY to .env
