@@ -1,0 +1,10 @@
+[
+  {
+    "id": "rbac-001",
+    "question": "How do I configure RBAC in Kubernetes?",
+    "reference_answer": "Kubernetes RBAC is configured using Role and ClusterRole objects that define permissions, and RoleBinding and ClusterRoleBinding objects that grant those permissions to users, groups, or service accounts. Roles are namespace-scoped while ClusterRoles apply cluster-wide.",
+    "relevant_doc_ids": [
+      "content/en/docs/reference/access-authn-authz/rbac.md"
+    ]
+  }
+]
