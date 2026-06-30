@@ -1,3 +1,5 @@
+"""Dense vector retrieval: embed query, search ChromaDB, reconstruct typed Chunks."""
+
 import json
 import logging
 

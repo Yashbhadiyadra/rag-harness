@@ -1,3 +1,5 @@
+"""Generate grounded answers from retrieved chunks using a context-only prompt."""
+
 import logging
 
 from openai import OpenAI

@@ -1,3 +1,5 @@
+"""Embed Chunks in batches using the configured OpenAI embeddings model."""
+
 import logging
 from collections.abc import Iterator
 from itertools import islice
