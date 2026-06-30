@@ -1,0 +1,60 @@
+import logging
+
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+
+from rag_harness.config import settings
+from rag_harness.generation.generator import generate
+from rag_harness.retrieval.dense import DenseRetriever
+
+logger = logging.getLogger(__name__)
+
+app = FastAPI(
+    title="RAG Harness",
+    description="Reliability-first RAG over Kubernetes documentation.",
+    version="0.1.0",
+)
+
+_retriever: DenseRetriever | None = None
+
+
+def _get_retriever() -> DenseRetriever:
+    global _retriever
+    if _retriever is None:
+        _retriever = DenseRetriever()
+    return _retriever
+
+
+class QueryRequest(BaseModel):
+    question: str
+    top_k: int = settings.retrieval_top_k
+
+
+class Source(BaseModel):
+    source_file: str
+    heading_path: list[str]
+
+
+class QueryResponse(BaseModel):
+    question: str
+    answer: str
+    sources: list[Source]
+
+
+@app.post("/query", response_model=QueryResponse)
+def query(request: QueryRequest) -> QueryResponse:
+    if not request.question.strip():
+        raise HTTPException(status_code=422, detail="question must not be empty")
+
+    retriever = _get_retriever()
+    chunks = retriever.retrieve(request.question, top_k=request.top_k)
+    answer = generate(request.question, chunks)
+
+    sources = [Source(source_file=c.source_file, heading_path=c.heading_path) for c in chunks]
+    logger.info("query answered — %d sources used", len(sources))
+    return QueryResponse(question=request.question, answer=answer, sources=sources)
+
+
+@app.get("/health")
+def health() -> dict[str, str]:
+    return {"status": "ok"}
