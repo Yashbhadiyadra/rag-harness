@@ -49,7 +49,9 @@ def test_retrieve_uses_configured_top_k() -> None:
         data=[MagicMock(embedding=[0.1, 0.2, 0.3])]
     )
     retriever._collection.query.return_value = {  # type: ignore[attr-defined]
-        "ids": [[]], "documents": [[]], "metadatas": [[]]
+        "ids": [[]],
+        "documents": [[]],
+        "metadatas": [[]],
     }
 
     retriever.retrieve("some query", top_k=7)

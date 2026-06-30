@@ -12,6 +12,6 @@ class Retriever(ABC):
     """
 
     @abstractmethod
-    def retrieve(self, query: str, top_k: int) -> list[Chunk]:
+    def retrieve(self, query: str, top_k: int | None = None) -> list[Chunk]:
         """Return the top_k most relevant Chunks for the given query."""
         ...
