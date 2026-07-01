@@ -1,10 +1,13 @@
+import csv
 import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from rag_harness.evaluation.metrics import context_recall
-from rag_harness.evaluation.runner import load_golden_cases, run_eval
-from rag_harness.models import Chunk
+from rag_harness.evaluation.runner import export_results, load_golden_cases, run_eval
+from rag_harness.models import Chunk, EvalResult, EvalSummary
 
 
 def _make_chunk(source_file: str) -> Chunk:
@@ -121,3 +124,50 @@ def test_run_eval_fails_when_below_threshold(tmp_path: Path) -> None:
 
     assert summary.passed is False
     assert summary.mean_context_recall == 0.0
+
+
+# --- export_results ---
+
+
+def _make_summary() -> EvalSummary:
+    result = EvalResult(
+        case_id="test-001",
+        question="What is RBAC?",
+        generated_answer="Role-Based Access Control.",
+        retrieved_doc_ids=["content/en/docs/security/rbac.md"],
+        context_recall=1.0,
+        faithfulness=0.95,
+        correctness=0.90,
+    )
+    return EvalSummary(
+        results=[result],
+        mean_context_recall=1.0,
+        mean_faithfulness=0.95,
+        mean_correctness=0.90,
+        passed=True,
+    )
+
+
+def test_export_results_json(tmp_path: Path) -> None:
+    out = tmp_path / "results.json"
+    export_results(_make_summary(), out)
+    data = json.loads(out.read_text())
+    assert data["passed"] is True
+    assert data["mean_context_recall"] == 1.0
+    assert len(data["results"]) == 1
+    assert data["results"][0]["case_id"] == "test-001"
+
+
+def test_export_results_csv(tmp_path: Path) -> None:
+    out = tmp_path / "results.csv"
+    export_results(_make_summary(), out)
+    rows = list(csv.DictReader(out.open()))
+    assert len(rows) == 1
+    assert rows[0]["case_id"] == "test-001"
+    assert float(rows[0]["context_recall"]) == 1.0
+    assert float(rows[0]["faithfulness"]) == 0.95
+
+
+def test_export_results_unsupported_extension(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="Unsupported output format"):
+        export_results(_make_summary(), tmp_path / "results.txt")

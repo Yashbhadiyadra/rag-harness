@@ -5,6 +5,36 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-07-01
+
+### Added
+- 30 hand-written golden evaluation cases across five K8s topic areas:
+  workloads, networking, storage, scheduling, and cluster operations
+- End-to-end integration test suite (`tests/integration/`) using real ChromaDB
+  and mocked OpenAI; excluded from per-PR CI, run with `pytest -m integration`
+- `pytest.mark.integration` marker registered in `pyproject.toml`
+
+## [0.2.0] — 2026-07-01
+
+### Added
+- SQLite embedding cache (`EmbeddingCache`) — re-ingesting an unchanged corpus
+  makes zero OpenAI API calls after the first run; path configurable via
+  `EMBEDDING_CACHE_PATH`
+- Eval results export — `python -m rag_harness eval --output results.json` (or
+  `.csv`) saves per-case scores for regression tracking across nightly runs
+- Centralised logging configuration (`logging_setup.py`) with timestamp and
+  logger-name format; log level configurable via `LOG_LEVEL` in `.env`
+- FastAPI lifespan hook applies logging config at server startup
+- Multi-stage Dockerfile and `docker-compose.yml` for local deployment; ChromaDB
+  and embedding cache mounted as named volumes
+- `make ingest`, `make serve`, `make eval` targets
+- ADR-0005: SQLite embedding cache design decision
+
+### Changed
+- Module-level and class-level docstrings added across all packages
+
+## [0.1.0] — 2026-06-30
+
 ### Added
 - Phase 1 discipline: pinned K8s corpus to `snapshot-initial-v1.32`
   (SHA `bbb60b97`), two new ADRs, full CHANGELOG backfill, docstrings
