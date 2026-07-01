@@ -1,3 +1,5 @@
+"""FastAPI application exposing /query and /health endpoints."""
+
 import logging
 
 from fastapi import FastAPI, HTTPException
@@ -27,16 +29,22 @@ def _get_retriever() -> DenseRetriever:
 
 
 class QueryRequest(BaseModel):
+    """Request body for POST /query."""
+
     question: str
     top_k: int = settings.retrieval_top_k
 
 
 class Source(BaseModel):
+    """A single chunk source attribution included in the query response."""
+
     source_file: str
     heading_path: list[str]
 
 
 class QueryResponse(BaseModel):
+    """Response body returned by POST /query."""
+
     question: str
     answer: str
     sources: list[Source]

@@ -1,3 +1,5 @@
+"""Shared data models: Chunk, GoldenCase, EvalResult, and EvalSummary."""
+
 from pydantic import BaseModel, Field
 
 

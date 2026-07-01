@@ -1,3 +1,5 @@
+"""Ingest pipeline: load K8s docs → chunk → embed → index into ChromaDB."""
+
 import logging
 from pathlib import Path
 
