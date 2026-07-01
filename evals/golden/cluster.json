@@ -1,0 +1,42 @@
+[
+  {
+    "id": "cluster-001",
+    "question": "What is the purpose of namespaces in Kubernetes?",
+    "reference_answer": "Namespaces provide a mechanism to divide a single cluster into multiple virtual clusters. They scope names for resources (two pods can have the same name in different namespaces), allow resource quotas and limit ranges to be applied per team or environment, and provide a boundary for RBAC policies. Cluster-scoped resources such as Nodes and PersistentVolumes do not belong to a namespace.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/overview/working-with-objects/namespaces.md"
+    ]
+  },
+  {
+    "id": "cluster-002",
+    "question": "What is a ServiceAccount and how is it used by pods?",
+    "reference_answer": "A ServiceAccount provides an identity for processes running inside pods. When a pod makes API calls to the Kubernetes API server, it authenticates using the token from its ServiceAccount. Every namespace has a default ServiceAccount; pods are assigned the default unless a different one is specified. RBAC roles are bound to ServiceAccounts to control what API resources the pod can access.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/security/service-accounts.md"
+    ]
+  },
+  {
+    "id": "cluster-003",
+    "question": "What is a CustomResourceDefinition (CRD) and why is it used?",
+    "reference_answer": "A CustomResourceDefinition extends the Kubernetes API with new resource types without modifying the core API server. Once a CRD is created, users can create, update, and delete instances of the custom resource using kubectl just like built-in resources. CRDs are the foundation of the Operator pattern, enabling domain-specific control loops to manage complex stateful applications.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/extend-kubernetes/api-extension/custom-resources.md"
+    ]
+  },
+  {
+    "id": "cluster-004",
+    "question": "What are the main components of the Kubernetes control plane?",
+    "reference_answer": "The control plane consists of: the API server (kube-apiserver), which is the front-end for the Kubernetes API; etcd, the key-value store for all cluster state; the scheduler (kube-scheduler), which assigns pods to nodes; and the controller manager (kube-controller-manager), which runs controllers that reconcile desired state. In cloud deployments, the cloud controller manager integrates with the provider's APIs.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/architecture/_index.md"
+    ]
+  },
+  {
+    "id": "cluster-005",
+    "question": "What is a ResourceQuota and how does it limit resource usage per namespace?",
+    "reference_answer": "A ResourceQuota sets aggregate limits on the total amount of compute resources (CPU, memory), storage, and the number of API objects (pods, services, secrets, etc.) that can exist in a namespace. When a quota is active and a new resource would exceed the quota, the API server rejects the request. Quotas help prevent one team from consuming all cluster resources and allow administrators to allocate capacity fairly.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/policy/resource-quotas.md"
+    ]
+  }
+]

@@ -1,0 +1,50 @@
+[
+  {
+    "id": "networking-001",
+    "question": "What is the difference between ClusterIP, NodePort, and LoadBalancer services?",
+    "reference_answer": "ClusterIP exposes the service on a cluster-internal IP, making it reachable only from within the cluster. NodePort exposes the service on each node's IP at a static port, making it accessible from outside the cluster. LoadBalancer provisions an external load balancer (typically via a cloud provider) that routes traffic to the service. Each type builds on the previous one.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/services-networking/service.md"
+    ]
+  },
+  {
+    "id": "networking-002",
+    "question": "How does Kubernetes DNS work for services?",
+    "reference_answer": "Kubernetes runs a DNS server (CoreDNS) that assigns DNS names to Services. A Service named 'my-svc' in namespace 'my-ns' gets the fully-qualified name 'my-svc.my-ns.svc.cluster.local'. Pods in the same namespace can reach it by the short name 'my-svc'. Pods receive a resolv.conf that points to the cluster DNS server, so these names resolve automatically.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/services-networking/dns-pod-service.md"
+    ]
+  },
+  {
+    "id": "networking-003",
+    "question": "What is an Ingress and how does it differ from a Service?",
+    "reference_answer": "An Ingress is an API object that manages external HTTP and HTTPS access to services within the cluster. It can provide URL-based routing, TLS termination, and name-based virtual hosting using a single external IP. A Service exposes pods directly at layer 4 (TCP/UDP), while Ingress operates at layer 7 (HTTP) and requires an Ingress controller to be installed.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/services-networking/ingress.md"
+    ]
+  },
+  {
+    "id": "networking-004",
+    "question": "How do Network Policies restrict traffic between pods?",
+    "reference_answer": "Network Policies are namespace-scoped resources that define rules for allowed ingress and egress traffic to pods selected by label. By default all traffic is allowed; once any NetworkPolicy selects a pod, only explicitly allowed connections are permitted. Policies specify peer pods, namespaces, or IP blocks via podSelector, namespaceSelector, and ipBlock fields. A CNI plugin that supports Network Policies must be installed for them to take effect.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/services-networking/network-policies.md"
+    ]
+  },
+  {
+    "id": "networking-005",
+    "question": "What is a headless service in Kubernetes?",
+    "reference_answer": "A headless service is created by setting clusterIP: None. It does not get a virtual cluster IP; instead, DNS returns the IP addresses of the individual pods backing the service. This allows clients to discover and connect directly to specific pods rather than load-balancing through a single virtual IP. Headless services are commonly used with StatefulSets to give each pod a stable DNS name.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/services-networking/service.md"
+    ]
+  },
+  {
+    "id": "networking-006",
+    "question": "How do pods communicate with each other across nodes in Kubernetes?",
+    "reference_answer": "Kubernetes requires that every pod gets a unique cluster-wide IP address and can communicate with every other pod without NAT. This flat networking model is implemented by a Container Network Interface (CNI) plugin such as Calico, Flannel, or Cilium. The CNI plugin sets up routes or overlays so that pod IPs are routable across nodes.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/cluster-administration/networking.md"
+    ]
+  }
+]
