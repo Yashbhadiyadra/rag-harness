@@ -1,3 +1,5 @@
+"""Abstract retrieval interface shared by all retriever implementations."""
+
 from abc import ABC, abstractmethod
 
 from rag_harness.models import Chunk

@@ -1,3 +1,5 @@
+"""Command-line interface: ingest, query, and eval subcommands."""
+
 import argparse
 import logging
 import sys
@@ -57,6 +59,7 @@ def _cmd_eval(args: argparse.Namespace) -> None:
 
 
 def main() -> None:
+    """Parse arguments and dispatch to the appropriate subcommand handler."""
     parser = argparse.ArgumentParser(
         prog="rag-harness",
         description="Reliability-first RAG over Kubernetes documentation.",
