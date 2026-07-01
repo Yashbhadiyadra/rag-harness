@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     # Storage
     chroma_db_path: str = "./chroma_db"
     chroma_collection: str = "rag_harness"
+    embedding_cache_path: str = "./embedding_cache.db"
 
     # Retrieval
     retrieval_top_k: int = 5
