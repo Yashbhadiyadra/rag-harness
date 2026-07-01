@@ -27,5 +27,6 @@ htmlcov/
 # macOS
 .DS_Store
 
-# Local tooling config (not project code)
+# Local editor and tooling config
 .claude/
+CLAUDE.md

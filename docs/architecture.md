@@ -48,4 +48,11 @@ See `docs/adr/` for the full decision records.
 
 ## Forward compatibility
 
-This is Project 1 of 3. See CLAUDE.md for constraints imposed by Projects 2 and 3.
+This is Project 1 of a three-part reliability portfolio:
+
+- **Project 2 (stale-embedding detection)** consumes ingest history — every chunk records
+  source file path and git commit SHA as provenance.
+- **Project 3 (agent trajectory evaluator)** reuses the evaluation layer — metrics and
+  golden-set format are kept generic, not hard-wired to single-turn RAG.
+- **v2 (corrective RAG)** — generation and evaluation are kept modular to support a
+  future critic-and-retry loop without a full rewrite.
