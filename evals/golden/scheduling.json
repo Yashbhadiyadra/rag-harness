@@ -1,0 +1,42 @@
+[
+  {
+    "id": "scheduling-001",
+    "question": "How do I set CPU and memory resource limits on a Kubernetes container?",
+    "reference_answer": "Set resources.requests to specify the minimum CPU and memory the container needs (used by the scheduler to find a suitable node) and resources.limits to cap the maximum it can consume. If a container exceeds its memory limit it is OOMKilled; if it exceeds its CPU limit it is throttled. Both are specified under the container spec using units such as '500m' for CPU (millicores) and '256Mi' for memory.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/configuration/manage-resources-containers.md"
+    ]
+  },
+  {
+    "id": "scheduling-002",
+    "question": "What is the difference between a liveness probe and a readiness probe?",
+    "reference_answer": "A liveness probe determines if a container is still running; if it fails, kubelet restarts the container. A readiness probe determines if a container is ready to accept traffic; if it fails, the pod is removed from the Service endpoints so no traffic is routed to it, but the container is not restarted. Liveness handles crash recovery; readiness handles graceful warm-up and temporary unavailability.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/workloads/pods/pod-lifecycle.md"
+    ]
+  },
+  {
+    "id": "scheduling-003",
+    "question": "How do taints and tolerations control pod scheduling in Kubernetes?",
+    "reference_answer": "Taints are applied to nodes and repel pods that do not explicitly tolerate them. Tolerations are added to pods and allow (but do not require) those pods to be scheduled on tainted nodes. The combination is used to reserve nodes for specific workloads, e.g., GPU nodes or nodes with sensitive data. Taint effects can be NoSchedule, PreferNoSchedule, or NoExecute (which also evicts running pods).",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/scheduling-eviction/taint-and-toleration.md"
+    ]
+  },
+  {
+    "id": "scheduling-004",
+    "question": "What is the Horizontal Pod Autoscaler and how does it work?",
+    "reference_answer": "The Horizontal Pod Autoscaler (HPA) automatically scales the number of pod replicas in a Deployment, ReplicaSet, or StatefulSet based on observed metrics such as CPU utilisation or custom metrics. It periodically queries the metrics API, compares the current value against the target, and adjusts the replica count. Scale-up happens quickly; scale-down has a stabilisation window to avoid flapping.",
+    "relevant_doc_ids": [
+      "content/en/docs/tasks/run-application/horizontal-pod-autoscale.md"
+    ]
+  },
+  {
+    "id": "scheduling-005",
+    "question": "What is node affinity and how does it differ from nodeSelector?",
+    "reference_answer": "nodeSelector is a simple key-value field that constrains a pod to nodes with matching labels. Node affinity is a more expressive replacement that supports operators (In, NotIn, Exists, Gt, etc.) and two rule types: requiredDuringSchedulingIgnoredDuringExecution (hard constraint) and preferredDuringSchedulingIgnoredDuringExecution (soft preference). Node affinity also supports a weight on soft rules, letting you express prioritised preferences.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/scheduling-eviction/assign-pod-node.md"
+    ]
+  }
+]

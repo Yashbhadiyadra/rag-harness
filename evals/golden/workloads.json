@@ -1,0 +1,66 @@
+[
+  {
+    "id": "pods-001",
+    "question": "What is a Kubernetes Pod?",
+    "reference_answer": "A Pod is the smallest deployable unit in Kubernetes. It represents one or more containers that share the same network namespace, IP address, and storage volumes. Containers within a Pod communicate over localhost and are always co-scheduled on the same node.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/workloads/pods/_index.md"
+    ]
+  },
+  {
+    "id": "pods-002",
+    "question": "What are the phases of a Pod lifecycle?",
+    "reference_answer": "A Pod passes through five phases: Pending (accepted but not yet running), Running (at least one container is running), Succeeded (all containers exited with code 0), Failed (all containers have terminated and at least one exited with a non-zero code), and Unknown (the pod state cannot be determined).",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/workloads/pods/pod-lifecycle.md"
+    ]
+  },
+  {
+    "id": "workloads-001",
+    "question": "How do Deployments manage rolling updates in Kubernetes?",
+    "reference_answer": "A Deployment manages rolling updates by gradually replacing old ReplicaSet pods with new ones. It respects maxUnavailable (how many pods can be unavailable at once) and maxSurge (how many extra pods can be created above the desired count) parameters, ensuring zero downtime. You can pause, resume, or roll back a Deployment at any point.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/workloads/controllers/deployment.md"
+    ]
+  },
+  {
+    "id": "workloads-002",
+    "question": "When should I use a StatefulSet instead of a Deployment?",
+    "reference_answer": "Use a StatefulSet when your application requires stable, unique network identifiers, stable persistent storage, or ordered deployment and scaling. StatefulSets are suited for databases and clustered applications where each pod needs a predictable hostname (e.g., pod-0, pod-1) and its own PersistentVolumeClaim. Deployments are preferred for stateless workloads.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/workloads/controllers/statefulset.md"
+    ]
+  },
+  {
+    "id": "workloads-003",
+    "question": "What is a DaemonSet used for in Kubernetes?",
+    "reference_answer": "A DaemonSet ensures that a copy of a Pod runs on every node (or a subset of nodes) in the cluster. It is typically used for node-level infrastructure workloads such as log collectors, monitoring agents, and network plugins. When a new node joins the cluster, the DaemonSet controller automatically schedules the Pod on it.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/workloads/controllers/daemonset.md"
+    ]
+  },
+  {
+    "id": "workloads-004",
+    "question": "How do Kubernetes Jobs differ from Deployments?",
+    "reference_answer": "A Job runs one or more Pods to completion and tracks successful completions. Once the specified number of completions is reached, the Job is done. Unlike a Deployment, a Job does not restart completed pods. Jobs are designed for batch or one-off tasks, while Deployments are designed to keep a set of pods continuously running.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/workloads/controllers/job.md"
+    ]
+  },
+  {
+    "id": "workloads-005",
+    "question": "What are init containers and when are they useful?",
+    "reference_answer": "Init containers are specialised containers that run to completion before the main application containers start. They run in sequence and each must succeed before the next begins. Common uses include waiting for a dependency to be ready, pre-populating a shared volume, or running database migrations before the application starts.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/workloads/pods/init-containers.md"
+    ]
+  },
+  {
+    "id": "workloads-006",
+    "question": "What is a ReplicaSet and how does it relate to a Deployment?",
+    "reference_answer": "A ReplicaSet ensures that a specified number of identical Pod replicas are running at any given time. A Deployment owns and manages a ReplicaSet — when you update a Deployment, it creates a new ReplicaSet and gradually shifts traffic to it while scaling down the old one. You should use Deployments rather than ReplicaSets directly, as Deployments provide higher-level update and rollback semantics.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/workloads/controllers/replicaset.md"
+    ]
+  }
+]

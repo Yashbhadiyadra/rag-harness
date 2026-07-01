@@ -1,0 +1,43 @@
+[
+  {
+    "id": "storage-001",
+    "question": "What is the difference between a PersistentVolume and a PersistentVolumeClaim?",
+    "reference_answer": "A PersistentVolume (PV) is a piece of storage in the cluster provisioned by an administrator or dynamically via a StorageClass. A PersistentVolumeClaim (PVC) is a request for storage by a user, specifying size and access mode. Kubernetes binds a PVC to a matching PV. This separation decouples how storage is provided from how it is consumed.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/storage/persistent-volumes.md"
+    ]
+  },
+  {
+    "id": "storage-002",
+    "question": "What is a StorageClass in Kubernetes?",
+    "reference_answer": "A StorageClass describes the type of storage available in the cluster and enables dynamic provisioning of PersistentVolumes. When a PVC references a StorageClass, Kubernetes automatically creates a matching PV using the configured provisioner (e.g., AWS EBS, GCE PD, NFS). StorageClasses define parameters such as replication factor, disk type, and reclaim policy.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/storage/storage-classes.md"
+    ]
+  },
+  {
+    "id": "storage-003",
+    "question": "How do ConfigMaps differ from Secrets in Kubernetes?",
+    "reference_answer": "ConfigMaps store non-sensitive configuration data as key-value pairs that pods can consume as environment variables, command-line arguments, or mounted files. Secrets store sensitive data such as passwords and tokens; their values are base64-encoded and Kubernetes can encrypt them at rest. Secrets are also more tightly controlled via RBAC and are not printed in kubectl output by default.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/configuration/configmap.md",
+      "content/en/docs/concepts/configuration/secret.md"
+    ]
+  },
+  {
+    "id": "storage-004",
+    "question": "How do you mount a Secret into a Pod as a file?",
+    "reference_answer": "Reference the Secret in the Pod spec under volumes with a secret volume type, specifying the Secret name. Then mount the volume into a container using volumeMounts. Each key in the Secret becomes a file in the mount path, with the value as the file contents. Alternatively, individual keys can be projected to specific file paths using the items field.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/configuration/secret.md"
+    ]
+  },
+  {
+    "id": "storage-005",
+    "question": "What access modes do PersistentVolumes support?",
+    "reference_answer": "PersistentVolumes support three access modes: ReadWriteOnce (RWO) — can be mounted as read-write by a single node; ReadOnlyMany (ROX) — can be mounted read-only by many nodes; ReadWriteMany (RWX) — can be mounted as read-write by many nodes simultaneously. Not all storage backends support all modes — for example, most cloud block storage only supports RWO.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/storage/persistent-volumes.md"
+    ]
+  }
+]
