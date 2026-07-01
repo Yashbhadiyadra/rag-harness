@@ -1,0 +1,15 @@
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      - chroma_data:/app/chroma_db
+      - embed_cache:/app/embedding_cache.db
+    restart: unless-stopped
+
+volumes:
+  chroma_data:
+  embed_cache:

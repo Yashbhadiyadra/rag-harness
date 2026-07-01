@@ -24,9 +24,13 @@ class Settings(BaseSettings):
     # Storage
     chroma_db_path: str = "./chroma_db"
     chroma_collection: str = "rag_harness"
+    embedding_cache_path: str = "./embedding_cache.db"
 
     # Retrieval
     retrieval_top_k: int = 5
+
+    # Logging
+    log_level: str = "INFO"
 
     # Evaluation thresholds — dropping below any triggers a build failure
     threshold_context_recall: float = 0.80
