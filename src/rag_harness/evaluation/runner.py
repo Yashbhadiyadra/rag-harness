@@ -1,5 +1,6 @@
 """Load golden cases, run the RAG pipeline per case, and apply the reliability gate."""
 
+import csv
 import json
 import logging
 from pathlib import Path
@@ -90,3 +91,53 @@ def run_eval(
         passed,
     )
     return summary
+
+
+def export_results(summary: EvalSummary, output: Path) -> None:
+    """Write *summary* to *output* as JSON (.json) or CSV (.csv).
+
+    The file format is inferred from the file extension. JSON preserves the full
+    generated answer; CSV is easier to open in a spreadsheet for quick comparison.
+    """
+    suffix = output.suffix.lower()
+    if suffix == ".json":
+        output.write_text(
+            json.dumps(
+                {
+                    "mean_context_recall": summary.mean_context_recall,
+                    "mean_faithfulness": summary.mean_faithfulness,
+                    "mean_correctness": summary.mean_correctness,
+                    "passed": summary.passed,
+                    "results": [r.model_dump() for r in summary.results],
+                },
+                indent=2,
+            )
+        )
+    elif suffix == ".csv":
+        with output.open("w", newline="") as fh:
+            writer = csv.DictWriter(
+                fh,
+                fieldnames=[
+                    "case_id",
+                    "question",
+                    "context_recall",
+                    "faithfulness",
+                    "correctness",
+                    "generated_answer",
+                ],
+            )
+            writer.writeheader()
+            for r in summary.results:
+                writer.writerow(
+                    {
+                        "case_id": r.case_id,
+                        "question": r.question,
+                        "context_recall": r.context_recall,
+                        "faithfulness": r.faithfulness,
+                        "correctness": r.correctness,
+                        "generated_answer": r.generated_answer,
+                    }
+                )
+    else:
+        raise ValueError(f"Unsupported output format: {suffix!r}. Use .json or .csv")
+    logger.info("eval results written to %s", output)

@@ -6,6 +6,7 @@ from pathlib import Path
 from rag_harness.config import settings
 from rag_harness.ingest.chunker import chunk_docs
 from rag_harness.ingest.embedder import embed_chunks
+from rag_harness.ingest.embedding_cache import EmbeddingCache
 from rag_harness.ingest.indexer import index_chunks
 from rag_harness.ingest.loader import load
 
@@ -23,7 +24,11 @@ def run_ingest(repo_path: Path | None = None) -> None:
     chunks = chunk_docs(doc_paths, repo_root, git_commit=commit_sha, doc_version=doc_version)
 
     logger.info("embedding %d chunks", len(chunks))
-    embedded = embed_chunks(chunks)
+    cache = EmbeddingCache(Path(settings.embedding_cache_path))
+    try:
+        embedded = embed_chunks(chunks, cache=cache)
+    finally:
+        cache.close()
 
     logger.info("indexing %d embedded chunks", len(embedded))
     index_chunks(embedded)

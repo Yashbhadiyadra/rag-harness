@@ -13,6 +13,9 @@ build/
 # ChromaDB data
 chroma_db/
 
+# Embedding vector cache (generated at ingest time)
+embedding_cache.db
+
 # Kubernetes docs clone (fetched at ingest time)
 k8s_docs/
 
