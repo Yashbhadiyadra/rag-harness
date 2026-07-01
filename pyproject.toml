@@ -52,3 +52,7 @@ plugins = ["pydantic.mypy"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+addopts = "-m 'not integration'"
+markers = [
+    "integration: end-to-end pipeline tests; require a real index. Run with: pytest -m integration",
+]
