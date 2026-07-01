@@ -30,7 +30,9 @@ def _cmd_query(args: argparse.Namespace) -> None:
 
 
 def _cmd_eval(args: argparse.Namespace) -> None:
-    from rag_harness.evaluation.runner import run_eval
+    from pathlib import Path
+
+    from rag_harness.evaluation.runner import export_results, run_eval
     from rag_harness.retrieval.dense import DenseRetriever
 
     retriever = DenseRetriever()
@@ -54,6 +56,10 @@ def _cmd_eval(args: argparse.Namespace) -> None:
             print(f"  A: {result.generated_answer[:120]}...")
             print()
 
+    if args.output:
+        export_results(summary, Path(args.output))
+        print(f"Results written to {args.output}")
+
     if not summary.passed:
         sys.exit(1)
 
@@ -74,6 +80,11 @@ def main() -> None:
 
     eval_p = sub.add_parser("eval", help="Run the golden eval suite and check the quality gate.")
     eval_p.add_argument("--verbose", "-v", action="store_true", help="Print per-case results.")
+    eval_p.add_argument(
+        "--output",
+        metavar="PATH",
+        help="Save per-case scores to this file (.json or .csv).",
+    )
 
     args = parser.parse_args()
     {"ingest": _cmd_ingest, "query": _cmd_query, "eval": _cmd_eval}[args.command](args)
