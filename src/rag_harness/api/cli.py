@@ -1,10 +1,12 @@
 """Command-line interface: ingest, query, and eval subcommands."""
 
 import argparse
-import logging
 import sys
 
-logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
+from rag_harness.config import settings
+from rag_harness.logging_setup import configure_logging
+
+configure_logging(settings.log_level)
 
 
 def _cmd_ingest(args: argparse.Namespace) -> None:

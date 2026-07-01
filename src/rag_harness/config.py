@@ -29,6 +29,9 @@ class Settings(BaseSettings):
     # Retrieval
     retrieval_top_k: int = 5
 
+    # Logging
+    log_level: str = "INFO"
+
     # Evaluation thresholds — dropping below any triggers a build failure
     threshold_context_recall: float = 0.80
     threshold_faithfulness: float = 0.85
