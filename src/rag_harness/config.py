@@ -31,6 +31,11 @@ class Settings(BaseSettings):
     retrieval_strategy: str = "dense"  # "dense" | "hybrid" | "hybrid-rerank" | "hyde" | "full"
     hybrid_rrf_k: int = 60  # RRF fusion constant; 60 is the Cormack et al. 2009 default
 
+    # Reranking (requires `pip install -e '.[rerank]'`)
+    rerank_enabled: bool = False
+    rerank_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+    rerank_candidate_multiplier: int = 4  # retrieve top_k*4 candidates before reranking
+
     # Logging
     log_level: str = "INFO"
 

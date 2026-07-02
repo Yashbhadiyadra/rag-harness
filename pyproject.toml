@@ -23,6 +23,9 @@ dependencies = [
 eval = [
     "openai>=1.30",   # LLM-as-judge; kept separate so eval doesn't run on every PR
 ]
+rerank = [
+    "sentence-transformers>=3.0",  # cross-encoder reranker; ~500MB with PyTorch
+]
 dev = [
     "ruff>=0.4",
     "mypy>=1.10",
@@ -51,7 +54,7 @@ files = ["src"]
 plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
-module = ["rank_bm25"]
+module = ["rank_bm25", "sentence_transformers"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
