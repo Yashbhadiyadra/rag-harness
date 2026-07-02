@@ -17,9 +17,9 @@ def _cmd_ingest(args: argparse.Namespace) -> None:
 
 def _cmd_query(args: argparse.Namespace) -> None:
     from rag_harness.generation.generator import generate
-    from rag_harness.retrieval.dense import DenseRetriever
+    from rag_harness.retrieval.factory import build_retriever
 
-    retriever = DenseRetriever()
+    retriever = build_retriever(args.strategy)
     chunks = retriever.retrieve(args.question, top_k=args.top_k)
     answer = generate(args.question, chunks)
 
@@ -35,9 +35,9 @@ def _cmd_eval(args: argparse.Namespace) -> None:
     from pathlib import Path
 
     from rag_harness.evaluation.runner import export_results, run_eval
-    from rag_harness.retrieval.dense import DenseRetriever
+    from rag_harness.retrieval.factory import build_retriever
 
-    retriever = DenseRetriever()
+    retriever = build_retriever(args.strategy)
     summary = run_eval(retriever)
 
     print("\nEvaluation Results")
@@ -76,9 +76,17 @@ def main() -> None:
 
     sub.add_parser("ingest", help="Clone, chunk, embed, and index the K8s docs.")
 
+    strategy_choices = ["dense", "hybrid", "hybrid-rerank", "hyde", "full"]
+
     query_p = sub.add_parser("query", help="Ask a question and print the grounded answer.")
     query_p.add_argument("question", help="The question to answer.")
     query_p.add_argument("--top-k", type=int, default=5, help="Number of chunks to retrieve.")
+    query_p.add_argument(
+        "--strategy",
+        choices=strategy_choices,
+        default=settings.retrieval_strategy,
+        help="Retrieval strategy (default: %(default)s).",
+    )
 
     eval_p = sub.add_parser("eval", help="Run the golden eval suite and check the quality gate.")
     eval_p.add_argument("--verbose", "-v", action="store_true", help="Print per-case results.")
@@ -86,6 +94,12 @@ def main() -> None:
         "--output",
         metavar="PATH",
         help="Save per-case scores to this file (.json or .csv).",
+    )
+    eval_p.add_argument(
+        "--strategy",
+        choices=strategy_choices,
+        default=settings.retrieval_strategy,
+        help="Retrieval strategy (default: %(default)s).",
     )
 
     args = parser.parse_args()

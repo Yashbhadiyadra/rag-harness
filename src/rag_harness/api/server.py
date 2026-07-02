@@ -10,7 +10,8 @@ from pydantic import BaseModel
 from rag_harness.config import settings
 from rag_harness.generation.generator import generate
 from rag_harness.logging_setup import configure_logging
-from rag_harness.retrieval.dense import DenseRetriever
+from rag_harness.retrieval.base import Retriever
+from rag_harness.retrieval.factory import build_retriever
 
 logger = logging.getLogger(__name__)
 
@@ -29,14 +30,17 @@ app = FastAPI(
     lifespan=_lifespan,
 )
 
-_retriever: DenseRetriever | None = None
+_retriever: Retriever | None = None
 
 
-def _get_retriever() -> DenseRetriever:
-    """Return the module-level retriever, initialising it on first call."""
+def _get_retriever() -> Retriever:
+    """Return the module-level retriever, initialising it on first call.
+
+    Uses the strategy set by RETRIEVAL_STRATEGY in .env.
+    """
     global _retriever
     if _retriever is None:
-        _retriever = DenseRetriever()
+        _retriever = build_retriever(settings.retrieval_strategy)
     return _retriever
 
 

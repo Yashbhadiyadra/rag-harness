@@ -5,6 +5,34 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-07-02
+
+### Added
+- **Hybrid retrieval** — `HybridRetriever` combines dense semantic search with
+  BM25 sparse search via Reciprocal Rank Fusion (score = Σ 1/(k + rank + 1),
+  k=60 per Cormack et al. 2009). Rank-based fusion avoids score normalisation.
+- **BM25 sparse index** — `BM25Store` builds an in-memory `BM25Okapi` index
+  from all ChromaDB documents at startup; tokeniser deliberately simple to
+  preserve K8s identifiers like `PodDisruptionBudget` and `kubectl`.
+- **Cross-encoder reranker** — `RerankingRetriever` wraps any base retriever
+  with a second-stage rerank using `cross-encoder/ms-marco-MiniLM-L-6-v2`.
+  Gated behind the optional `[rerank]` extra (`sentence-transformers`,
+  ~500MB with PyTorch).
+- **HyDE query transformation** — `HyDERetriever` asks `gpt-4o-mini` to draft
+  a hypothetical answer, then uses that as the retrieval query; bridges the
+  query-answer vocabulary gap. Falls back to raw query on LLM failure.
+- **Strategy factory** — `build_retriever(strategy)` composes retrievers by
+  name. Strategies: `dense`, `hybrid`, `hybrid-rerank`, `hyde`, `full`.
+- `--strategy` flag on both `rag-harness query` and `rag-harness eval`
+  subcommands; also configurable via `RETRIEVAL_STRATEGY` in `.env`.
+- API server picks its retriever via `RETRIEVAL_STRATEGY`.
+- ADR-0006 documenting the hybrid retrieval, reranking, and HyDE design.
+
+### Changed
+- Core deps: added `rank_bm25>=0.2.2` (pure Python, 50KB)
+- API server no longer hard-codes `DenseRetriever`; uses `build_retriever`
+  with the configured strategy
+
 ## [0.3.0] — 2026-07-01
 
 ### Added

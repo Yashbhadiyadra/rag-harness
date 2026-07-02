@@ -29,11 +29,13 @@ def test_health() -> None:
 def test_query_returns_answer_and_sources() -> None:
     chunk = _make_chunk("content/en/docs/security/rbac.md", ["Security", "RBAC"])
 
+    mock_retriever = MagicMock()
+    mock_retriever.retrieve.return_value = [chunk]
+
     with (
-        patch("rag_harness.api.server.DenseRetriever") as mock_retriever_cls,
+        patch("rag_harness.api.server._get_retriever", return_value=mock_retriever),
         patch("rag_harness.api.server.generate", return_value="Use RoleBinding."),
     ):
-        mock_retriever_cls.return_value.retrieve.return_value = [chunk]
         response = client.post("/query", json={"question": "How do I configure RBAC?"})
 
     assert response.status_code == 200
