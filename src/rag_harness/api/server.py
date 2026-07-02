@@ -8,6 +8,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 from rag_harness.config import settings
+from rag_harness.generation.corrective import corrective_generate
 from rag_harness.generation.generator import generate
 from rag_harness.logging_setup import configure_logging
 from rag_harness.retrieval.base import Retriever
@@ -49,6 +50,7 @@ class QueryRequest(BaseModel):
 
     question: str
     top_k: int = settings.retrieval_top_k
+    corrective: bool | None = None  # None = fall back to CORRECTIVE_RAG_ENABLED
 
 
 class Source(BaseModel):
@@ -73,11 +75,20 @@ def query(request: QueryRequest) -> QueryResponse:
         raise HTTPException(status_code=422, detail="question must not be empty")
 
     retriever = _get_retriever()
-    chunks = retriever.retrieve(request.question, top_k=request.top_k)
-    answer = generate(request.question, chunks)
+    use_corrective = (
+        request.corrective if request.corrective is not None else settings.corrective_rag_enabled
+    )
+
+    if use_corrective:
+        result = corrective_generate(request.question, retriever, top_k=request.top_k)
+        answer = result.answer
+        chunks = result.chunks_used
+    else:
+        chunks = retriever.retrieve(request.question, top_k=request.top_k)
+        answer = generate(request.question, chunks)
 
     sources = [Source(source_file=c.source_file, heading_path=c.heading_path) for c in chunks]
-    logger.info("query answered — %d sources used", len(sources))
+    logger.info("query answered — %d sources used, corrective=%s", len(sources), use_corrective)
     return QueryResponse(question=request.question, answer=answer, sources=sources)
 
 

@@ -16,12 +16,25 @@ def _cmd_ingest(args: argparse.Namespace) -> None:
 
 
 def _cmd_query(args: argparse.Namespace) -> None:
+    from rag_harness.generation.corrective import corrective_generate
     from rag_harness.generation.generator import generate
     from rag_harness.retrieval.factory import build_retriever
 
     retriever = build_retriever(args.strategy)
-    chunks = retriever.retrieve(args.question, top_k=args.top_k)
-    answer = generate(args.question, chunks)
+
+    if args.corrective:
+        result = corrective_generate(args.question, retriever, top_k=args.top_k)
+        answer = result.answer
+        chunks = result.chunks_used
+        print(
+            f"\n[corrective: category={result.category.value} "
+            f"attempts={result.attempts}"
+            + (f" reformulated={result.reformulated_query!r}" if result.reformulated_query else "")
+            + "]"
+        )
+    else:
+        chunks = retriever.retrieve(args.question, top_k=args.top_k)
+        answer = generate(args.question, chunks)
 
     print(f"\nAnswer:\n{answer}\n")
     if chunks:
@@ -86,6 +99,12 @@ def main() -> None:
         choices=strategy_choices,
         default=settings.retrieval_strategy,
         help="Retrieval strategy (default: %(default)s).",
+    )
+    query_p.add_argument(
+        "--corrective",
+        action="store_true",
+        default=settings.corrective_rag_enabled,
+        help="Enable the corrective critic-and-retry loop (extra LLM calls).",
     )
 
     eval_p = sub.add_parser("eval", help="Run the golden eval suite and check the quality gate.")

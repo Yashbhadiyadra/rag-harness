@@ -39,6 +39,20 @@ Five composable retrieval strategies, selectable via `--strategy` or the
 Every strategy is documented in [ADR-0006](docs/adr/ADR-0006-hybrid-retrieval-and-reranking.md)
 with the tradeoffs and alternatives considered.
 
+### Corrective RAG (opt-in)
+
+An optional critic-and-retry loop wraps any retrieval strategy. The critic scores
+each retrieved chunk for relevance and routes the pipeline:
+
+- **Correct** — filter weak chunks, generate the answer
+- **Ambiguous** — filter, then generate on the smaller surviving set
+- **Incorrect** — reformulate the query and retry once; refuse rather than
+  hallucinate if the second attempt also fails
+
+Enable with `--corrective` on the CLI, `corrective: true` in the API body, or
+`CORRECTIVE_RAG_ENABLED=true` in `.env`. Details and cost tradeoffs in
+[ADR-0007](docs/adr/ADR-0007-corrective-rag.md).
+
 ## Setup
 
 **Requirements:** Python 3.12, an OpenAI API key.
@@ -155,7 +169,9 @@ src/rag_harness/
 │   ├── hyde.py             # Hypothetical Document Embeddings
 │   └── factory.py          # build_retriever(strategy) composes them
 ├── generation/
-│   └── generator.py        # Context-only prompt, gpt-4o-mini, temp=0
+│   ├── generator.py        # Context-only prompt, gpt-4o-mini, temp=0
+│   ├── critic.py           # Relevance critic (CRAG-style batch scoring)
+│   └── corrective.py       # corrective_generate() — retrieve → critique → route
 ├── evaluation/
 │   ├── metrics.py          # context_recall, faithfulness, correctness
 │   └── runner.py           # Golden set loader + gate + JSON/CSV export
@@ -207,6 +223,7 @@ All non-trivial decisions are captured as Architecture Decision Records in
 - [ADR-0004](docs/adr/ADR-0004-llm-as-judge-evaluation.md) — LLM-as-judge evaluation
 - [ADR-0005](docs/adr/ADR-0005-embedding-cache.md) — SQLite embedding cache
 - [ADR-0006](docs/adr/ADR-0006-hybrid-retrieval-and-reranking.md) — Hybrid retrieval, reranking, HyDE
+- [ADR-0007](docs/adr/ADR-0007-corrective-rag.md) — Corrective RAG critic-and-retry loop
 
 ## Research foundations
 
@@ -216,7 +233,7 @@ The retrieval and evaluation design draws on:
 - **Cormack et al. 2009** — Reciprocal Rank Fusion for combining rankers
 - **HyDE (Gao et al. 2022)** — Precise Zero-Shot Dense Retrieval without Relevance Labels
 - **MS MARCO cross-encoders** — retrieve-then-rerank two-stage pattern
-- **CRAG (Yan et al. 2024)** — critic-and-retry loop (planned for v2)
+- **CRAG (Yan et al. 2024)** — critic-and-retry loop
 
 ## Development
 

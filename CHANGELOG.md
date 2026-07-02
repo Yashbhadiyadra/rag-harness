@@ -5,6 +5,36 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.5.0] — 2026-07-02
+
+### Added
+- **Corrective RAG** — critic-and-retry loop from Yan et al. 2024. The
+  pipeline now judges its own retrieval quality:
+  - `RelevanceCritic` scores every retrieved chunk in a single `gpt-4o-mini`
+    call using structured JSON output; scores are calibrated on a rubric
+    (1.0 = directly answers → 0.0 = irrelevant).
+  - Three-way routing: Correct (max score ≥ 0.7) → filter and generate;
+    Ambiguous (0.3 ≤ max < 0.7) → filter and generate anyway; Incorrect
+    (max < 0.3) → reformulate the query and retry once.
+  - Final fallback returns the byte-identical "not enough information"
+    refusal used by the generator, keeping evaluation signals consistent.
+- `CorrectiveResult` dataclass carries answer plus telemetry (category,
+  attempts, per-chunk scores, reformulated query) for downstream
+  observability and ablation.
+- Config fields: `CORRECTIVE_RAG_ENABLED`, `CRITIC_CORRECT_THRESHOLD`,
+  `CRITIC_INCORRECT_THRESHOLD`, `CORRECTIVE_MAX_RETRIES`.
+- `--corrective` flag on the `query` CLI subcommand.
+- API server: `POST /query` accepts an optional `corrective` field; falls
+  back to `CORRECTIVE_RAG_ENABLED` when unset.
+- ADR-0007 documenting the design, threshold choices, cost tradeoffs,
+  and rejected alternatives.
+
+### Changed
+- Critic always scores against the ORIGINAL query, not the reformulated
+  one — reformulation is a search tool, relevance judgement stays anchored.
+- Reformulation failure falls back to the original query rather than
+  aborting the retry loop.
+
 ## [0.4.0] — 2026-07-02
 
 ### Added
