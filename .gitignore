@@ -31,5 +31,8 @@ htmlcov/
 .DS_Store
 
 # Local editor and tooling config
+.vscode/
+.idea/
+.cursor/
 .claude/
-CLAUDE.md
+AGENTS.md
