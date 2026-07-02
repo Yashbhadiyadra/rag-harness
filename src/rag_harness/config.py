@@ -28,6 +28,8 @@ class Settings(BaseSettings):
 
     # Retrieval
     retrieval_top_k: int = 5
+    retrieval_strategy: str = "dense"  # "dense" | "hybrid" | "hybrid-rerank" | "hyde" | "full"
+    hybrid_rrf_k: int = 60  # RRF fusion constant; 60 is the Cormack et al. 2009 default
 
     # Logging
     log_level: str = "INFO"
