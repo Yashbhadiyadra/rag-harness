@@ -36,6 +36,12 @@ class Settings(BaseSettings):
     rerank_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
     rerank_candidate_multiplier: int = 4  # retrieve top_k*4 candidates before reranking
 
+    # Corrective RAG — critic-and-retry loop (higher quality, higher cost)
+    corrective_rag_enabled: bool = False
+    critic_correct_threshold: float = 0.7  # any chunk above this = Correct
+    critic_incorrect_threshold: float = 0.3  # top chunk below this = Incorrect
+    corrective_max_retries: int = 1  # extra retrieval attempts after query reformulation
+
     # Logging
     log_level: str = "INFO"
 
