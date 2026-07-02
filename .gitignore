@@ -35,4 +35,5 @@ htmlcov/
 .idea/
 .cursor/
 .claude/
-AGENTS.md
+CLAUDE.md
+STATUS_REPORT.md
