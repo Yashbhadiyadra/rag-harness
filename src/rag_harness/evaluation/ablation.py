@@ -28,6 +28,7 @@ from pathlib import Path
 from pydantic import BaseModel
 
 from rag_harness.config import settings
+from rag_harness.evaluation.history import record_run
 from rag_harness.evaluation.runner import run_eval
 from rag_harness.models import EvalResult, EvalSummary
 from rag_harness.retrieval.factory import VALID_STRATEGIES, build_retriever
@@ -110,7 +111,16 @@ def run_ablation(
             logger.info("ablation: strategy=%s corrective=%s", strategy, corrective)
             try:
                 retriever = build_retriever(strategy)
-                summary = run_eval(retriever, golden_dir=golden_dir, use_corrective=corrective)
+                summary = run_eval(
+                    retriever,
+                    golden_dir=golden_dir,
+                    use_corrective=corrective,
+                    strategy_label=strategy,
+                    # Ablation writes its own history entry per config, so
+                    # skip the run_eval-side write to avoid double records.
+                    record_history=False,
+                )
+                record_run(summary, strategy=strategy, corrective=corrective)
             except Exception as e:
                 logger.error(
                     "ablation configuration failed (strategy=%s corrective=%s): %s",

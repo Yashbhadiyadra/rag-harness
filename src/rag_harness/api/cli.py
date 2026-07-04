@@ -51,7 +51,7 @@ def _cmd_eval(args: argparse.Namespace) -> None:
     from rag_harness.retrieval.factory import build_retriever
 
     retriever = build_retriever(args.strategy)
-    summary = run_eval(retriever, use_corrective=args.corrective)
+    summary = run_eval(retriever, use_corrective=args.corrective, strategy_label=args.strategy)
 
     print("\nEvaluation Results")
     print("=" * 56)

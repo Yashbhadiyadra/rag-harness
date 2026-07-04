@@ -8,6 +8,7 @@ import time
 from pathlib import Path
 
 from rag_harness.config import settings
+from rag_harness.evaluation.history import record_run
 from rag_harness.evaluation.metrics import (
     answer_relevancy,
     context_precision,
@@ -156,12 +157,19 @@ def run_eval(
     golden_dir: Path | None = None,
     *,
     use_corrective: bool = False,
+    strategy_label: str = "unknown",
+    record_history: bool = True,
 ) -> EvalSummary:
     """Evaluate all golden cases and return a summary with pass/fail gate.
 
     When *use_corrective* is True, every case routes through the corrective
     critic-and-retry loop. Baseline metrics stay comparable — the same set of
     quality judges score whatever the corrective path produced.
+
+    Appends one line to ``evals/history/runs.jsonl`` unless *record_history*
+    is False. Callers running many configurations (e.g. the ablation runner)
+    may prefer to write the history entries themselves with the correct
+    strategy label. *strategy_label* is stored verbatim in the history entry.
     """
     cases = load_golden_cases(golden_dir)
     if not cases:
@@ -212,6 +220,8 @@ def run_eval(
         summary.total_cost_usd,
         passed,
     )
+    if record_history:
+        record_run(summary, strategy=strategy_label, corrective=use_corrective)
     return summary
 
 
