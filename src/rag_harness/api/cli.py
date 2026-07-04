@@ -54,11 +54,22 @@ def _cmd_eval(args: argparse.Namespace) -> None:
     summary = run_eval(retriever)
 
     print("\nEvaluation Results")
-    print("=" * 40)
-    print(f"  Context Recall : {summary.mean_context_recall:.3f}")
-    print(f"  Faithfulness   : {summary.mean_faithfulness:.3f}")
-    print(f"  Correctness    : {summary.mean_correctness:.3f}")
-    print(f"  Gate           : {'PASSED' if summary.passed else 'FAILED'}")
+    print("=" * 56)
+    print(f"  Context Recall     : {summary.mean_context_recall:.3f}")
+    print(f"  Context Precision  : {summary.mean_context_precision:.3f}")
+    print(f"  Faithfulness       : {summary.mean_faithfulness:.3f}")
+    print(f"  Correctness        : {summary.mean_correctness:.3f}")
+    print(f"  Answer Relevancy   : {summary.mean_answer_relevancy:.3f}")
+    print("  " + "-" * 40)
+    print(f"  Latency p50        : {summary.latency_p50_ms:>7.0f} ms")
+    print(f"  Latency p95        : {summary.latency_p95_ms:>7.0f} ms")
+    print(f"  Total cost         : ${summary.total_cost_usd:.4f}")
+    print(
+        f"  Total tokens       : {summary.total_input_tokens:,} in "
+        f"/ {summary.total_output_tokens:,} out"
+    )
+    print("  " + "-" * 40)
+    print(f"  Gate               : {'PASSED' if summary.passed else 'FAILED'}")
     print()
 
     if args.verbose:

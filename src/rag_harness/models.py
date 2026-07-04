@@ -38,6 +38,11 @@ class EvalResult(BaseModel):
     faithfulness: float  # 0–1: is every claim in the answer grounded in context?
     correctness: float  # 0–1: does the answer match the reference answer?
     answer_relevancy: float = 0.0  # 0–1: is the answer on-topic (regardless of correctness)?
+    # Operational metrics (added Phase 7)
+    latency_ms: float = 0.0
+    input_tokens: int = 0
+    output_tokens: int = 0
+    estimated_cost_usd: float = 0.0
 
 
 class EvalSummary(BaseModel):
@@ -48,3 +53,11 @@ class EvalSummary(BaseModel):
     mean_faithfulness: float
     mean_correctness: float
     passed: bool  # True only if all means are above their thresholds
+    # Extended metrics (added Phase 7). Defaults preserve backward compat.
+    mean_context_precision: float = 0.0
+    mean_answer_relevancy: float = 0.0
+    latency_p50_ms: float = 0.0
+    latency_p95_ms: float = 0.0
+    total_cost_usd: float = 0.0
+    total_input_tokens: int = 0
+    total_output_tokens: int = 0
