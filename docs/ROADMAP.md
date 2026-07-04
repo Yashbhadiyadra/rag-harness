@@ -65,9 +65,16 @@ The current gap: five strategies and a corrective loop exist; none has published
 - Golden set: owner hand-reviews all cases (eval discipline requirement); grow toward
   50+ cases including adversarial ones (ambiguous, multi-hop, version-sensitive,
   unanswerable — the unanswerable cases prove the refusal path works).
+- **Measure `answer_relevancy` × `correctness` divergence explicitly.** Treat
+  "relevant but incorrect" — high relevancy, low correctness — as a highlighted
+  failure category in the ablation output. That combination is confident-sounding
+  hallucination: the answer addresses the question but gets the facts wrong,
+  which is a distinct and more dangerous failure than an off-topic response.
+  Per-case flags in the CSV + a dedicated row in the markdown table.
 
-**Exit criterion:** the README ablation table exists with real numbers, and a PR that
-degrades faithfulness demonstrably fails CI.
+**Exit criterion:** the README ablation table exists with real numbers, a PR that
+degrades faithfulness demonstrably fails CI, and the "relevant but incorrect"
+failure count is reported per configuration.
 
 ## Phase 9 — Harden it (production resilience)
 
