@@ -1,16 +1,26 @@
-"""FastAPI application exposing /query and /health endpoints."""
+"""FastAPI application exposing /query, /health, and /metrics endpoints."""
 
 import logging
+import time
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response
 from pydantic import BaseModel
 
+from rag_harness.api.metrics import (
+    QUERY_COST_USD,
+    QUERY_ERRORS_TOTAL,
+    QUERY_LATENCY_SECONDS,
+    QUERY_TOKENS,
+    QUERY_TOTAL,
+    prometheus_response,
+)
 from rag_harness.config import settings
 from rag_harness.generation.corrective import corrective_generate
 from rag_harness.generation.generator import generate
 from rag_harness.logging_setup import configure_logging
+from rag_harness.observability.usage import collect_usage
 from rag_harness.retrieval.base import Retriever
 from rag_harness.retrieval.factory import build_retriever
 
@@ -70,22 +80,46 @@ class QueryResponse(BaseModel):
 
 @app.post("/query", response_model=QueryResponse)
 def query(request: QueryRequest) -> QueryResponse:
-    """Retrieve relevant chunks and return a grounded answer with source attribution."""
+    """Retrieve relevant chunks and return a grounded answer with source attribution.
+
+    Wrapped in a `collect_usage()` block so every LLM call made downstream
+    contributes to the Prometheus `rag_query_tokens_total` and
+    `rag_query_cost_usd_total` counters.
+    """
     if not request.question.strip():
         raise HTTPException(status_code=422, detail="question must not be empty")
 
     retriever = _get_retriever()
+    strategy = settings.retrieval_strategy
     use_corrective = (
         request.corrective if request.corrective is not None else settings.corrective_rag_enabled
     )
+    corrective_label = "true" if use_corrective else "false"
 
-    if use_corrective:
-        result = corrective_generate(request.question, retriever, top_k=request.top_k)
-        answer = result.answer
-        chunks = result.chunks_used
-    else:
-        chunks = retriever.retrieve(request.question, top_k=request.top_k)
-        answer = generate(request.question, chunks)
+    start = time.perf_counter()
+    try:
+        with collect_usage() as usage_list:
+            if use_corrective:
+                result = corrective_generate(request.question, retriever, top_k=request.top_k)
+                answer = result.answer
+                chunks = result.chunks_used
+            else:
+                chunks = retriever.retrieve(request.question, top_k=request.top_k)
+                answer = generate(request.question, chunks)
+    except Exception as e:
+        QUERY_ERRORS_TOTAL.labels(strategy=strategy, error_type=type(e).__name__).inc()
+        raise
+    finally:
+        latency_seconds = time.perf_counter() - start
+        QUERY_LATENCY_SECONDS.labels(strategy=strategy).observe(latency_seconds)
+
+    QUERY_TOTAL.labels(strategy=strategy, corrective=corrective_label).inc()
+
+    # Aggregate usage from every LLM call into the token and cost counters.
+    for usage in usage_list:
+        QUERY_TOKENS.labels(direction="input", model=usage.model).inc(usage.input_tokens)
+        QUERY_TOKENS.labels(direction="output", model=usage.model).inc(usage.output_tokens)
+        QUERY_COST_USD.inc(usage.estimated_cost_usd)
 
     sources = [Source(source_file=c.source_file, heading_path=c.heading_path) for c in chunks]
     logger.info("query answered — %d sources used, corrective=%s", len(sources), use_corrective)
@@ -96,3 +130,10 @@ def query(request: QueryRequest) -> QueryResponse:
 def health() -> dict[str, str]:
     """Liveness probe — returns 200 when the service is running."""
     return {"status": "ok"}
+
+
+@app.get("/metrics")
+def metrics() -> Response:
+    """Prometheus scrape endpoint — RAG-specific counters and histograms."""
+    body, content_type = prometheus_response()
+    return Response(content=body, media_type=content_type)
