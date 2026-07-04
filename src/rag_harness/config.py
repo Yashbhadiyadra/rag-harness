@@ -51,6 +51,13 @@ class Settings(BaseSettings):
     tracing_endpoint: str = "http://localhost:6006/v1/traces"
     tracing_service_name: str = "rag-harness"
 
+    # LLM judge response cache — see observability/llm_cache.py docstring.
+    # Judges are near-deterministic at temperature=0 AND a stale judge score
+    # is negligible-cost, so caching is safe for eval and ablation reruns.
+    # Never caches generate() or the corrective critic — those are user-facing.
+    llm_cache_enabled: bool = False
+    llm_cache_path: str = "./llm_cache.db"
+
     # Logging
     log_level: str = "INFO"
 

@@ -1,16 +1,32 @@
 """Evaluation metrics: deterministic context recall and LLM-as-judge faithfulness/correctness."""
 
 import logging
+from pathlib import Path
 
 from openai import OpenAI
 
 from rag_harness.config import settings
 from rag_harness.models import Chunk
+from rag_harness.observability.llm_cache import LLMResponseCache
 from rag_harness.observability.usage import TokenUsage, record_usage
 
 logger = logging.getLogger(__name__)
 
 _client = OpenAI(api_key=settings.openai_api_key)
+
+# Cache handle is lazy — opened on first use only when llm_cache_enabled=true.
+_cache: LLMResponseCache | None = None
+
+
+def _get_cache() -> LLMResponseCache | None:
+    """Return the shared LLM cache handle, opening it if enabled and not yet open."""
+    global _cache
+    if not settings.llm_cache_enabled:
+        return None
+    if _cache is None:
+        _cache = LLMResponseCache(Path(settings.llm_cache_path))
+    return _cache
+
 
 _FAITHFULNESS_PROMPT = """\
 You are an evaluation judge. Given a question, a context (a set of passages), \
@@ -71,7 +87,24 @@ Respond with ONLY a decimal number, nothing else. Example: 0.6
 
 
 def _llm_score(system_prompt: str, user_message: str) -> float:
-    """Call the generation model as a judge and parse its 0–1 score response."""
+    """Call the generation model as a judge and parse its 0–1 score response.
+
+    When the LLM cache is enabled (see ``settings.llm_cache_enabled``), the
+    ``(model, system_prompt, user_message)`` triple is looked up first. Cache
+    hits skip the API call entirely — no TokenUsage is recorded because no
+    tokens were consumed. On a miss, the raw response is stored so subsequent
+    identical calls are free.
+    """
+    cache = _get_cache()
+    cache_key: str | None = None
+    if cache is not None:
+        cache_key = LLMResponseCache.make_key(
+            settings.generation_model, system_prompt, user_message
+        )
+        cached_raw = cache.get(cache_key)
+        if cached_raw is not None:
+            return _parse_score(cached_raw)
+
     response = _client.chat.completions.create(
         model=settings.generation_model,
         messages=[
@@ -82,9 +115,15 @@ def _llm_score(system_prompt: str, user_message: str) -> float:
     )
     record_usage(TokenUsage.from_openai(settings.generation_model, response))
     raw = (response.choices[0].message.content or "0").strip()
+    if cache is not None and cache_key is not None:
+        cache.set(cache_key, raw)
+    return _parse_score(raw)
+
+
+def _parse_score(raw: str) -> float:
+    """Parse a raw judge response into a clamped [0.0, 1.0] float."""
     try:
-        score = float(raw)
-        return max(0.0, min(1.0, score))  # clamp to [0, 1]
+        return max(0.0, min(1.0, float(raw)))
     except ValueError:
         logger.warning("LLM judge returned non-numeric score: %r — defaulting to 0.0", raw)
         return 0.0
