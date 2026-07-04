@@ -16,12 +16,13 @@ structured JSON output. This is the cost-efficient path: one call per query
 instead of N. Calls are made with `temperature=0` for reproducibility.
 """
 
+import asyncio
 import json
 import logging
 from enum import StrEnum
 from typing import Literal
 
-from openai import OpenAI
+from openai import AsyncOpenAI
 from pydantic import BaseModel, Field
 
 from rag_harness.config import settings
@@ -77,7 +78,7 @@ class RelevanceCritic:
         whose max score falls below `incorrect_threshold` is INCORRECT;
         everything in between is AMBIGUOUS.
         """
-        self._client = OpenAI(api_key=settings.openai_api_key)
+        self._client = AsyncOpenAI(api_key=settings.openai_api_key)
         self._model = model or settings.generation_model
         self._correct_threshold = (
             correct_threshold
@@ -90,8 +91,8 @@ class RelevanceCritic:
             else settings.critic_incorrect_threshold
         )
 
-    def score_batch(self, query: str, chunks: list[Chunk]) -> list[float]:
-        """Return a per-chunk relevance score in [0.0, 1.0].
+    async def score_batch_async(self, query: str, chunks: list[Chunk]) -> list[float]:
+        """Async implementation — call this directly from async callers.
 
         On any parsing or network error, returns 0.0 for every chunk — the
         safest default is to treat everything as unknown-relevance and let
@@ -105,7 +106,7 @@ class RelevanceCritic:
         user_message = f"Question: {query}\n\nPassages:\n{passages}"
 
         try:
-            response = self._client.chat.completions.create(
+            response = await self._client.chat.completions.create(
                 model=self._model,
                 temperature=0,
                 response_format={"type": "json_object"},
@@ -126,6 +127,14 @@ class RelevanceCritic:
         if len(scores) < len(chunks):
             scores = scores + [0.0] * (len(chunks) - len(scores))
         return scores[: len(chunks)]
+
+    def score_batch(self, query: str, chunks: list[Chunk]) -> list[float]:
+        """Sync facade — runs the async implementation in a fresh event loop.
+
+        Kept for the transition period only. New callers should ``await
+        score_batch_async`` directly.
+        """
+        return asyncio.run(self.score_batch_async(query, chunks))
 
     def categorise(self, scores: list[float]) -> Category:
         """Reduce a list of per-chunk scores to a single routing decision."""

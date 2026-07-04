@@ -21,14 +21,15 @@ evaluation sees a consistent signal. Query reformulation is a single lightweight
 different keywords, not a semantic change of intent.
 """
 
+import asyncio
 import logging
 from dataclasses import dataclass, field
 
-from openai import OpenAI
+from openai import AsyncOpenAI
 
 from rag_harness.config import settings
 from rag_harness.generation.critic import Category, RelevanceCritic
-from rag_harness.generation.generator import generate
+from rag_harness.generation.generator import generate_async
 from rag_harness.models import Chunk
 from rag_harness.observability.usage import TokenUsage, record_usage
 from rag_harness.retrieval.base import Retriever
@@ -60,10 +61,10 @@ class CorrectiveResult:
     reformulated_query: str | None = None
 
 
-def _reformulate_query(client: OpenAI, model: str, query: str) -> str:
+async def _reformulate_query_async(client: AsyncOpenAI, model: str, query: str) -> str:
     """Ask the LLM to rephrase *query* to surface different keywords."""
     try:
-        response = client.chat.completions.create(
+        response = await client.chat.completions.create(
             model=model,
             temperature=0,
             messages=[
@@ -79,14 +80,14 @@ def _reformulate_query(client: OpenAI, model: str, query: str) -> str:
     return rewritten or query
 
 
-def corrective_generate(
+async def corrective_generate_async(
     query: str,
     retriever: Retriever,
     critic: RelevanceCritic | None = None,
     max_retries: int | None = None,
     top_k: int | None = None,
 ) -> CorrectiveResult:
-    """Run the corrective retrieve → critique → route flow.
+    """Async implementation — call this directly from async callers.
 
     Returns a CorrectiveResult carrying the answer, the chunks that made it
     into the final generation, the routing category from the last attempt,
@@ -96,7 +97,7 @@ def corrective_generate(
     critic = critic or RelevanceCritic()
     retry_cap = max_retries if max_retries is not None else settings.corrective_max_retries
 
-    client = OpenAI(api_key=settings.openai_api_key)
+    client = AsyncOpenAI(api_key=settings.openai_api_key)
     model = settings.generation_model
 
     current_query = query
@@ -107,8 +108,10 @@ def corrective_generate(
 
     for attempt in range(retry_cap + 1):
         attempts = attempt + 1
-        chunks = retriever.retrieve(current_query, top_k=top_k)
-        scores = critic.score_batch(query, chunks)  # score against ORIGINAL query
+        # retriever.retrieve is still sync in commit 1; wrap in to_thread so
+        # we don't block the event loop. Commit 2 removes this wrap.
+        chunks = await asyncio.to_thread(retriever.retrieve, current_query, top_k)
+        scores = await critic.score_batch_async(query, chunks)  # score against ORIGINAL query
         category = critic.categorise(scores)
 
         last_category = category
@@ -126,7 +129,7 @@ def corrective_generate(
             survivors = [
                 c for c, s in zip(chunks, scores, strict=True) if s >= critic._incorrect_threshold
             ]
-            answer = generate(query, survivors)
+            answer = await generate_async(query, survivors)
             return CorrectiveResult(
                 answer=answer,
                 chunks_used=survivors,
@@ -138,7 +141,7 @@ def corrective_generate(
 
         # Incorrect — reformulate and retry, unless we've hit the cap
         if attempt < retry_cap:
-            reformulated = _reformulate_query(client, model, query)
+            reformulated = await _reformulate_query_async(client, model, query)
             current_query = reformulated
             logger.info("reformulated query: %r", reformulated)
 
@@ -151,3 +154,18 @@ def corrective_generate(
         scores=last_scores,
         reformulated_query=reformulated,
     )
+
+
+def corrective_generate(
+    query: str,
+    retriever: Retriever,
+    critic: RelevanceCritic | None = None,
+    max_retries: int | None = None,
+    top_k: int | None = None,
+) -> CorrectiveResult:
+    """Sync facade — runs the async implementation in a fresh event loop.
+
+    Kept for the transition period only. New callers should ``await
+    corrective_generate_async`` directly.
+    """
+    return asyncio.run(corrective_generate_async(query, retriever, critic, max_retries, top_k))

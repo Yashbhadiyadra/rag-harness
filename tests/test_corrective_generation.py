@@ -1,6 +1,6 @@
 """Unit tests for the corrective retrieve → critique → route flow."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from rag_harness.generation.corrective import (
     NO_INFO_MESSAGE,
@@ -25,8 +25,9 @@ def _chunk(cid: str) -> Chunk:
 
 
 def _mock_critic(scores: list[float], category: Category) -> MagicMock:
+    """Mock critic with an async score_batch_async and sync categorise."""
     m = MagicMock()
-    m.score_batch.return_value = scores
+    m.score_batch_async = AsyncMock(return_value=scores)
     m.categorise.return_value = category
     m._incorrect_threshold = 0.3
     return m
@@ -35,13 +36,13 @@ def _mock_critic(scores: list[float], category: Category) -> MagicMock:
 def _mock_openai_returning(
     text: str, prompt_tokens: int = 40, completion_tokens: int = 10
 ) -> MagicMock:
-    """Return a mock OpenAI client whose chat completion returns *text*."""
+    """Return a mock AsyncOpenAI client whose async .create returns *text*."""
     client = MagicMock()
     resp = MagicMock()
     resp.choices = [MagicMock()]
     resp.choices[0].message.content = text
     resp.usage = MagicMock(prompt_tokens=prompt_tokens, completion_tokens=completion_tokens)
-    client.chat.completions.create.return_value = resp
+    client.chat.completions.create = AsyncMock(return_value=resp)
     return client
 
 
@@ -54,8 +55,12 @@ def test_correct_category_filters_and_generates() -> None:
     critic = _mock_critic([0.9, 0.5, 0.1], Category.CORRECT)  # c is below 0.3 threshold
 
     with (
-        patch("rag_harness.generation.corrective.generate", return_value="Answer."),
-        patch("rag_harness.generation.corrective.OpenAI"),
+        patch(
+            "rag_harness.generation.corrective.generate_async",
+            new_callable=AsyncMock,
+            return_value="Answer.",
+        ),
+        patch("rag_harness.generation.corrective.AsyncOpenAI"),
     ):
         result = corrective_generate("query", retriever, critic=critic, max_retries=0)
 
@@ -77,17 +82,18 @@ def test_ambiguous_category_generates_with_surviving_chunks() -> None:
 
     with (
         patch(
-            "rag_harness.generation.corrective.generate",
+            "rag_harness.generation.corrective.generate_async",
+            new_callable=AsyncMock,
             return_value="Maybe answer.",
         ) as gen_mock,
-        patch("rag_harness.generation.corrective.OpenAI"),
+        patch("rag_harness.generation.corrective.AsyncOpenAI"),
     ):
         result = corrective_generate("query", retriever, critic=critic, max_retries=0)
 
     assert result.category is Category.AMBIGUOUS
     # b dropped — 0.2 is below 0.3 incorrect threshold
     assert [c.id for c in result.chunks_used] == ["a"]
-    gen_mock.assert_called_once_with("query", [_chunk("a")])
+    gen_mock.assert_awaited_once_with("query", [_chunk("a")])
 
 
 # --- Incorrect path with retry ---
@@ -108,13 +114,17 @@ def test_incorrect_triggers_reformulation_and_retry() -> None:
         return Category.INCORRECT if call_count["n"] == 1 else Category.CORRECT
 
     critic = MagicMock()
-    critic.score_batch.side_effect = [[0.1, 0.1], [0.9]]
+    critic.score_batch_async = AsyncMock(side_effect=[[0.1, 0.1], [0.9]])
     critic.categorise.side_effect = _categorise
     critic._incorrect_threshold = 0.3
 
     with (
-        patch("rag_harness.generation.corrective.generate", return_value="Answer."),
-        patch("rag_harness.generation.corrective.OpenAI") as mock_openai_cls,
+        patch(
+            "rag_harness.generation.corrective.generate_async",
+            new_callable=AsyncMock,
+            return_value="Answer.",
+        ),
+        patch("rag_harness.generation.corrective.AsyncOpenAI") as mock_openai_cls,
     ):
         mock_openai_cls.return_value = _mock_openai_returning("What is a Pod controller?")
         result = corrective_generate("query", retriever, critic=critic, max_retries=1)
@@ -135,8 +145,8 @@ def test_all_incorrect_returns_refusal_message() -> None:
     critic = _mock_critic([0.1], Category.INCORRECT)
 
     with (
-        patch("rag_harness.generation.corrective.generate"),
-        patch("rag_harness.generation.corrective.OpenAI") as mock_openai_cls,
+        patch("rag_harness.generation.corrective.generate_async", new_callable=AsyncMock),
+        patch("rag_harness.generation.corrective.AsyncOpenAI") as mock_openai_cls,
     ):
         mock_openai_cls.return_value = _mock_openai_returning("rewritten query")
         result = corrective_generate("query", retriever, critic=critic, max_retries=1)
@@ -153,8 +163,8 @@ def test_no_retries_returns_refusal_immediately_on_incorrect() -> None:
     critic = _mock_critic([0.1], Category.INCORRECT)
 
     with (
-        patch("rag_harness.generation.corrective.generate"),
-        patch("rag_harness.generation.corrective.OpenAI"),
+        patch("rag_harness.generation.corrective.generate_async", new_callable=AsyncMock),
+        patch("rag_harness.generation.corrective.AsyncOpenAI"),
     ):
         result = corrective_generate("query", retriever, critic=critic, max_retries=0)
 
@@ -172,20 +182,24 @@ def test_critic_scores_against_original_query_after_reformulation() -> None:
         [_chunk("good")],
     ]
     critic = MagicMock()
-    critic.score_batch.side_effect = [[0.1], [0.9]]
+    critic.score_batch_async = AsyncMock(side_effect=[[0.1], [0.9]])
     critic.categorise.side_effect = [Category.INCORRECT, Category.CORRECT]
     critic._incorrect_threshold = 0.3
 
     with (
-        patch("rag_harness.generation.corrective.generate", return_value="Answer."),
-        patch("rag_harness.generation.corrective.OpenAI") as mock_openai_cls,
+        patch(
+            "rag_harness.generation.corrective.generate_async",
+            new_callable=AsyncMock,
+            return_value="Answer.",
+        ),
+        patch("rag_harness.generation.corrective.AsyncOpenAI") as mock_openai_cls,
     ):
         mock_openai_cls.return_value = _mock_openai_returning("rewritten")
         corrective_generate("original query", retriever, critic=critic, max_retries=1)
 
     # Both scoring calls use the ORIGINAL query, not the reformulated one —
     # scores must be comparable across attempts.
-    for call in critic.score_batch.call_args_list:
+    for call in critic.score_batch_async.await_args_list:
         assert call[0][0] == "original query"
 
 
@@ -195,11 +209,11 @@ def test_reformulation_failure_falls_back_to_original_query() -> None:
     critic = _mock_critic([0.1], Category.INCORRECT)
 
     with (
-        patch("rag_harness.generation.corrective.generate"),
-        patch("rag_harness.generation.corrective.OpenAI") as mock_openai_cls,
+        patch("rag_harness.generation.corrective.generate_async", new_callable=AsyncMock),
+        patch("rag_harness.generation.corrective.AsyncOpenAI") as mock_openai_cls,
     ):
         client = MagicMock()
-        client.chat.completions.create.side_effect = RuntimeError("api down")
+        client.chat.completions.create = AsyncMock(side_effect=RuntimeError("api down"))
         mock_openai_cls.return_value = client
         result = corrective_generate("original", retriever, critic=critic, max_retries=1)
 
@@ -217,8 +231,8 @@ def test_reformulation_records_usage_inside_collect_block() -> None:
     critic = _mock_critic([0.1], Category.INCORRECT)
 
     with (
-        patch("rag_harness.generation.corrective.generate"),
-        patch("rag_harness.generation.corrective.OpenAI") as mock_openai_cls,
+        patch("rag_harness.generation.corrective.generate_async", new_callable=AsyncMock),
+        patch("rag_harness.generation.corrective.AsyncOpenAI") as mock_openai_cls,
     ):
         mock_openai_cls.return_value = _mock_openai_returning(
             "rewritten", prompt_tokens=15, completion_tokens=5

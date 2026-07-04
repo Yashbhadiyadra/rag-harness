@@ -1,8 +1,14 @@
-"""Generate grounded answers from retrieved chunks using a context-only prompt."""
+"""Generate grounded answers from retrieved chunks using a context-only prompt.
 
+Async-first: ``generate_async`` is the real implementation. ``generate`` is a
+sync wrapper kept only for callers that have not been migrated yet; it will
+be retired once every caller is async (Phase 9 progression).
+"""
+
+import asyncio
 import logging
 
-from openai import OpenAI
+from openai import AsyncOpenAI
 
 from rag_harness.config import settings
 from rag_harness.models import Chunk
@@ -18,6 +24,8 @@ If the context does not contain enough information to answer, say:
 Do not use any outside knowledge. Be concise and precise.
 """
 
+_client = AsyncOpenAI(api_key=settings.openai_api_key)
+
 
 def _build_context(chunks: list[Chunk]) -> str:
     sections = []
@@ -27,20 +35,20 @@ def _build_context(chunks: list[Chunk]) -> str:
     return "\n\n---\n\n".join(sections)
 
 
-def generate(query: str, chunks: list[Chunk]) -> str:
-    """Generate a grounded answer from retrieved chunks.
+_FALLBACK_ANSWER = (
+    "I do not have enough information in the provided context to answer this question."
+)
 
-    The prompt is structured so the model is explicitly constrained to the
-    provided context — this is what faithfulness scoring measures against.
-    """
+
+async def generate_async(query: str, chunks: list[Chunk]) -> str:
+    """Async implementation — call this directly from async callers."""
     if not chunks:
-        return "I do not have enough information in the provided context to answer this question."
+        return _FALLBACK_ANSWER
 
     context = _build_context(chunks)
     user_message = f"Context:\n\n{context}\n\nQuestion: {query}"
 
-    client = OpenAI(api_key=settings.openai_api_key)
-    response = client.chat.completions.create(
+    response = await _client.chat.completions.create(
         model=settings.generation_model,
         messages=[
             {"role": "system", "content": _SYSTEM_PROMPT},
@@ -53,3 +61,13 @@ def generate(query: str, chunks: list[Chunk]) -> str:
     answer = response.choices[0].message.content or ""
     logger.debug("generated answer (%d chars) for query: %.60s...", len(answer), query)
     return answer
+
+
+def generate(query: str, chunks: list[Chunk]) -> str:
+    """Sync facade — runs the async implementation in a fresh event loop.
+
+    Kept for the transition period only. New callers should ``await
+    generate_async`` directly. This wrapper is removed once every caller
+    is async (see Phase 9 commit sequence).
+    """
+    return asyncio.run(generate_async(query, chunks))
