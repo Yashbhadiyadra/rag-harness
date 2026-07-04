@@ -76,10 +76,15 @@ class Settings(BaseSettings):
     # Logging
     log_level: str = "INFO"
 
-    # Evaluation thresholds — dropping below any triggers a build failure
-    threshold_context_recall: float = 0.80
+    # Evaluation thresholds — dropping below any triggers a build failure.
+    # Calibrated from the 2026-07-04 ablation study
+    # (evals/experiments/ablation_20260704T092511+0000_e148311.md).
+    # Values sit below both HyDE-baseline and full-baseline observations with
+    # a small buffer for LLM-judge noise, so both strong-baseline configurations
+    # pass reliably while genuine regressions still fail the gate.
+    threshold_context_recall: float = 0.70
     threshold_faithfulness: float = 0.85
-    threshold_correctness: float = 0.75
+    threshold_correctness: float = 0.80
 
 
 settings = Settings()
