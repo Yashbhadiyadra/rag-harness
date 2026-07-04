@@ -1,0 +1,301 @@
+strategy,corrective,case_id,question,context_recall,context_precision,faithfulness,correctness,answer_relevancy,is_relevant_but_incorrect,latency_ms,estimated_cost_usd,corrective_category,corrective_attempts
+dense,False,cluster-001,What is the purpose of namespaces in Kubernetes?,1.0,1.0,1.0,0.9,1.0,False,6277.717264019884,0.00061413,,
+dense,False,cluster-002,What is a ServiceAccount and how is it used by pods?,1.0,1.0,1.0,1.0,1.0,False,7954.927874961868,0.0006008599999999999,,
+dense,False,cluster-003,What is a CustomResourceDefinition (CRD) and why is it used?,1.0,1.0,1.0,0.9,1.0,False,2255.6386509677395,0.00021152,,
+dense,False,cluster-004,What are the main components of the Kubernetes control plane?,1.0,0.8,0.0,0.0,0.0,False,919.7905348846689,0.00010957,,
+dense,False,cluster-005,What is a ResourceQuota and how does it limit resource usage per namespace?,1.0,1.0,1.0,1.0,1.0,False,2048.223651945591,0.00021031999999999998,,
+dense,False,networking-001,"What is the difference between ClusterIP, NodePort, and LoadBalancer services?",1.0,1.0,1.0,1.0,1.0,False,5218.680458958261,0.00056492,,
+dense,False,networking-002,How does Kubernetes DNS work for services?,1.0,1.0,1.0,0.85,1.0,False,2257.9779130173847,0.00030106,,
+dense,False,networking-003,What is an Ingress and how does it differ from a Service?,0.0,0.6,1.0,0.9,1.0,False,4115.369556937367,0.00050368,,
+dense,False,networking-004,How do Network Policies restrict traffic between pods?,0.0,1.0,1.0,0.9,1.0,False,3565.01969601959,0.00047282999999999993,,
+dense,False,networking-005,What is a headless service in Kubernetes?,1.0,1.0,1.0,1.0,1.0,False,4198.4566249884665,0.0005281800000000001,,
+dense,False,networking-006,How do pods communicate with each other across nodes in Kubernetes?,0.0,0.5,0.0,0.0,0.0,False,1126.2328109005466,0.00020049,,
+dense,False,rbac-001,How do I configure RBAC in Kubernetes?,1.0,1.0,0.0,0.0,0.0,False,1124.9371719313785,0.00013652999999999997,,
+dense,False,scheduling-001,How do I set CPU and memory resource limits on a Kubernetes container?,1.0,1.0,1.0,0.7,1.0,False,4605.3386009298265,0.0006274299999999999,,
+dense,False,scheduling-002,What is the difference between a liveness probe and a readiness probe?,0.0,1.0,1.0,1.0,1.0,False,3894.0280249807984,0.00043228,,
+dense,False,scheduling-003,How do taints and tolerations control pod scheduling in Kubernetes?,0.0,1.0,1.0,0.9,1.0,False,4915.984258055687,0.00048492999999999995,,
+dense,False,scheduling-004,What is the Horizontal Pod Autoscaler and how does it work?,1.0,1.0,1.0,0.85,1.0,False,1771.8966789543629,0.00020576,,
+dense,False,scheduling-005,What is node affinity and how does it differ from nodeSelector?,1.0,1.0,1.0,0.85,1.0,False,1297.7712230058387,0.00015971,,
+dense,False,storage-001,What is the difference between a PersistentVolume and a PersistentVolumeClaim?,1.0,1.0,1.0,0.0,0.0,False,5831.34532510303,0.00013408,,
+dense,False,storage-002,What is a StorageClass in Kubernetes?,1.0,1.0,1.0,0.9,1.0,False,2977.0371040795,0.00035416,,
+dense,False,storage-003,How do ConfigMaps differ from Secrets in Kubernetes?,1.0,0.75,1.0,0.9,1.0,False,4813.1234149914235,0.0005903,,
+dense,False,storage-004,How do you mount a Secret into a Pod as a file?,0.0,0.8,1.0,1.0,1.0,False,3186.2376120407134,0.00033685999999999997,,
+dense,False,storage-005,What access modes do PersistentVolumes support?,1.0,0.2,1.0,0.0,0.0,False,1487.9066930152476,6.225999999999999e-05,,
+dense,False,pods-001,What is a Kubernetes Pod?,1.0,1.0,1.0,0.9,1.0,False,3516.688176081516,0.00025842,,
+dense,False,pods-002,What are the phases of a Pod lifecycle?,1.0,1.0,1.0,1.0,1.0,False,1005.1279549952596,0.00018962999999999999,,
+dense,False,workloads-001,How do Deployments manage rolling updates in Kubernetes?,0.0,1.0,1.0,0.9,1.0,False,3898.8019180251285,0.0001868,,
+dense,False,workloads-002,When should I use a StatefulSet instead of a Deployment?,1.0,1.0,1.0,1.0,1.0,False,1649.3588680168614,0.00015731,,
+dense,False,workloads-003,What is a DaemonSet used for in Kubernetes?,1.0,1.0,1.0,0.9,1.0,False,1510.800271993503,0.00022475000000000001,,
+dense,False,workloads-004,How do Kubernetes Jobs differ from Deployments?,1.0,0.6,0.0,0.0,0.0,False,946.5787200024351,0.00012123,,
+dense,False,workloads-005,What are init containers and when are they useful?,1.0,1.0,1.0,0.9,1.0,False,3685.5444299289957,0.00022265,,
+dense,False,workloads-006,What is a ReplicaSet and how does it relate to a Deployment?,1.0,1.0,1.0,1.0,1.0,False,1847.772382083349,0.00014443,,
+dense,True,cluster-001,What is the purpose of namespaces in Kubernetes?,1.0,1.0,1.0,0.9,1.0,False,3494.681203039363,0.00054408,correct,1
+dense,True,cluster-002,What is a ServiceAccount and how is it used by pods?,1.0,1.0,1.0,1.0,1.0,False,3325.379964080639,0.00051251,correct,1
+dense,True,cluster-003,What is a CustomResourceDefinition (CRD) and why is it used?,1.0,1.0,1.0,0.9,1.0,False,3106.420353986323,0.00037276999999999997,correct,1
+dense,True,cluster-004,What are the main components of the Kubernetes control plane?,1.0,0.8,0.0,0.0,0.0,False,2013.0912110907957,0.00023797,correct,1
+dense,True,cluster-005,What is a ResourceQuota and how does it limit resource usage per namespace?,1.0,1.0,1.0,0.9,1.0,False,6019.473491003737,0.0006915199999999999,correct,1
+dense,True,networking-001,"What is the difference between ClusterIP, NodePort, and LoadBalancer services?",1.0,1.0,1.0,1.0,1.0,False,4118.401893996634,0.00042481999999999996,correct,1
+dense,True,networking-002,How does Kubernetes DNS work for services?,1.0,1.0,1.0,0.85,1.0,False,10031.837770016864,0.00054631,correct,1
+dense,True,networking-003,What is an Ingress and how does it differ from a Service?,0.0,1.0,1.0,0.9,1.0,False,5429.674327955581,0.0005662299999999999,correct,1
+dense,True,networking-004,How do Network Policies restrict traffic between pods?,0.0,1.0,1.0,0.9,1.0,False,4746.943654958159,0.00039887999999999995,correct,1
+dense,True,networking-005,What is a headless service in Kubernetes?,1.0,1.0,1.0,1.0,1.0,False,4145.529304048978,0.00035583,correct,1
+dense,True,networking-006,How do pods communicate with each other across nodes in Kubernetes?,0.0,0.5,1.0,0.0,0.0,False,1840.403088950552,0.00036263999999999996,correct,1
+dense,True,rbac-001,How do I configure RBAC in Kubernetes?,1.0,1.0,0.0,0.0,0.0,False,2472.1617930335924,0.00025128,correct,1
+dense,True,scheduling-001,How do I set CPU and memory resource limits on a Kubernetes container?,1.0,1.0,1.0,0.5,1.0,False,4444.462822983041,0.00050863,correct,1
+dense,True,scheduling-002,What is the difference between a liveness probe and a readiness probe?,0.0,1.0,1.0,1.0,1.0,False,13373.844902031124,0.00059488,correct,1
+dense,True,scheduling-003,How do taints and tolerations control pod scheduling in Kubernetes?,0.0,1.0,1.0,0.9,1.0,False,4434.903202927671,0.00057973,correct,1
+dense,True,scheduling-004,What is the Horizontal Pod Autoscaler and how does it work?,1.0,1.0,1.0,0.9,1.0,False,4372.663463000208,0.00059216,correct,1
+dense,True,scheduling-005,What is node affinity and how does it differ from nodeSelector?,1.0,1.0,1.0,0.9,1.0,False,4710.155235021375,0.00053036,correct,1
+dense,True,storage-001,What is the difference between a PersistentVolume and a PersistentVolumeClaim?,0.0,0.5,0.0,0.0,0.0,False,2205.4973819758743,0.00025723,correct,1
+dense,True,storage-002,What is a StorageClass in Kubernetes?,1.0,1.0,1.0,0.9,1.0,False,5066.162278992124,0.00034156,correct,1
+dense,True,storage-003,How do ConfigMaps differ from Secrets in Kubernetes?,1.0,0.75,1.0,0.9,1.0,False,6849.569299956784,0.00078515,correct,1
+dense,True,storage-004,How do you mount a Secret into a Pod as a file?,0.0,0.8,1.0,1.0,1.0,False,6347.955206059851,0.00056261,correct,1
+dense,True,storage-005,What access modes do PersistentVolumes support?,1.0,0.0,0.0,0.0,0.0,False,1750.7599629461765,0.00010801,correct,1
+dense,True,pods-001,What is a Kubernetes Pod?,1.0,1.0,1.0,0.9,1.0,False,2458.5996030364186,0.00044877,correct,1
+dense,True,pods-002,What are the phases of a Pod lifecycle?,1.0,1.0,1.0,1.0,1.0,False,2355.832888977602,0.00032327999999999995,correct,1
+dense,True,workloads-001,How do Deployments manage rolling updates in Kubernetes?,0.0,1.0,1.0,0.9,1.0,False,3855.4399519925937,0.00035345,correct,1
+dense,True,workloads-002,When should I use a StatefulSet instead of a Deployment?,1.0,1.0,1.0,1.0,1.0,False,5873.358773067594,0.00045941,correct,1
+dense,True,workloads-003,What is a DaemonSet used for in Kubernetes?,1.0,1.0,1.0,0.9,1.0,False,2762.745389016345,0.0003917,correct,1
+dense,True,workloads-004,How do Kubernetes Jobs differ from Deployments?,1.0,0.5,1.0,0.75,1.0,False,9420.786716975272,0.00047463,correct,1
+dense,True,workloads-005,What are init containers and when are they useful?,1.0,1.0,1.0,0.9,1.0,False,5384.970293031074,0.00041045,correct,1
+dense,True,workloads-006,What is a ReplicaSet and how does it relate to a Deployment?,1.0,1.0,1.0,1.0,1.0,False,3217.203965992667,0.00026353,correct,1
+hybrid,False,cluster-001,What is the purpose of namespaces in Kubernetes?,1.0,0.8,1.0,1.0,1.0,False,4201.856221072376,0.00054963,,
+hybrid,False,cluster-002,What is a ServiceAccount and how is it used by pods?,1.0,1.0,1.0,0.9,1.0,False,5945.996094029397,0.0007019600000000001,,
+hybrid,False,cluster-003,What is a CustomResourceDefinition (CRD) and why is it used?,1.0,1.0,1.0,0.85,1.0,False,4167.542818933725,0.00046021999999999995,,
+hybrid,False,cluster-004,What are the main components of the Kubernetes control plane?,1.0,0.8,0.0,0.0,0.0,False,953.6996820243075,0.00011106999999999999,,
+hybrid,False,cluster-005,What is a ResourceQuota and how does it limit resource usage per namespace?,1.0,1.0,1.0,0.75,1.0,False,6115.59704807587,0.00049607,,
+hybrid,False,networking-001,"What is the difference between ClusterIP, NodePort, and LoadBalancer services?",1.0,1.0,1.0,1.0,1.0,False,4536.65311599616,0.00062087,,
+hybrid,False,networking-002,How does Kubernetes DNS work for services?,1.0,1.0,1.0,0.85,1.0,False,2524.5332189369947,0.00024721,,
+hybrid,False,networking-003,What is an Ingress and how does it differ from a Service?,1.0,0.6,1.0,0.9,1.0,False,4405.691380961798,0.00054373,,
+hybrid,False,networking-004,How do Network Policies restrict traffic between pods?,0.0,1.0,1.0,0.75,1.0,False,1532.9940719529986,0.00019622999999999998,,
+hybrid,False,networking-005,What is a headless service in Kubernetes?,1.0,1.0,1.0,1.0,1.0,False,1974.8672649729997,0.00017732999999999998,,
+hybrid,False,networking-006,How do pods communicate with each other across nodes in Kubernetes?,0.0,0.8,1.0,0.75,1.0,False,1506.2097180634737,0.00023664,,
+hybrid,False,rbac-001,How do I configure RBAC in Kubernetes?,1.0,0.8,0.0,0.0,0.0,False,1024.1345129907131,0.00016892999999999997,,
+hybrid,False,scheduling-001,How do I set CPU and memory resource limits on a Kubernetes container?,1.0,1.0,1.0,0.7,1.0,False,6755.780672072433,0.00078493,,
+hybrid,False,scheduling-002,What is the difference between a liveness probe and a readiness probe?,0.0,1.0,1.0,0.9,1.0,False,3483.902657055296,0.00044157999999999996,,
+hybrid,False,scheduling-003,How do taints and tolerations control pod scheduling in Kubernetes?,1.0,1.0,1.0,0.9,1.0,False,2048.2423030771315,0.00022873,,
+hybrid,False,scheduling-004,What is the Horizontal Pod Autoscaler and how does it work?,0.0,0.2,1.0,0.75,1.0,False,3022.481443011202,0.00042955999999999995,,
+hybrid,False,scheduling-005,What is node affinity and how does it differ from nodeSelector?,1.0,1.0,1.0,0.9,1.0,False,1711.4626460243016,0.00021446,,
+hybrid,False,storage-001,What is the difference between a PersistentVolume and a PersistentVolumeClaim?,1.0,1.0,1.0,1.0,1.0,False,4114.086122019216,0.00042867999999999997,,
+hybrid,False,storage-002,What is a StorageClass in Kubernetes?,1.0,1.0,1.0,0.9,1.0,False,4157.949929940514,0.00055171,,
+hybrid,False,storage-003,How do ConfigMaps differ from Secrets in Kubernetes?,0.5,0.4,0.8,0.75,1.0,False,3369.243039051071,0.00053765,,
+hybrid,False,storage-004,How do you mount a Secret into a Pod as a file?,1.0,1.0,1.0,0.75,1.0,False,3796.9330950872973,0.00025555999999999995,,
+hybrid,False,storage-005,What access modes do PersistentVolumes support?,1.0,0.6,0.0,0.0,0.0,False,785.0060410564765,0.00014940999999999997,,
+hybrid,False,pods-001,What is a Kubernetes Pod?,1.0,0.6,1.0,0.75,1.0,False,1572.7875659940764,0.00018822,,
+hybrid,False,pods-002,What are the phases of a Pod lifecycle?,1.0,1.0,1.0,1.0,1.0,False,1124.1217959905043,0.00013652999999999997,,
+hybrid,False,workloads-001,How do Deployments manage rolling updates in Kubernetes?,0.0,1.0,1.0,0.9,1.0,False,2456.278983037919,0.0001649,,
+hybrid,False,workloads-002,When should I use a StatefulSet instead of a Deployment?,1.0,1.0,1.0,1.0,1.0,False,1881.168479914777,0.00018536,,
+hybrid,False,workloads-003,What is a DaemonSet used for in Kubernetes?,1.0,0.6,1.0,0.9,1.0,False,2113.078059977852,0.000212,,
+hybrid,False,workloads-004,How do Kubernetes Jobs differ from Deployments?,0.0,0.6,0.0,0.0,0.0,False,1845.1012519653887,0.00015422999999999996,,
+hybrid,False,workloads-005,What are init containers and when are they useful?,1.0,1.0,1.0,0.9,1.0,False,2146.898078965023,0.00021245,,
+hybrid,False,workloads-006,What is a ReplicaSet and how does it relate to a Deployment?,1.0,1.0,1.0,1.0,1.0,False,2630.62068389263,0.00024448,,
+hybrid,True,cluster-001,What is the purpose of namespaces in Kubernetes?,1.0,0.75,1.0,0.9,1.0,False,4868.686260073446,0.00072333,correct,1
+hybrid,True,cluster-002,What is a ServiceAccount and how is it used by pods?,1.0,1.0,1.0,0.9,1.0,False,7173.424185952172,0.00059651,correct,1
+hybrid,True,cluster-003,What is a CustomResourceDefinition (CRD) and why is it used?,1.0,1.0,1.0,0.85,1.0,False,2969.08840094693,0.00035642,correct,1
+hybrid,True,cluster-004,What are the main components of the Kubernetes control plane?,1.0,0.8,0.0,0.0,0.0,False,2453.2648969907314,0.00023947,correct,1
+hybrid,True,cluster-005,What is a ResourceQuota and how does it limit resource usage per namespace?,1.0,1.0,1.0,0.75,1.0,False,5635.518976021558,0.00067022,correct,1
+hybrid,True,networking-001,"What is the difference between ClusterIP, NodePort, and LoadBalancer services?",1.0,1.0,1.0,1.0,1.0,False,8907.171820988879,0.00063977,correct,1
+hybrid,True,networking-002,How does Kubernetes DNS work for services?,1.0,1.0,1.0,0.85,1.0,False,4225.30284000095,0.00041821,correct,1
+hybrid,True,networking-003,What is an Ingress and how does it differ from a Service?,1.0,0.5,0.0,0.0,0.0,False,2535.6743389274925,0.00036942999999999996,correct,1
+hybrid,True,networking-004,How do Network Policies restrict traffic between pods?,0.0,1.0,1.0,0.9,1.0,False,3013.8582800282165,0.00039227999999999995,correct,1
+hybrid,True,networking-005,What is a headless service in Kubernetes?,1.0,1.0,1.0,1.0,1.0,False,3642.3839310882613,0.00031983,correct,1
+hybrid,True,networking-006,How do pods communicate with each other across nodes in Kubernetes?,0.0,0.8,1.0,0.75,1.0,False,2461.0897899838164,0.00047498999999999995,correct,1
+hybrid,True,rbac-001,How do I configure RBAC in Kubernetes?,1.0,1.0,0.0,0.0,0.0,False,2060.2044640108943,0.00029988,correct,1
+hybrid,True,scheduling-001,How do I set CPU and memory resource limits on a Kubernetes container?,1.0,1.0,1.0,0.5,1.0,False,4078.775325906463,0.0006676299999999999,correct,1
+hybrid,True,scheduling-002,What is the difference between a liveness probe and a readiness probe?,0.0,1.0,1.0,0.9,1.0,False,2978.1825829995796,0.00036448,correct,1
+hybrid,True,scheduling-003,How do taints and tolerations control pod scheduling in Kubernetes?,1.0,1.0,1.0,0.9,1.0,False,7671.143628074788,0.0006349299999999999,correct,1
+hybrid,True,scheduling-004,What is the Horizontal Pod Autoscaler and how does it work?,0.0,0.5,1.0,0.9,1.0,False,4505.152920028195,0.00058016,correct,1
+hybrid,True,scheduling-005,What is node affinity and how does it differ from nodeSelector?,1.0,1.0,1.0,0.85,1.0,False,5631.541076931171,0.00051311,correct,1
+hybrid,True,storage-001,What is the difference between a PersistentVolume and a PersistentVolumeClaim?,1.0,1.0,1.0,1.0,1.0,False,3595.9395109675825,0.00031078,correct,1
+hybrid,True,storage-002,What is a StorageClass in Kubernetes?,1.0,1.0,1.0,0.85,1.0,False,6340.823150938377,0.0006676599999999999,correct,1
+hybrid,True,storage-003,How do ConfigMaps differ from Secrets in Kubernetes?,0.0,0.5,1.0,0.9,1.0,False,2769.917382975109,0.00042304999999999996,correct,1
+hybrid,True,storage-004,How do you mount a Secret into a Pod as a file?,1.0,1.0,1.0,0.75,1.0,False,9207.290463964455,0.00047500999999999994,correct,1
+hybrid,True,storage-005,What access modes do PersistentVolumes support?,1.0,0.5,0.0,0.0,0.0,False,2047.4293780280277,0.00027856,correct,1
+hybrid,True,pods-001,What is a Kubernetes Pod?,1.0,0.5,1.0,0.75,1.0,False,3072.974141105078,0.00034572,correct,1
+hybrid,True,pods-002,What are the phases of a Pod lifecycle?,1.0,1.0,1.0,1.0,1.0,False,5040.4955729609355,0.00021993,correct,1
+hybrid,True,workloads-001,How do Deployments manage rolling updates in Kubernetes?,0.0,1.0,1.0,0.9,1.0,False,3459.3312280485407,0.00030064999999999996,correct,1
+hybrid,True,workloads-002,When should I use a StatefulSet instead of a Deployment?,1.0,1.0,1.0,1.0,1.0,False,4607.014775974676,0.00048686,correct,1
+hybrid,True,workloads-003,What is a DaemonSet used for in Kubernetes?,1.0,1.0,1.0,0.9,1.0,False,2654.6417779754847,0.0002741,correct,1
+hybrid,True,workloads-004,How do Kubernetes Jobs differ from Deployments?,0.0,0.5,0.0,0.0,0.0,False,3797.3681070143357,0.00026088,correct,1
+hybrid,True,workloads-005,What are init containers and when are they useful?,1.0,1.0,1.0,1.0,1.0,False,5427.213204908185,0.0006014,correct,1
+hybrid,True,workloads-006,What is a ReplicaSet and how does it relate to a Deployment?,1.0,1.0,1.0,1.0,1.0,False,3993.254631990567,0.00043858,correct,1
+hybrid-rerank,False,cluster-001,What is the purpose of namespaces in Kubernetes?,1.0,1.0,1.0,0.9,1.0,False,6327.842531027272,0.00072138,,
+hybrid-rerank,False,cluster-002,What is a ServiceAccount and how is it used by pods?,1.0,1.0,1.0,1.0,1.0,False,13015.346738044173,0.00105671,,
+hybrid-rerank,False,cluster-003,What is a CustomResourceDefinition (CRD) and why is it used?,1.0,1.0,1.0,0.9,1.0,False,7158.958966028877,0.00063722,,
+hybrid-rerank,False,cluster-004,What are the main components of the Kubernetes control plane?,1.0,0.8,0.0,0.0,0.0,False,3684.9958850070834,0.00031312,,
+hybrid-rerank,False,cluster-005,What is a ResourceQuota and how does it limit resource usage per namespace?,1.0,1.0,1.0,1.0,1.0,False,4916.863457998261,0.00048737,,
+hybrid-rerank,False,networking-001,"What is the difference between ClusterIP, NodePort, and LoadBalancer services?",1.0,1.0,1.0,1.0,1.0,False,5635.738720069639,0.00094952,,
+hybrid-rerank,False,networking-002,How does Kubernetes DNS work for services?,0.0,0.8,1.0,0.9,1.0,False,6300.489226006903,0.00086161,,
+hybrid-rerank,False,networking-003,What is an Ingress and how does it differ from a Service?,1.0,0.8,1.0,0.9,1.0,False,6394.112042966299,0.0007613799999999999,,
+hybrid-rerank,False,networking-004,How do Network Policies restrict traffic between pods?,0.0,1.0,1.0,0.85,1.0,False,4335.823107045144,0.00063003,,
+hybrid-rerank,False,networking-005,What is a headless service in Kubernetes?,1.0,1.0,1.0,1.0,1.0,False,8464.731436921284,0.00065043,,
+hybrid-rerank,False,networking-006,How do pods communicate with each other across nodes in Kubernetes?,0.0,0.6,1.0,0.85,1.0,False,5380.350918043405,0.00069894,,
+hybrid-rerank,False,rbac-001,How do I configure RBAC in Kubernetes?,1.0,1.0,0.0,0.0,0.0,False,3322.588813956827,0.00046997999999999994,,
+hybrid-rerank,False,scheduling-001,How do I set CPU and memory resource limits on a Kubernetes container?,1.0,1.0,1.0,0.5,1.0,False,9628.495477023534,0.00080863,,
+hybrid-rerank,False,scheduling-002,What is the difference between a liveness probe and a readiness probe?,0.0,1.0,1.0,0.9,1.0,False,6451.735401991755,0.00060793,,
+hybrid-rerank,False,scheduling-003,How do taints and tolerations control pod scheduling in Kubernetes?,1.0,1.0,1.0,0.9,1.0,False,4726.646359078586,0.00092563,,
+hybrid-rerank,False,scheduling-004,What is the Horizontal Pod Autoscaler and how does it work?,1.0,0.5,1.0,0.85,1.0,False,8170.339739997871,0.00084236,,
+hybrid-rerank,False,scheduling-005,What is node affinity and how does it differ from nodeSelector?,1.0,1.0,1.0,0.85,1.0,False,5629.0438489522785,0.00067286,,
+hybrid-rerank,False,storage-001,What is the difference between a PersistentVolume and a PersistentVolumeClaim?,1.0,1.0,1.0,1.0,1.0,False,7581.0140829999,0.00076198,,
+hybrid-rerank,False,storage-002,What is a StorageClass in Kubernetes?,0.0,1.0,1.0,0.75,1.0,False,6398.837139015086,0.00067726,,
+hybrid-rerank,False,storage-003,How do ConfigMaps differ from Secrets in Kubernetes?,1.0,0.6,0.8,0.9,1.0,False,5017.173839965835,0.0007811,,
+hybrid-rerank,False,storage-004,How do you mount a Secret into a Pod as a file?,1.0,0.8,0.9,0.9,1.0,False,7383.4146480076015,0.00111236,,
+hybrid-rerank,False,storage-005,What access modes do PersistentVolumes support?,1.0,0.6,1.0,0.75,1.0,False,5629.3618000345305,0.00063961,,
+hybrid-rerank,False,pods-001,What is a Kubernetes Pod?,0.0,1.0,1.0,0.75,1.0,False,3526.274379924871,0.00061557,,
+hybrid-rerank,False,pods-002,What are the phases of a Pod lifecycle?,1.0,1.0,1.0,1.0,1.0,False,2358.9863940142095,0.00060438,,
+hybrid-rerank,False,workloads-001,How do Deployments manage rolling updates in Kubernetes?,0.0,0.6,1.0,0.75,1.0,False,5017.340730992146,0.00070295,,
+hybrid-rerank,False,workloads-002,When should I use a StatefulSet instead of a Deployment?,1.0,1.0,1.0,0.9,1.0,False,4333.651746041141,0.00056666,,
+hybrid-rerank,False,workloads-003,What is a DaemonSet used for in Kubernetes?,1.0,0.8,1.0,0.9,1.0,False,4263.352495036088,0.00064385,,
+hybrid-rerank,False,workloads-004,How do Kubernetes Jobs differ from Deployments?,0.0,0.0,1.0,1.0,1.0,False,4710.545739042573,0.0005809799999999999,,
+hybrid-rerank,False,workloads-005,What are init containers and when are they useful?,1.0,0.8,1.0,1.0,1.0,False,5275.947566027753,0.00075755,,
+hybrid-rerank,False,workloads-006,What is a ReplicaSet and how does it relate to a Deployment?,1.0,1.0,1.0,1.0,1.0,False,7184.674063930288,0.0006326799999999999,,
+hybrid-rerank,True,cluster-001,What is the purpose of namespaces in Kubernetes?,1.0,1.0,1.0,0.9,1.0,False,7980.993503006175,0.00084213,correct,1
+hybrid-rerank,True,cluster-002,What is a ServiceAccount and how is it used by pods?,1.0,1.0,1.0,1.0,1.0,False,8291.749306954443,0.00110201,correct,1
+hybrid-rerank,True,cluster-003,What is a CustomResourceDefinition (CRD) and why is it used?,1.0,1.0,1.0,0.9,1.0,False,7780.828856048174,0.00068642,correct,1
+hybrid-rerank,True,cluster-004,What are the main components of the Kubernetes control plane?,1.0,0.5,0.0,0.0,0.0,False,4995.1215939363465,0.00033277,correct,1
+hybrid-rerank,True,cluster-005,What is a ResourceQuota and how does it limit resource usage per namespace?,1.0,1.0,1.0,1.0,1.0,False,5246.859896928072,0.00049457,correct,1
+hybrid-rerank,True,networking-001,"What is the difference between ClusterIP, NodePort, and LoadBalancer services?",1.0,1.0,1.0,1.0,1.0,False,8295.431687030941,0.00114422,correct,1
+hybrid-rerank,True,networking-002,How does Kubernetes DNS work for services?,0.0,0.8,1.0,0.85,1.0,False,7168.41908195056,0.00085156,correct,1
+hybrid-rerank,True,networking-003,What is an Ingress and how does it differ from a Service?,1.0,1.0,1.0,0.9,1.0,False,9009.803005959839,0.00085513,correct,1
+hybrid-rerank,True,networking-004,How do Network Policies restrict traffic between pods?,0.0,1.0,1.0,0.75,1.0,False,5850.195997976698,0.00063063,correct,1
+hybrid-rerank,True,networking-005,What is a headless service in Kubernetes?,1.0,1.0,1.0,1.0,1.0,False,5615.737543092109,0.0006720299999999999,correct,1
+hybrid-rerank,True,networking-006,How do pods communicate with each other across nodes in Kubernetes?,0.0,0.75,1.0,0.75,1.0,False,8393.940225010738,0.0008304899999999999,correct,1
+hybrid-rerank,True,rbac-001,How do I configure RBAC in Kubernetes?,1.0,1.0,0.0,0.0,0.0,False,5026.16815501824,0.0005550299999999999,correct,1
+hybrid-rerank,True,scheduling-001,How do I set CPU and memory resource limits on a Kubernetes container?,1.0,1.0,1.0,0.7,1.0,False,6672.359873075038,0.00078943,correct,1
+hybrid-rerank,True,scheduling-002,What is the difference between a liveness probe and a readiness probe?,0.0,1.0,1.0,0.9,1.0,False,6842.346009914763,0.0007237299999999999,correct,1
+hybrid-rerank,True,scheduling-003,How do taints and tolerations control pod scheduling in Kubernetes?,1.0,1.0,1.0,0.9,1.0,False,5121.201061992906,0.00057403,correct,1
+hybrid-rerank,True,scheduling-004,What is the Horizontal Pod Autoscaler and how does it work?,1.0,1.0,1.0,0.85,1.0,False,8291.686256998219,0.0008366599999999999,correct,1
+hybrid-rerank,True,scheduling-005,What is node affinity and how does it differ from nodeSelector?,1.0,1.0,1.0,0.85,1.0,False,6758.284357027151,0.0007124599999999999,correct,1
+hybrid-rerank,True,storage-001,What is the difference between a PersistentVolume and a PersistentVolumeClaim?,1.0,1.0,1.0,1.0,1.0,False,9941.406092024408,0.00091573,correct,1
+hybrid-rerank,True,storage-002,What is a StorageClass in Kubernetes?,0.0,1.0,1.0,0.7,1.0,False,7058.690179954283,0.00083206,correct,1
+hybrid-rerank,True,storage-003,How do ConfigMaps differ from Secrets in Kubernetes?,0.5,0.5,0.8,0.9,1.0,False,8395.542617072351,0.0008426,correct,1
+hybrid-rerank,True,storage-004,How do you mount a Secret into a Pod as a file?,1.0,0.8,1.0,0.9,1.0,False,8764.763907995075,0.00113306,correct,1
+hybrid-rerank,True,storage-005,What access modes do PersistentVolumes support?,1.0,0.5,1.0,0.75,1.0,False,6492.278944002464,0.0005622099999999999,correct,1
+hybrid-rerank,True,pods-001,What is a Kubernetes Pod?,0.0,1.0,1.0,0.75,1.0,False,7167.184398043901,0.00064302,correct,1
+hybrid-rerank,True,pods-002,What are the phases of a Pod lifecycle?,1.0,1.0,1.0,1.0,1.0,False,3788.731686072424,0.00028878,correct,1
+hybrid-rerank,True,workloads-001,How do Deployments manage rolling updates in Kubernetes?,0.0,0.75,1.0,0.9,1.0,False,6245.836980990134,0.0008049499999999999,correct,1
+hybrid-rerank,True,workloads-002,When should I use a StatefulSet instead of a Deployment?,1.0,1.0,1.0,1.0,1.0,False,5227.521355962381,0.00049436,correct,1
+hybrid-rerank,True,workloads-003,What is a DaemonSet used for in Kubernetes?,1.0,0.75,1.0,0.9,1.0,False,5031.885046046227,0.00066515,correct,1
+hybrid-rerank,True,workloads-004,How do Kubernetes Jobs differ from Deployments?,0.0,0.0,1.0,0.9,1.0,False,6021.727718994953,0.00071088,correct,1
+hybrid-rerank,True,workloads-005,What are init containers and when are they useful?,1.0,0.75,1.0,1.0,1.0,False,13517.34125893563,0.0009310999999999999,correct,1
+hybrid-rerank,True,workloads-006,What is a ReplicaSet and how does it relate to a Deployment?,1.0,1.0,1.0,1.0,1.0,False,6349.257105961442,0.0006493299999999999,correct,1
+hyde,False,cluster-001,What is the purpose of namespaces in Kubernetes?,1.0,1.0,1.0,0.9,1.0,False,7703.428972978145,0.00092095,,
+hyde,False,cluster-002,What is a ServiceAccount and how is it used by pods?,1.0,1.0,1.0,1.0,1.0,False,6635.128135909326,0.00071742,,
+hyde,False,cluster-003,What is a CustomResourceDefinition (CRD) and why is it used?,1.0,1.0,1.0,0.9,1.0,False,8764.54157102853,0.0007741,,
+hyde,False,cluster-004,What are the main components of the Kubernetes control plane?,0.0,1.0,1.0,1.0,1.0,False,3890.823018969968,0.0002173,,
+hyde,False,cluster-005,What is a ResourceQuota and how does it limit resource usage per namespace?,1.0,1.0,1.0,0.85,1.0,False,6749.102741945535,0.00087327,,
+hyde,False,networking-001,"What is the difference between ClusterIP, NodePort, and LoadBalancer services?",1.0,1.0,1.0,1.0,1.0,False,9942.450008005835,0.00104924,,
+hyde,False,networking-002,How does Kubernetes DNS work for services?,1.0,1.0,1.0,0.9,1.0,False,7986.850291956216,0.00078363,,
+hyde,False,networking-003,What is an Ingress and how does it differ from a Service?,1.0,1.0,1.0,0.9,1.0,False,7540.184908080846,0.00045589,,
+hyde,False,networking-004,How do Network Policies restrict traffic between pods?,1.0,1.0,1.0,0.9,1.0,False,5465.129732969217,0.00060406,,
+hyde,False,networking-005,What is a headless service in Kubernetes?,1.0,1.0,1.0,1.0,1.0,False,5118.630928103812,0.00029005999999999997,,
+hyde,False,networking-006,How do pods communicate with each other across nodes in Kubernetes?,1.0,0.8,1.0,0.85,1.0,False,3890.7382609322667,0.00026736999999999996,,
+hyde,False,rbac-001,How do I configure RBAC in Kubernetes?,1.0,1.0,0.0,0.0,0.0,False,5837.839134968817,0.00062186,,
+hyde,False,scheduling-001,How do I set CPU and memory resource limits on a Kubernetes container?,1.0,1.0,1.0,1.0,1.0,False,8294.407840934582,0.0009345,,
+hyde,False,scheduling-002,What is the difference between a liveness probe and a readiness probe?,0.0,1.0,1.0,0.9,1.0,False,5015.582164051011,0.00029673,,
+hyde,False,scheduling-003,How do taints and tolerations control pod scheduling in Kubernetes?,1.0,1.0,1.0,0.9,1.0,False,5017.246384057216,0.00031486999999999997,,
+hyde,False,scheduling-004,What is the Horizontal Pod Autoscaler and how does it work?,1.0,1.0,1.0,0.85,1.0,False,7531.964493915439,0.0007063999999999999,,
+hyde,False,scheduling-005,What is node affinity and how does it differ from nodeSelector?,1.0,0.8,1.0,0.9,1.0,False,5383.082119980827,0.00033026999999999997,,
+hyde,False,storage-001,What is the difference between a PersistentVolume and a PersistentVolumeClaim?,1.0,1.0,1.0,1.0,1.0,False,9879.408953012899,0.00070171,,
+hyde,False,storage-002,What is a StorageClass in Kubernetes?,1.0,1.0,1.0,0.9,1.0,False,5265.5858469661325,0.00028771,,
+hyde,False,storage-003,How do ConfigMaps differ from Secrets in Kubernetes?,1.0,0.8,1.0,0.9,1.0,False,8498.961642966606,0.0006253399999999999,,
+hyde,False,storage-004,How do you mount a Secret into a Pod as a file?,1.0,1.0,1.0,1.0,1.0,False,8703.848051954992,0.00086433,,
+hyde,False,storage-005,What access modes do PersistentVolumes support?,0.0,0.2,0.0,0.0,0.0,False,3906.5161059843376,0.00022592,,
+hyde,False,pods-001,What is a Kubernetes Pod?,1.0,1.0,1.0,0.9,1.0,False,6128.251184010878,0.00084108,,
+hyde,False,pods-002,What are the phases of a Pod lifecycle?,1.0,1.0,1.0,1.0,1.0,False,4200.9131639497355,0.00029474,,
+hyde,False,workloads-001,How do Deployments manage rolling updates in Kubernetes?,1.0,1.0,1.0,1.0,1.0,False,8496.41762895044,0.00086714,,
+hyde,False,workloads-002,When should I use a StatefulSet instead of a Deployment?,1.0,1.0,1.0,1.0,1.0,False,3890.779228066094,0.00024793,,
+hyde,False,workloads-003,What is a DaemonSet used for in Kubernetes?,1.0,1.0,1.0,0.85,1.0,False,3890.9098459407687,0.00027727,,
+hyde,False,workloads-004,How do Kubernetes Jobs differ from Deployments?,1.0,1.0,1.0,0.9,1.0,False,4579.058662056923,0.00028848000000000003,,
+hyde,False,workloads-005,What are init containers and when are they useful?,1.0,1.0,1.0,1.0,1.0,False,10371.686675935052,0.0008280399999999999,,
+hyde,False,workloads-006,What is a ReplicaSet and how does it relate to a Deployment?,1.0,1.0,1.0,1.0,1.0,False,6353.72113797348,0.00024911000000000003,,
+hyde,True,cluster-001,What is the purpose of namespaces in Kubernetes?,1.0,1.0,1.0,0.9,1.0,False,5031.365367001854,0.00060463,correct,1
+hyde,True,cluster-002,What is a ServiceAccount and how is it used by pods?,1.0,1.0,1.0,0.9,1.0,False,8395.711890072562,0.0013002600000000001,correct,1
+hyde,True,cluster-003,What is a CustomResourceDefinition (CRD) and why is it used?,1.0,1.0,1.0,0.9,1.0,False,4701.208665035665,0.0004927800000000001,correct,1
+hyde,True,cluster-004,What are the main components of the Kubernetes control plane?,0.0,1.0,1.0,1.0,1.0,False,4918.840471073054,0.00034704999999999995,correct,1
+hyde,True,cluster-005,What is a ResourceQuota and how does it limit resource usage per namespace?,1.0,1.0,1.0,0.85,1.0,False,6759.489784017205,0.00055863,correct,1
+hyde,True,networking-001,"What is the difference between ClusterIP, NodePort, and LoadBalancer services?",1.0,1.0,1.0,1.0,1.0,False,8643.505265004933,0.0009625199999999999,correct,1
+hyde,True,networking-002,How does Kubernetes DNS work for services?,1.0,1.0,1.0,0.85,1.0,False,11636.555364006199,0.00134563,correct,1
+hyde,True,networking-003,What is an Ingress and how does it differ from a Service?,1.0,1.0,1.0,0.9,1.0,False,7266.199468984269,0.00056479,correct,1
+hyde,True,networking-004,How do Network Policies restrict traffic between pods?,1.0,1.0,1.0,0.85,1.0,False,6859.818075085059,0.0010787899999999998,correct,1
+hyde,True,networking-005,What is a headless service in Kubernetes?,1.0,1.0,1.0,1.0,1.0,False,7374.0436469670385,0.0007069099999999999,correct,1
+hyde,True,networking-006,How do pods communicate with each other across nodes in Kubernetes?,1.0,1.0,1.0,0.85,1.0,False,7475.155094987713,0.00058252,correct,1
+hyde,True,rbac-001,How do I configure RBAC in Kubernetes?,1.0,1.0,0.0,0.0,0.0,False,6551.859555998817,0.00087241,correct,1
+hyde,True,scheduling-001,How do I set CPU and memory resource limits on a Kubernetes container?,1.0,1.0,1.0,0.9,1.0,False,10940.620267996565,0.00133622,correct,1
+hyde,True,scheduling-002,What is the difference between a liveness probe and a readiness probe?,0.0,1.0,1.0,1.0,1.0,False,6648.092979914509,0.0008622,correct,1
+hyde,True,scheduling-003,How do taints and tolerations control pod scheduling in Kubernetes?,1.0,1.0,1.0,0.9,1.0,False,5349.605843075551,0.00049628,correct,1
+hyde,True,scheduling-004,What is the Horizontal Pod Autoscaler and how does it work?,1.0,1.0,1.0,0.85,1.0,False,9114.110945025459,0.00058295,correct,1
+hyde,True,scheduling-005,What is node affinity and how does it differ from nodeSelector?,1.0,1.0,1.0,0.9,1.0,False,9739.037094986998,0.00068667,correct,1
+hyde,True,storage-001,What is the difference between a PersistentVolume and a PersistentVolumeClaim?,1.0,1.0,1.0,1.0,1.0,False,8384.852445917204,0.0006273499999999999,correct,1
+hyde,True,storage-002,What is a StorageClass in Kubernetes?,1.0,1.0,1.0,0.9,1.0,False,6247.324050986208,0.0007698,correct,1
+hyde,True,storage-003,How do ConfigMaps differ from Secrets in Kubernetes?,0.5,0.75,1.0,0.9,1.0,False,5831.771441968158,0.00052679,correct,1
+hyde,True,storage-004,How do you mount a Secret into a Pod as a file?,1.0,1.0,1.0,1.0,1.0,False,9732.092275982723,0.00105492,correct,1
+hyde,True,storage-005,What access modes do PersistentVolumes support?,0.0,0.5,0.0,0.0,0.0,False,5628.940460970625,0.00056142,ambiguous,1
+hyde,True,pods-001,What is a Kubernetes Pod?,1.0,1.0,1.0,0.85,1.0,False,4879.49074502103,0.00050073,correct,1
+hyde,True,pods-002,What are the phases of a Pod lifecycle?,1.0,1.0,1.0,1.0,1.0,False,4341.377760050818,0.00042817999999999996,correct,1
+hyde,True,workloads-001,How do Deployments manage rolling updates in Kubernetes?,1.0,1.0,1.0,1.0,1.0,False,8398.602829081938,0.00056969,correct,1
+hyde,True,workloads-002,When should I use a StatefulSet instead of a Deployment?,1.0,1.0,1.0,1.0,1.0,False,5120.079235988669,0.00040767999999999995,correct,1
+hyde,True,workloads-003,What is a DaemonSet used for in Kubernetes?,1.0,1.0,1.0,0.85,1.0,False,4706.089726067148,0.00046911999999999995,correct,1
+hyde,True,workloads-004,How do Kubernetes Jobs differ from Deployments?,1.0,1.0,1.0,0.9,1.0,False,9002.48347199522,0.00071689,correct,1
+hyde,True,workloads-005,What are init containers and when are they useful?,1.0,1.0,1.0,1.0,1.0,False,8098.95867400337,0.0008410000000000001,correct,1
+hyde,True,workloads-006,What is a ReplicaSet and how does it relate to a Deployment?,1.0,1.0,1.0,1.0,1.0,False,5732.461987994611,0.00038048,correct,1
+full,False,cluster-001,What is the purpose of namespaces in Kubernetes?,0.0,1.0,1.0,1.0,1.0,False,7514.408861054108,0.0010104699999999999,,
+full,False,cluster-002,What is a ServiceAccount and how is it used by pods?,1.0,1.0,1.0,1.0,1.0,False,8498.819202999584,0.00112812,,
+full,False,cluster-003,What is a CustomResourceDefinition (CRD) and why is it used?,1.0,1.0,1.0,0.85,1.0,False,9313.035571016371,0.00080865,,
+full,False,cluster-004,What are the main components of the Kubernetes control plane?,0.0,1.0,1.0,1.0,1.0,False,10756.071866955608,0.0007474,,
+full,False,cluster-005,What is a ResourceQuota and how does it limit resource usage per namespace?,0.0,1.0,1.0,0.9,1.0,False,12389.069819939323,0.0009155,,
+full,False,networking-001,"What is the difference between ClusterIP, NodePort, and LoadBalancer services?",1.0,1.0,1.0,1.0,1.0,False,9148.286469979212,0.00137697,,
+full,False,networking-002,How does Kubernetes DNS work for services?,0.0,1.0,1.0,0.85,1.0,False,9195.54208300542,0.0010903199999999999,,
+full,False,networking-003,What is an Ingress and how does it differ from a Service?,0.0,0.8,1.0,0.9,1.0,False,10840.511540067382,0.00098509,,
+full,False,networking-004,How do Network Policies restrict traffic between pods?,1.0,1.0,1.0,0.75,1.0,False,10853.860866976902,0.00082152,,
+full,False,networking-005,What is a headless service in Kubernetes?,1.0,1.0,1.0,1.0,1.0,False,7874.7989339753985,0.0010394599999999999,,
+full,False,networking-006,How do pods communicate with each other across nodes in Kubernetes?,1.0,1.0,1.0,0.9,1.0,False,8817.051887977868,0.0008276199999999999,,
+full,False,rbac-001,How do I configure RBAC in Kubernetes?,1.0,1.0,1.0,0.9,1.0,False,11881.460658973083,0.00133994,,
+full,False,scheduling-001,How do I set CPU and memory resource limits on a Kubernetes container?,1.0,1.0,1.0,0.9,1.0,False,10454.555995063856,0.00120421,,
+full,False,scheduling-002,What is the difference between a liveness probe and a readiness probe?,0.0,1.0,1.0,1.0,1.0,False,12072.193940053694,0.00099622,,
+full,False,scheduling-003,How do taints and tolerations control pod scheduling in Kubernetes?,1.0,0.8,1.0,0.9,1.0,False,11365.292611066252,0.0011037,,
+full,False,scheduling-004,What is the Horizontal Pod Autoscaler and how does it work?,1.0,1.0,1.0,0.9,1.0,False,31457.051432924345,0.0009419,,
+full,False,scheduling-005,What is node affinity and how does it differ from nodeSelector?,1.0,1.0,1.0,0.85,1.0,False,11188.921781023964,0.0009042999999999999,,
+full,False,storage-001,What is the difference between a PersistentVolume and a PersistentVolumeClaim?,1.0,1.0,1.0,1.0,1.0,False,17585.969061939977,0.00101499,,
+full,False,storage-002,What is a StorageClass in Kubernetes?,0.0,1.0,1.0,0.7,1.0,False,8512.815454043448,0.00070218,,
+full,False,storage-003,How do ConfigMaps differ from Secrets in Kubernetes?,0.5,0.6,1.0,0.9,1.0,False,13314.254593919031,0.00113429,,
+full,False,storage-004,How do you mount a Secret into a Pod as a file?,1.0,1.0,1.0,0.9,1.0,False,14120.37630903069,0.00112493,,
+full,False,storage-005,What access modes do PersistentVolumes support?,1.0,0.6,0.5,0.75,1.0,False,9424.253902980126,0.00097094,,
+full,False,pods-001,What is a Kubernetes Pod?,1.0,1.0,1.0,0.9,1.0,False,8909.43388803862,0.00073998,,
+full,False,pods-002,What are the phases of a Pod lifecycle?,1.0,1.0,1.0,1.0,1.0,False,6448.036722023971,0.0008051299999999999,,
+full,False,workloads-001,How do Deployments manage rolling updates in Kubernetes?,1.0,0.8,1.0,0.9,1.0,False,8396.19074203074,0.0009242899999999999,,
+full,False,workloads-002,When should I use a StatefulSet instead of a Deployment?,1.0,1.0,1.0,1.0,1.0,False,9524.692496052012,0.00065094,,
+full,False,workloads-003,What is a DaemonSet used for in Kubernetes?,1.0,1.0,1.0,0.9,1.0,False,12797.991661936976,0.0006593199999999999,,
+full,False,workloads-004,How do Kubernetes Jobs differ from Deployments?,0.0,0.6,1.0,1.0,1.0,False,9727.375629008748,0.0007257899999999999,,
+full,False,workloads-005,What are init containers and when are they useful?,1.0,1.0,1.0,1.0,1.0,False,15188.278766931035,0.00086991,,
+full,False,workloads-006,What is a ReplicaSet and how does it relate to a Deployment?,1.0,1.0,1.0,0.9,1.0,False,11534.097196999937,0.00074743,,
+full,True,cluster-001,What is the purpose of namespaces in Kubernetes?,0.0,1.0,1.0,0.9,1.0,False,10435.513332951814,0.00127078,correct,1
+full,True,cluster-002,What is a ServiceAccount and how is it used by pods?,1.0,1.0,1.0,1.0,1.0,False,12285.142078995705,0.00119989,correct,1
+full,True,cluster-003,What is a CustomResourceDefinition (CRD) and why is it used?,1.0,1.0,1.0,0.9,1.0,False,19458.719084970653,0.0009793,correct,1
+full,True,cluster-004,What are the main components of the Kubernetes control plane?,0.0,1.0,1.0,1.0,1.0,False,9932.800994021818,0.00064135,correct,1
+full,True,cluster-005,What is a ResourceQuota and how does it limit resource usage per namespace?,1.0,1.0,1.0,0.75,1.0,False,10546.243160031736,0.0011233999999999999,correct,1
+full,True,networking-001,"What is the difference between ClusterIP, NodePort, and LoadBalancer services?",1.0,1.0,1.0,1.0,1.0,False,13299.425823963247,0.00161939,correct,1
+full,True,networking-002,How does Kubernetes DNS work for services?,0.0,1.0,1.0,0.85,1.0,False,11889.628118951805,0.00142528,correct,1
+full,True,networking-003,What is an Ingress and how does it differ from a Service?,0.0,0.75,1.0,0.9,1.0,False,11057.916326913983,0.0011029899999999999,correct,1
+full,True,networking-004,How do Network Policies restrict traffic between pods?,1.0,1.0,1.0,0.85,1.0,False,11279.598529916257,0.0010021399999999999,correct,1
+full,True,networking-005,What is a headless service in Kubernetes?,1.0,1.0,1.0,1.0,1.0,False,11046.22733592987,0.0009287699999999999,correct,1
+full,True,networking-006,How do pods communicate with each other across nodes in Kubernetes?,0.0,1.0,1.0,0.8,1.0,False,12183.76427097246,0.00086632,correct,1
+full,True,rbac-001,How do I configure RBAC in Kubernetes?,1.0,1.0,0.0,0.0,0.0,False,615001.5850219643,0.00123143,correct,1
+full,True,scheduling-001,How do I set CPU and memory resource limits on a Kubernetes container?,1.0,1.0,1.0,0.9,1.0,False,22550.296870060265,0.0014454,correct,1
+full,True,scheduling-002,What is the difference between a liveness probe and a readiness probe?,0.0,1.0,1.0,1.0,1.0,False,19216.83737298008,0.0009629899999999999,correct,1
+full,True,scheduling-003,How do taints and tolerations control pod scheduling in Kubernetes?,1.0,0.8,1.0,0.9,1.0,False,20378.84572101757,0.00133733,correct,1
+full,True,scheduling-004,What is the Horizontal Pod Autoscaler and how does it work?,1.0,1.0,1.0,0.9,1.0,False,19040.827960008755,0.00152728,correct,1
+full,True,scheduling-005,What is node affinity and how does it differ from nodeSelector?,1.0,0.75,1.0,0.9,1.0,False,18845.247525023296,0.0011079199999999999,correct,1
+full,True,storage-001,What is the difference between a PersistentVolume and a PersistentVolumeClaim?,1.0,1.0,1.0,1.0,1.0,False,20060.989887919277,0.00111943,correct,1
+full,True,storage-002,What is a StorageClass in Kubernetes?,1.0,0.8,1.0,0.9,1.0,False,21062.204365967773,0.00119026,correct,1
+full,True,storage-003,How do ConfigMaps differ from Secrets in Kubernetes?,1.0,1.0,1.0,1.0,1.0,False,19903.747757081874,0.0011630899999999999,correct,1
+full,True,storage-004,How do you mount a Secret into a Pod as a file?,1.0,0.67,1.0,0.85,1.0,False,20482.502659084275,0.00119313,correct,1
+full,True,storage-005,What access modes do PersistentVolumes support?,1.0,0.75,0.75,0.75,1.0,False,15883.088245987892,0.00111422,correct,1
+full,True,pods-001,What is a Kubernetes Pod?,1.0,0.75,1.0,0.75,1.0,False,21287.35611506272,0.00116756,correct,1
+full,True,pods-002,What are the phases of a Pod lifecycle?,1.0,0.0,0.0,0.0,0.0,False,19968.286680988967,0.0007706300000000001,ambiguous,1
+full,True,workloads-001,How do Deployments manage rolling updates in Kubernetes?,1.0,0.75,1.0,0.85,1.0,False,20071.278231102042,0.00116189,correct,1
+full,True,workloads-002,When should I use a StatefulSet instead of a Deployment?,1.0,1.0,1.0,1.0,1.0,False,16588.097876985557,0.0007367,correct,1
+full,True,workloads-003,What is a DaemonSet used for in Kubernetes?,1.0,0.75,1.0,0.9,1.0,False,18259.99820791185,0.00097177,correct,1
+full,True,workloads-004,How do Kubernetes Jobs differ from Deployments?,1.0,0.0,0.0,0.0,0.0,False,24031.112508033402,0.00096859,correct,1
+full,True,workloads-005,What are init containers and when are they useful?,1.0,1.0,1.0,1.0,1.0,False,17919.422826031223,0.00121617,correct,1
+full,True,workloads-006,What is a ReplicaSet and how does it relate to a Deployment?,1.0,1.0,1.0,0.9,1.0,False,21195.62335102819,0.0009204,correct,1
