@@ -8,6 +8,7 @@ from openai import OpenAI
 
 from rag_harness.config import settings
 from rag_harness.models import Chunk
+from rag_harness.observability.usage import TokenUsage, record_usage
 from rag_harness.retrieval.base import Retriever
 
 logger = logging.getLogger(__name__)
@@ -26,6 +27,7 @@ class DenseRetriever(Retriever):
             model=settings.embedding_model,
             input=[query],
         )
+        record_usage(TokenUsage.from_openai(settings.embedding_model, response))
         return response.data[0].embedding
 
     def retrieve(self, query: str, top_k: int | None = None) -> list[Chunk]:

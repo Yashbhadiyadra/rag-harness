@@ -3,6 +3,7 @@
 from unittest.mock import MagicMock, patch
 
 from rag_harness.models import Chunk
+from rag_harness.observability.usage import collect_usage
 from rag_harness.retrieval.hyde import HyDERetriever
 
 
@@ -18,12 +19,15 @@ def _chunk(cid: str) -> Chunk:
     )
 
 
-def _mock_openai_returning(hypothesis: str) -> MagicMock:
+def _mock_openai_returning(
+    hypothesis: str, prompt_tokens: int = 30, completion_tokens: int = 20
+) -> MagicMock:
     """Return an OpenAI mock whose chat completion returns *hypothesis*."""
     client = MagicMock()
     resp = MagicMock()
     resp.choices = [MagicMock()]
     resp.choices[0].message.content = hypothesis
+    resp.usage = MagicMock(prompt_tokens=prompt_tokens, completion_tokens=completion_tokens)
     client.chat.completions.create.return_value = resp
     return client
 
@@ -100,3 +104,20 @@ def test_hyde_calls_llm_with_configured_model() -> None:
     kwargs = client.chat.completions.create.call_args.kwargs
     assert kwargs["model"] == "test-model-x"
     assert kwargs["temperature"] == 0.0
+
+
+def test_hyde_records_usage_inside_collect_block() -> None:
+    base = MagicMock()
+    base.retrieve.return_value = []
+
+    with patch("rag_harness.retrieval.hyde.OpenAI") as mock_openai_cls:
+        mock_openai_cls.return_value = _mock_openai_returning(
+            "hypothesis", prompt_tokens=25, completion_tokens=15
+        )
+        with collect_usage() as usage_list:
+            hyde = HyDERetriever(base_retriever=base)
+            hyde.retrieve("query")
+
+    assert len(usage_list) == 1
+    assert usage_list[0].input_tokens == 25
+    assert usage_list[0].output_tokens == 15

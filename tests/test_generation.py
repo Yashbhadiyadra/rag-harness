@@ -2,6 +2,7 @@ from unittest.mock import MagicMock, patch
 
 from rag_harness.generation.generator import generate
 from rag_harness.models import Chunk
+from rag_harness.observability.usage import collect_usage
 
 
 def _make_chunk(text: str) -> Chunk:
@@ -57,3 +58,21 @@ def test_generate_includes_context_in_prompt() -> None:
         call_kwargs = mock_openai.return_value.chat.completions.create.call_args.kwargs
         user_message = call_kwargs["messages"][1]["content"]
         assert "ClusterRole applies cluster-wide." in user_message
+
+
+def test_generate_records_usage_inside_collect_block() -> None:
+    chunks = [_make_chunk("Content.")]
+    mock_response = MagicMock()
+    mock_response.choices[0].message.content = "Answer."
+    mock_response.usage = MagicMock(prompt_tokens=42, completion_tokens=7)
+
+    with (
+        patch("rag_harness.generation.generator.OpenAI") as mock_openai,
+        collect_usage() as usage_list,
+    ):
+        mock_openai.return_value.chat.completions.create.return_value = mock_response
+        generate("Q?", chunks)
+
+    assert len(usage_list) == 1
+    assert usage_list[0].input_tokens == 42
+    assert usage_list[0].output_tokens == 7

@@ -9,6 +9,7 @@ from rag_harness.generation.corrective import (
 )
 from rag_harness.generation.critic import Category
 from rag_harness.models import Chunk
+from rag_harness.observability.usage import collect_usage
 
 
 def _chunk(cid: str) -> Chunk:
@@ -31,12 +32,15 @@ def _mock_critic(scores: list[float], category: Category) -> MagicMock:
     return m
 
 
-def _mock_openai_returning(text: str) -> MagicMock:
+def _mock_openai_returning(
+    text: str, prompt_tokens: int = 40, completion_tokens: int = 10
+) -> MagicMock:
     """Return a mock OpenAI client whose chat completion returns *text*."""
     client = MagicMock()
     resp = MagicMock()
     resp.choices = [MagicMock()]
     resp.choices[0].message.content = text
+    resp.usage = MagicMock(prompt_tokens=prompt_tokens, completion_tokens=completion_tokens)
     client.chat.completions.create.return_value = resp
     return client
 
@@ -205,3 +209,24 @@ def test_reformulation_failure_falls_back_to_original_query() -> None:
     for call in retriever.retrieve.call_args_list:
         assert call[0][0] == "original"
     assert result.answer == NO_INFO_MESSAGE
+
+
+def test_reformulation_records_usage_inside_collect_block() -> None:
+    retriever = MagicMock()
+    retriever.retrieve.return_value = [_chunk("bad")]
+    critic = _mock_critic([0.1], Category.INCORRECT)
+
+    with (
+        patch("rag_harness.generation.corrective.generate"),
+        patch("rag_harness.generation.corrective.OpenAI") as mock_openai_cls,
+    ):
+        mock_openai_cls.return_value = _mock_openai_returning(
+            "rewritten", prompt_tokens=15, completion_tokens=5
+        )
+        with collect_usage() as usage_list:
+            corrective_generate("q", retriever, critic=critic, max_retries=1)
+
+    # One reformulation call was made — usage recorded once
+    assert len(usage_list) == 1
+    assert usage_list[0].input_tokens == 15
+    assert usage_list[0].output_tokens == 5

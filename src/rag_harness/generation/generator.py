@@ -6,6 +6,7 @@ from openai import OpenAI
 
 from rag_harness.config import settings
 from rag_harness.models import Chunk
+from rag_harness.observability.usage import TokenUsage, record_usage
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +48,7 @@ def generate(query: str, chunks: list[Chunk]) -> str:
         ],
         temperature=0,  # deterministic output — important for reproducible eval
     )
+    record_usage(TokenUsage.from_openai(settings.generation_model, response))
 
     answer = response.choices[0].message.content or ""
     logger.debug("generated answer (%d chars) for query: %.60s...", len(answer), query)

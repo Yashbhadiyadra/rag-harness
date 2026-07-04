@@ -9,6 +9,7 @@ from openai import OpenAI
 from rag_harness.config import settings
 from rag_harness.ingest.embedding_cache import EmbeddingCache
 from rag_harness.models import Chunk
+from rag_harness.observability.usage import TokenUsage, record_usage
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +65,7 @@ def embed_chunks(
             model=settings.embedding_model,
             input=texts,
         )
+        record_usage(TokenUsage.from_openai(settings.embedding_model, response))
         for chunk, embedding_obj in zip(batch, response.data):
             vector = embedding_obj.embedding
             miss_results.append((chunk, vector))

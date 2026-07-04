@@ -26,6 +26,7 @@ from pydantic import BaseModel, Field
 
 from rag_harness.config import settings
 from rag_harness.models import Chunk
+from rag_harness.observability.usage import TokenUsage, record_usage
 
 logger = logging.getLogger(__name__)
 
@@ -113,6 +114,7 @@ class RelevanceCritic:
                     {"role": "user", "content": user_message},
                 ],
             )
+            record_usage(TokenUsage.from_openai(self._model, response))
             raw = response.choices[0].message.content or "{}"
             parsed = _CriticResponse.model_validate(json.loads(raw))
         except Exception as e:

@@ -30,6 +30,7 @@ from rag_harness.config import settings
 from rag_harness.generation.critic import Category, RelevanceCritic
 from rag_harness.generation.generator import generate
 from rag_harness.models import Chunk
+from rag_harness.observability.usage import TokenUsage, record_usage
 from rag_harness.retrieval.base import Retriever
 
 logger = logging.getLogger(__name__)
@@ -70,6 +71,7 @@ def _reformulate_query(client: OpenAI, model: str, query: str) -> str:
                 {"role": "user", "content": query},
             ],
         )
+        record_usage(TokenUsage.from_openai(model, response))
         rewritten = (response.choices[0].message.content or "").strip()
     except Exception:
         logger.warning("query reformulation failed; retrying with the original query")

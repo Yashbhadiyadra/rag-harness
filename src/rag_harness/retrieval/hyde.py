@@ -22,6 +22,7 @@ from openai import OpenAI
 
 from rag_harness.config import settings
 from rag_harness.models import Chunk
+from rag_harness.observability.usage import TokenUsage, record_usage
 from rag_harness.retrieval.base import Retriever
 
 logger = logging.getLogger(__name__)
@@ -57,6 +58,7 @@ class HyDERetriever(Retriever):
                 {"role": "user", "content": query},
             ],
         )
+        record_usage(TokenUsage.from_openai(self._model, response))
         content = response.choices[0].message.content or ""
         return content.strip()
 

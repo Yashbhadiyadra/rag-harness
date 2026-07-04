@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 
 from rag_harness.generation.critic import Category, RelevanceCritic
 from rag_harness.models import Chunk
+from rag_harness.observability.usage import collect_usage
 
 
 def _chunk(cid: str, text: str = "") -> Chunk:
@@ -138,3 +139,26 @@ def test_categorise_at_exact_incorrect_threshold_is_ambiguous() -> None:
     with patch("rag_harness.generation.critic.OpenAI"):
         critic = RelevanceCritic(correct_threshold=0.7, incorrect_threshold=0.3)
         assert critic.categorise([0.3]) is Category.AMBIGUOUS
+
+
+# --- usage recording ---
+
+
+def test_score_batch_records_usage_inside_collect_block() -> None:
+    chunks = [_chunk("a")]
+    with patch("rag_harness.generation.critic.OpenAI") as mock_openai:
+        client = MagicMock()
+        resp = MagicMock()
+        resp.choices = [MagicMock()]
+        resp.choices[0].message.content = json.dumps({"scores": [0.9]})
+        resp.usage = MagicMock(prompt_tokens=50, completion_tokens=8)
+        client.chat.completions.create.return_value = resp
+        mock_openai.return_value = client
+
+        with collect_usage() as usage_list:
+            critic = RelevanceCritic()
+            critic.score_batch("query", chunks)
+
+    assert len(usage_list) == 1
+    assert usage_list[0].input_tokens == 50
+    assert usage_list[0].output_tokens == 8

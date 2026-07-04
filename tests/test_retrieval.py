@@ -1,5 +1,6 @@
 from unittest.mock import MagicMock, patch
 
+from rag_harness.observability.usage import collect_usage
 from rag_harness.retrieval.dense import DenseRetriever
 
 
@@ -58,3 +59,22 @@ def test_retrieve_uses_configured_top_k() -> None:
 
     call_kwargs = retriever._collection.query.call_args.kwargs  # type: ignore[attr-defined]
     assert call_kwargs["n_results"] == 7
+
+
+def test_dense_retrieve_records_usage_inside_collect_block() -> None:
+    retriever = _make_retriever()
+    resp = MagicMock(data=[MagicMock(embedding=[0.1, 0.2])])
+    resp.usage = MagicMock(prompt_tokens=8, completion_tokens=0)
+    retriever._openai.embeddings.create.return_value = resp  # type: ignore[attr-defined]
+    retriever._collection.query.return_value = {  # type: ignore[attr-defined]
+        "ids": [[]],
+        "documents": [[]],
+        "metadatas": [[]],
+    }
+
+    with collect_usage() as usage_list:
+        retriever.retrieve("q", top_k=3)
+
+    assert len(usage_list) == 1
+    assert usage_list[0].input_tokens == 8
+    assert usage_list[0].output_tokens == 0
