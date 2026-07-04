@@ -1,6 +1,6 @@
 """Unit tests for Reciprocal Rank Fusion and hybrid retrieval composition."""
 
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 from rag_harness.models import Chunk
 from rag_harness.retrieval.hybrid import HybridRetriever, reciprocal_rank_fusion
@@ -67,7 +67,7 @@ def test_rrf_empty_input_returns_empty() -> None:
 
 def test_hybrid_retriever_fuses_dense_and_bm25() -> None:
     dense_mock = MagicMock()
-    dense_mock.retrieve.return_value = [_chunk("a"), _chunk("b"), _chunk("c")]
+    dense_mock.retrieve_async = AsyncMock(return_value=[_chunk("a"), _chunk("b"), _chunk("c")])
 
     bm25_mock = MagicMock()
     bm25_mock.search.return_value = [
@@ -87,7 +87,7 @@ def test_hybrid_retriever_fuses_dense_and_bm25() -> None:
 
 def test_hybrid_retriever_respects_top_k() -> None:
     dense_mock = MagicMock()
-    dense_mock.retrieve.return_value = [_chunk(str(i)) for i in range(10)]
+    dense_mock.retrieve_async = AsyncMock(return_value=[_chunk(str(i)) for i in range(10)])
 
     bm25_mock = MagicMock()
     bm25_mock.search.return_value = [(_chunk(str(i)), 1.0) for i in range(10)]
@@ -100,7 +100,7 @@ def test_hybrid_retriever_respects_top_k() -> None:
 
 def test_hybrid_retriever_requests_candidate_multiplier_from_each_ranker() -> None:
     dense_mock = MagicMock()
-    dense_mock.retrieve.return_value = []
+    dense_mock.retrieve_async = AsyncMock(return_value=[])
     bm25_mock = MagicMock()
     bm25_mock.search.return_value = []
 
@@ -108,5 +108,5 @@ def test_hybrid_retriever_requests_candidate_multiplier_from_each_ranker() -> No
     retriever.retrieve("query", top_k=5)
 
     # Each backing ranker should receive 5*3=15
-    dense_mock.retrieve.assert_called_once_with("query", top_k=15)
+    dense_mock.retrieve_async.assert_awaited_once_with("query", top_k=15)
     bm25_mock.search.assert_called_once_with("query", top_k=15)

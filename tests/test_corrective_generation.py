@@ -51,7 +51,7 @@ def _mock_openai_returning(
 
 def test_correct_category_filters_and_generates() -> None:
     retriever = MagicMock()
-    retriever.retrieve.return_value = [_chunk("a"), _chunk("b"), _chunk("c")]
+    retriever.retrieve_async = AsyncMock(return_value=[_chunk("a"), _chunk("b"), _chunk("c")])
     critic = _mock_critic([0.9, 0.5, 0.1], Category.CORRECT)  # c is below 0.3 threshold
 
     with (
@@ -77,7 +77,7 @@ def test_correct_category_filters_and_generates() -> None:
 
 def test_ambiguous_category_generates_with_surviving_chunks() -> None:
     retriever = MagicMock()
-    retriever.retrieve.return_value = [_chunk("a"), _chunk("b")]
+    retriever.retrieve_async = AsyncMock(return_value=[_chunk("a"), _chunk("b")])
     critic = _mock_critic([0.5, 0.2], Category.AMBIGUOUS)
 
     with (
@@ -101,10 +101,12 @@ def test_ambiguous_category_generates_with_surviving_chunks() -> None:
 
 def test_incorrect_triggers_reformulation_and_retry() -> None:
     retriever = MagicMock()
-    retriever.retrieve.side_effect = [
-        [_chunk("bad1"), _chunk("bad2")],  # first attempt
-        [_chunk("good")],  # after reformulation
-    ]
+    retriever.retrieve_async = AsyncMock(
+        side_effect=[
+            [_chunk("bad1"), _chunk("bad2")],  # first attempt
+            [_chunk("good")],  # after reformulation
+        ]
+    )
 
     call_count = {"n": 0}
 
@@ -141,7 +143,7 @@ def test_incorrect_triggers_reformulation_and_retry() -> None:
 
 def test_all_incorrect_returns_refusal_message() -> None:
     retriever = MagicMock()
-    retriever.retrieve.return_value = [_chunk("bad")]
+    retriever.retrieve_async = AsyncMock(return_value=[_chunk("bad")])
     critic = _mock_critic([0.1], Category.INCORRECT)
 
     with (
@@ -159,7 +161,7 @@ def test_all_incorrect_returns_refusal_message() -> None:
 
 def test_no_retries_returns_refusal_immediately_on_incorrect() -> None:
     retriever = MagicMock()
-    retriever.retrieve.return_value = [_chunk("bad")]
+    retriever.retrieve_async = AsyncMock(return_value=[_chunk("bad")])
     critic = _mock_critic([0.1], Category.INCORRECT)
 
     with (
@@ -177,10 +179,12 @@ def test_no_retries_returns_refusal_immediately_on_incorrect() -> None:
 
 def test_critic_scores_against_original_query_after_reformulation() -> None:
     retriever = MagicMock()
-    retriever.retrieve.side_effect = [
-        [_chunk("bad")],
-        [_chunk("good")],
-    ]
+    retriever.retrieve_async = AsyncMock(
+        side_effect=[
+            [_chunk("bad")],
+            [_chunk("good")],
+        ]
+    )
     critic = MagicMock()
     critic.score_batch_async = AsyncMock(side_effect=[[0.1], [0.9]])
     critic.categorise.side_effect = [Category.INCORRECT, Category.CORRECT]
@@ -205,7 +209,7 @@ def test_critic_scores_against_original_query_after_reformulation() -> None:
 
 def test_reformulation_failure_falls_back_to_original_query() -> None:
     retriever = MagicMock()
-    retriever.retrieve.return_value = [_chunk("bad")]
+    retriever.retrieve_async = AsyncMock(return_value=[_chunk("bad")])
     critic = _mock_critic([0.1], Category.INCORRECT)
 
     with (
@@ -219,15 +223,15 @@ def test_reformulation_failure_falls_back_to_original_query() -> None:
 
     # Retriever should have been called twice — first with original,
     # then again with original (fallback because reformulation failed).
-    assert retriever.retrieve.call_count == 2
-    for call in retriever.retrieve.call_args_list:
+    assert retriever.retrieve_async.await_count == 2
+    for call in retriever.retrieve_async.await_args_list:
         assert call[0][0] == "original"
     assert result.answer == NO_INFO_MESSAGE
 
 
 def test_reformulation_records_usage_inside_collect_block() -> None:
     retriever = MagicMock()
-    retriever.retrieve.return_value = [_chunk("bad")]
+    retriever.retrieve_async = AsyncMock(return_value=[_chunk("bad")])
     critic = _mock_critic([0.1], Category.INCORRECT)
 
     with (

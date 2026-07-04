@@ -18,7 +18,7 @@ underlying retriever (dense, hybrid, hybrid+rerank) as a query-time transform.
 
 import logging
 
-from openai import OpenAI
+from openai import AsyncOpenAI
 
 from rag_harness.config import settings
 from rag_harness.models import Chunk
@@ -46,11 +46,11 @@ class HyDERetriever(Retriever):
         """Build a HyDE retriever around *base_retriever*."""
         self._base = base_retriever
         self._model = model or settings.generation_model
-        self._client = OpenAI(api_key=settings.openai_api_key)
+        self._client = AsyncOpenAI(api_key=settings.openai_api_key)
 
-    def _hypothesise(self, query: str) -> str:
+    async def _hypothesise(self, query: str) -> str:
         """Ask the LLM to draft a hypothetical answer passage for *query*."""
-        response = self._client.chat.completions.create(
+        response = await self._client.chat.completions.create(
             model=self._model,
             temperature=0.0,
             messages=[
@@ -62,7 +62,7 @@ class HyDERetriever(Retriever):
         content = response.choices[0].message.content or ""
         return content.strip()
 
-    def retrieve(self, query: str, top_k: int | None = None) -> list[Chunk]:
+    async def retrieve_async(self, query: str, top_k: int | None = None) -> list[Chunk]:
         """Generate a hypothesis, then retrieve using that as the query.
 
         If the LLM returns an empty hypothesis (network hiccup, safety refusal,
@@ -70,7 +70,7 @@ class HyDERetriever(Retriever):
         a failed one.
         """
         try:
-            hypothesis = self._hypothesise(query)
+            hypothesis = await self._hypothesise(query)
         except Exception:
             logger.warning("HyDE hypothesis generation failed; falling back to raw query")
             hypothesis = ""
@@ -81,4 +81,4 @@ class HyDERetriever(Retriever):
             query[:60],
             len(hypothesis),
         )
-        return self._base.retrieve(effective_query, top_k=top_k)
+        return await self._base.retrieve_async(effective_query, top_k=top_k)

@@ -72,12 +72,13 @@ class HybridRetriever(Retriever):
         self._k = rrf_k if rrf_k is not None else settings.hybrid_rrf_k
         self._multiplier = candidate_multiplier
 
-    def retrieve(self, query: str, top_k: int | None = None) -> list[Chunk]:
+    async def retrieve_async(self, query: str, top_k: int | None = None) -> list[Chunk]:
         """Retrieve with hybrid dense + BM25 fusion."""
         final_k = top_k if top_k is not None else settings.retrieval_top_k
         candidate_k = final_k * self._multiplier
 
-        dense_hits = self._dense.retrieve(query, top_k=candidate_k)
+        dense_hits = await self._dense.retrieve_async(query, top_k=candidate_k)
+        # BM25 search is in-memory and fast; keep sync.
         bm25_hits = [chunk for chunk, _score in self._bm25.search(query, top_k=candidate_k)]
 
         fused = reciprocal_rank_fusion([dense_hits, bm25_hits], k=self._k)

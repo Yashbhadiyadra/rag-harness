@@ -6,7 +6,7 @@ run in the default `dev` environment without the `[rerank]` extra installed.
 
 import sys
 import types
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -35,13 +35,18 @@ def fake_sentence_transformers(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     return mock_cross_encoder_cls
 
 
+def _mock_base(chunks: list[Chunk]) -> MagicMock:
+    base = MagicMock()
+    base.retrieve_async = AsyncMock(return_value=chunks)
+    return base
+
+
 def test_reranker_reorders_by_cross_encoder_score(
     fake_sentence_transformers: MagicMock,
 ) -> None:
     from rag_harness.retrieval.reranker import RerankingRetriever
 
-    base = MagicMock()
-    base.retrieve.return_value = [_chunk("a"), _chunk("b"), _chunk("c")]
+    base = _mock_base([_chunk("a"), _chunk("b"), _chunk("c")])
 
     # cross-encoder says c is most relevant, then a, then b
     mock_model = MagicMock()
@@ -57,8 +62,7 @@ def test_reranker_reorders_by_cross_encoder_score(
 def test_reranker_truncates_to_top_k(fake_sentence_transformers: MagicMock) -> None:
     from rag_harness.retrieval.reranker import RerankingRetriever
 
-    base = MagicMock()
-    base.retrieve.return_value = [_chunk(str(i)) for i in range(10)]
+    base = _mock_base([_chunk(str(i)) for i in range(10)])
 
     mock_model = MagicMock()
     mock_model.predict.return_value = [float(i) for i in range(10)]  # scores 0..9
@@ -76,8 +80,7 @@ def test_reranker_requests_multiplier_candidates_from_base(
 ) -> None:
     from rag_harness.retrieval.reranker import RerankingRetriever
 
-    base = MagicMock()
-    base.retrieve.return_value = []
+    base = _mock_base([])
     mock_model = MagicMock()
     mock_model.predict.return_value = []
     fake_sentence_transformers.return_value = mock_model
@@ -85,14 +88,13 @@ def test_reranker_requests_multiplier_candidates_from_base(
     reranker = RerankingRetriever(base_retriever=base, candidate_multiplier=4)
     reranker.retrieve("query", top_k=5)
 
-    base.retrieve.assert_called_once_with("query", top_k=20)  # 5 * 4
+    base.retrieve_async.assert_awaited_once_with("query", top_k=20)  # 5 * 4
 
 
 def test_reranker_handles_empty_candidates(fake_sentence_transformers: MagicMock) -> None:
     from rag_harness.retrieval.reranker import RerankingRetriever
 
-    base = MagicMock()
-    base.retrieve.return_value = []
+    base = _mock_base([])
     mock_model = MagicMock()
     fake_sentence_transformers.return_value = mock_model
 

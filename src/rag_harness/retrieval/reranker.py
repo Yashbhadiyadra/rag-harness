@@ -17,6 +17,7 @@ production choice: trained on MS MARCO passage ranking, 6-layer MiniLM,
 runs on CPU at ~80-120ms for 20 candidates, licence-clean.
 """
 
+import asyncio
 import logging
 from typing import cast
 
@@ -70,17 +71,19 @@ class RerankingRetriever(Retriever):
         self._model = CrossEncoder(self._model_name)
         logger.info("cross-encoder reranker loaded: %s", self._model_name)
 
-    def retrieve(self, query: str, top_k: int | None = None) -> list[Chunk]:
+    async def retrieve_async(self, query: str, top_k: int | None = None) -> list[Chunk]:
         """Retrieve candidates from the base retriever, then rerank to top_k."""
         final_k = top_k if top_k is not None else settings.retrieval_top_k
         candidate_k = final_k * self._multiplier
 
-        candidates = self._base.retrieve(query, top_k=candidate_k)
+        candidates = await self._base.retrieve_async(query, top_k=candidate_k)
         if not candidates:
             return []
 
         pairs = [[query, chunk.text] for chunk in candidates]
-        raw_scores = self._model.predict(pairs)
+        # Cross-encoder .predict() is CPU-bound; wrap in to_thread so we do
+        # not block the event loop while other requests are in flight.
+        raw_scores = await asyncio.to_thread(self._model.predict, pairs)
         scores = cast(list[float], list(raw_scores))
 
         ranked = sorted(

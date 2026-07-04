@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from rag_harness.observability.usage import collect_usage
 from rag_harness.retrieval.dense import DenseRetriever
@@ -7,7 +7,7 @@ from rag_harness.retrieval.dense import DenseRetriever
 def _make_retriever() -> DenseRetriever:
     """Construct a DenseRetriever with all external clients mocked out."""
     with (
-        patch("rag_harness.retrieval.dense.OpenAI"),
+        patch("rag_harness.retrieval.dense.AsyncOpenAI"),
         patch("rag_harness.retrieval.dense.chromadb.PersistentClient"),
     ):
         return DenseRetriever()
@@ -16,9 +16,8 @@ def _make_retriever() -> DenseRetriever:
 def test_retrieve_returns_chunks() -> None:
     retriever = _make_retriever()
 
-    retriever._openai.embeddings.create.return_value = MagicMock(  # type: ignore[attr-defined]
-        data=[MagicMock(embedding=[0.1, 0.2, 0.3])]
-    )
+    embed_resp = MagicMock(data=[MagicMock(embedding=[0.1, 0.2, 0.3])])
+    retriever._openai.embeddings.create = AsyncMock(return_value=embed_resp)  # type: ignore[attr-defined]
     retriever._collection.query.return_value = {  # type: ignore[attr-defined]
         "ids": [["content/en/docs/security/rbac.md::0"]],
         "documents": [["RoleBinding grants permissions to users."]],
@@ -46,9 +45,8 @@ def test_retrieve_returns_chunks() -> None:
 
 def test_retrieve_uses_configured_top_k() -> None:
     retriever = _make_retriever()
-    retriever._openai.embeddings.create.return_value = MagicMock(  # type: ignore[attr-defined]
-        data=[MagicMock(embedding=[0.1, 0.2, 0.3])]
-    )
+    embed_resp = MagicMock(data=[MagicMock(embedding=[0.1, 0.2, 0.3])])
+    retriever._openai.embeddings.create = AsyncMock(return_value=embed_resp)  # type: ignore[attr-defined]
     retriever._collection.query.return_value = {  # type: ignore[attr-defined]
         "ids": [[]],
         "documents": [[]],
@@ -65,7 +63,7 @@ def test_dense_retrieve_records_usage_inside_collect_block() -> None:
     retriever = _make_retriever()
     resp = MagicMock(data=[MagicMock(embedding=[0.1, 0.2])])
     resp.usage = MagicMock(prompt_tokens=8, completion_tokens=0)
-    retriever._openai.embeddings.create.return_value = resp  # type: ignore[attr-defined]
+    retriever._openai.embeddings.create = AsyncMock(return_value=resp)  # type: ignore[attr-defined]
     retriever._collection.query.return_value = {  # type: ignore[attr-defined]
         "ids": [[]],
         "documents": [[]],

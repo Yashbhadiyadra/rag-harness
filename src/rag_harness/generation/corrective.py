@@ -108,9 +108,7 @@ async def corrective_generate_async(
 
     for attempt in range(retry_cap + 1):
         attempts = attempt + 1
-        # retriever.retrieve is still sync in commit 1; wrap in to_thread so
-        # we don't block the event loop. Commit 2 removes this wrap.
-        chunks = await asyncio.to_thread(retriever.retrieve, current_query, top_k)
+        chunks = await retriever.retrieve_async(current_query, top_k=top_k)
         scores = await critic.score_batch_async(query, chunks)  # score against ORIGINAL query
         category = critic.categorise(scores)
 
