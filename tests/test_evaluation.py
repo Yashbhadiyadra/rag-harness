@@ -471,6 +471,70 @@ def test_run_eval_corrective_refusal_still_scored(tmp_path: Path) -> None:
     assert r.correctness == 0.0
 
 
+def test_run_eval_case_filter_restricts_to_ids(tmp_path: Path) -> None:
+    def _case(cid: str, n: int) -> dict:
+        return {
+            "id": cid,
+            "question": f"Q{n}?",
+            "reference_answer": f"A{n}.",
+            "relevant_doc_ids": ["a"],
+        }
+
+    data = [_case("keep", 1), _case("drop", 2), _case("also-keep", 3)]
+    (tmp_path / "cases.json").write_text(json.dumps(data))
+
+    mock_retriever = MagicMock()
+    mock_retriever.retrieve.return_value = [_make_chunk("a")]
+
+    with (
+        patch("rag_harness.evaluation.runner.generate", return_value="ans"),
+        patch("rag_harness.evaluation.runner.faithfulness", return_value=0.9),
+        patch("rag_harness.evaluation.runner.correctness", return_value=0.9),
+        patch("rag_harness.evaluation.runner.answer_relevancy", return_value=0.9),
+        patch("rag_harness.evaluation.runner.context_precision", return_value=0.9),
+    ):
+        summary = run_eval(
+            mock_retriever,
+            golden_dir=tmp_path,
+            case_filter=["keep", "also-keep"],
+        )
+
+    ids = {r.case_id for r in summary.results}
+    assert ids == {"keep", "also-keep"}
+
+
+def test_run_eval_case_filter_none_runs_all_cases(tmp_path: Path) -> None:
+    data = [
+        {"id": f"c{i}", "question": "Q?", "reference_answer": "A.", "relevant_doc_ids": ["a"]}
+        for i in range(3)
+    ]
+    (tmp_path / "cases.json").write_text(json.dumps(data))
+
+    mock_retriever = MagicMock()
+    mock_retriever.retrieve.return_value = [_make_chunk("a")]
+
+    with (
+        patch("rag_harness.evaluation.runner.generate", return_value="ans"),
+        patch("rag_harness.evaluation.runner.faithfulness", return_value=0.9),
+        patch("rag_harness.evaluation.runner.correctness", return_value=0.9),
+        patch("rag_harness.evaluation.runner.answer_relevancy", return_value=0.9),
+        patch("rag_harness.evaluation.runner.context_precision", return_value=0.9),
+    ):
+        summary = run_eval(mock_retriever, golden_dir=tmp_path, case_filter=None)
+
+    assert len(summary.results) == 3
+
+
+def test_run_eval_case_filter_no_matches_raises(tmp_path: Path) -> None:
+    data = [
+        {"id": "real", "question": "Q?", "reference_answer": "A.", "relevant_doc_ids": ["a"]},
+    ]
+    (tmp_path / "cases.json").write_text(json.dumps(data))
+
+    with pytest.raises(ValueError, match="No golden cases"):
+        run_eval(MagicMock(), golden_dir=tmp_path, case_filter=["nonexistent"])
+
+
 def test_run_eval_aggregates_operational_metrics(tmp_path: Path) -> None:
     data = [
         {

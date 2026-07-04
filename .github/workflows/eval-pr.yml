@@ -1,0 +1,70 @@
+name: PR Eval Gate
+
+# Runs the reliability gate against a hand-picked subset of golden cases on
+# every PR to main. Enforces the same thresholds as the nightly full-suite
+# eval, but on 5 cases → ~$0.02 per PR. Failure blocks merge.
+#
+# The `if:` guard prevents PRs from forks from spending the repo's
+# OPENAI_API_KEY. Forks that need to test can trigger the workflow after a
+# maintainer pushes their branch into this repo.
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  eval-subset:
+    name: Reliability gate (PR subset)
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.head.repo.full_name == github.repository
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Create virtual environment
+        run: uv venv .venv --python 3.12
+
+      - name: Install dependencies
+        run: uv pip install -e ".[dev,eval]"
+
+      - name: Restore ChromaDB cache
+        id: chroma-cache
+        uses: actions/cache@v4
+        with:
+          path: chroma_db/
+          key: chroma-${{ runner.os }}-${{ hashFiles('src/rag_harness/config.py') }}
+
+      - name: Ingest K8s docs (cache miss only)
+        if: steps.chroma-cache.outputs.cache-hit != 'true'
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: uv run --no-sync python -m rag_harness ingest
+
+      - name: Save ChromaDB cache
+        if: steps.chroma-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: chroma_db/
+          key: chroma-${{ runner.os }}-${{ hashFiles('src/rag_harness/config.py') }}
+
+      - name: Run PR subset eval
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: uv run --no-sync python -m rag_harness eval --subset pr --verbose
+
+      - name: Write job summary
+        if: always()
+        run: |
+          echo "## PR Eval Gate Results" >> $GITHUB_STEP_SUMMARY
+          echo "Subset: \`EVAL_PR_SUBSET_IDS\` (5 cases across topic areas)." >> $GITHUB_STEP_SUMMARY
+          echo "Full suite runs nightly on the \`Nightly Eval\` workflow." >> $GITHUB_STEP_SUMMARY

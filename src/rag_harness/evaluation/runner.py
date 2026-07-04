@@ -159,6 +159,7 @@ def run_eval(
     use_corrective: bool = False,
     strategy_label: str = "unknown",
     record_history: bool = True,
+    case_filter: list[str] | None = None,
 ) -> EvalSummary:
     """Evaluate all golden cases and return a summary with pass/fail gate.
 
@@ -170,8 +171,15 @@ def run_eval(
     is False. Callers running many configurations (e.g. the ablation runner)
     may prefer to write the history entries themselves with the correct
     strategy label. *strategy_label* is stored verbatim in the history entry.
+
+    When *case_filter* is a non-empty list, only golden cases whose ``id`` is
+    in the filter are evaluated. Used by the per-PR CI gate to enforce
+    thresholds on a small, cheap subset of the full suite.
     """
     cases = load_golden_cases(golden_dir)
+    if case_filter:
+        wanted = set(case_filter)
+        cases = [c for c in cases if c.id in wanted]
     if not cases:
         raise ValueError(f"No golden cases found in {golden_dir or _GOLDEN_DIR}")
 

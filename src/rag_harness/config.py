@@ -62,6 +62,17 @@ class Settings(BaseSettings):
     rbi_relevancy_min: float = 0.7  # answer_relevancy above this AND ...
     rbi_correctness_max: float = 0.5  # correctness below this = highlighted failure
 
+    # Per-PR eval gate — small hand-picked subset that runs on every PR to main.
+    # Cheap (~$0.02/PR) but enforces the reliability gate against real LLM calls.
+    # Full suite runs nightly on the eval workflow.
+    eval_pr_subset_ids: list[str] = [
+        "pods-001",
+        "networking-001",
+        "storage-001",
+        "scheduling-001",
+        "cluster-001",
+    ]
+
     # Logging
     log_level: str = "INFO"
 

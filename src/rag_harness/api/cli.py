@@ -51,7 +51,18 @@ def _cmd_eval(args: argparse.Namespace) -> None:
     from rag_harness.retrieval.factory import build_retriever
 
     retriever = build_retriever(args.strategy)
-    summary = run_eval(retriever, use_corrective=args.corrective, strategy_label=args.strategy)
+    case_filter = None
+    if args.subset == "pr":
+        case_filter = settings.eval_pr_subset_ids
+    elif args.subset:
+        case_filter = [s.strip() for s in args.subset.split(",") if s.strip()]
+
+    summary = run_eval(
+        retriever,
+        use_corrective=args.corrective,
+        strategy_label=args.strategy,
+        case_filter=case_filter,
+    )
 
     print("\nEvaluation Results")
     print("=" * 56)
@@ -202,6 +213,15 @@ def main() -> None:
         action="store_true",
         default=settings.corrective_rag_enabled,
         help="Route every case through the corrective critic-and-retry loop.",
+    )
+    eval_p.add_argument(
+        "--subset",
+        metavar="pr|ID,ID,...",
+        help=(
+            "Restrict to a subset of golden cases. 'pr' uses "
+            "EVAL_PR_SUBSET_IDS (per-PR CI gate). Or pass a comma-separated "
+            "list of case IDs."
+        ),
     )
 
     ablation_p = sub.add_parser(
