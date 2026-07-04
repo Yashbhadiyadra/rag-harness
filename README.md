@@ -139,13 +139,18 @@ Key findings:
 - **Cross-encoder reranking is a precision play, not a recall play** —
   `hybrid-rerank` has the lowest recall but the highest faithfulness. The
   reranker drops relevant chunks alongside noise; survivors are extremely tight.
-- **Corrective is a wash on retrieval-strong strategies** — on `hyde`
-  (recall 0.90), the critic-and-retry loop slightly *hurts* recall (0.90 →
-  0.88). Best used when retrieval is weak enough for the critic to have
-  room to reformulate.
-- **Zero relevant-but-incorrect cases across every configuration** — this
-  corpus doesn't produce confident-sounding hallucinations. The LLM either
-  answers correctly or refuses cleanly.
+- **Corrective showed no consistent improvement across strategies** and
+  added latency (p50 grows by 1-8s depending on strategy). Single-metric
+  moves at n=30 sit within small-sample noise; larger golden sets are
+  needed to determine whether corrective actually helps on the weakest
+  retrievers.
+- **Zero relevant-but-incorrect cases across every configuration** — a
+  genuine null result about this corpus. The RBI metric is designed to
+  catch confident-sounding hallucination (high relevancy, low correctness);
+  on 30 K8s docs cases across 10 configs, it fired zero times. The LLM
+  either answers correctly or refuses cleanly on this material, so RBI
+  will be a more informative signal on corpora that produce richer
+  hallucination patterns.
 
 Serve the API:
 
