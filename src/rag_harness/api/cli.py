@@ -112,6 +112,50 @@ def _cmd_eval(args: argparse.Namespace) -> None:
         sys.exit(1)
 
 
+def _cmd_ablation(args: argparse.Namespace) -> None:
+    from pathlib import Path
+
+    from rag_harness.evaluation.ablation import (
+        relevant_but_incorrect_cases,
+        render_csv,
+        render_markdown,
+        run_ablation,
+    )
+
+    # Ablation defaults to opting in to the LLM judge cache — the whole point
+    # is to compare 10 configurations against the same golden set cheaply.
+    if not args.no_cache:
+        settings.llm_cache_enabled = True
+
+    output_dir = Path(args.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    runs = run_ablation()
+    if not runs:
+        print("No successful ablation configurations. See logs for details.")
+        sys.exit(1)
+
+    ts_slug = runs[0].timestamp.replace(":", "").replace("-", "")
+    sha = runs[0].git_commit
+    md_path = output_dir / f"ablation_{ts_slug}_{sha}.md"
+    csv_path = output_dir / f"ablation_{ts_slug}_{sha}.csv"
+
+    md_path.write_text(render_markdown(runs))
+    csv_path.write_text(render_csv(runs))
+
+    print("\nAblation results")
+    print("=" * 56)
+    print(render_markdown(runs))
+    print("Relevant-but-incorrect summary")
+    print("-" * 40)
+    for r in runs:
+        rbi = relevant_but_incorrect_cases(r.summary)
+        label = f"{r.strategy}" + (" + corrective" if r.corrective else "")
+        print(f"  {label:<28} : {len(rbi)} cases ({r.rbi_rate:.0%})")
+    print(f"\nMarkdown: {md_path}")
+    print(f"CSV:      {csv_path}")
+
+
 def main() -> None:
     """Parse arguments and dispatch to the appropriate subcommand handler."""
     parser = argparse.ArgumentParser(
@@ -160,8 +204,28 @@ def main() -> None:
         help="Route every case through the corrective critic-and-retry loop.",
     )
 
+    ablation_p = sub.add_parser(
+        "ablation",
+        help="Run the golden eval across every strategy × mode and emit a comparative table.",
+    )
+    ablation_p.add_argument(
+        "--output-dir",
+        default="evals/experiments",
+        help="Directory to write ablation_<ts>_<sha>.{md,csv} into (default: %(default)s).",
+    )
+    ablation_p.add_argument(
+        "--no-cache",
+        action="store_true",
+        help="Disable the LLM judge cache (default: on for ablation runs).",
+    )
+
     args = parser.parse_args()
-    {"ingest": _cmd_ingest, "query": _cmd_query, "eval": _cmd_eval}[args.command](args)
+    {
+        "ingest": _cmd_ingest,
+        "query": _cmd_query,
+        "eval": _cmd_eval,
+        "ablation": _cmd_ablation,
+    }[args.command](args)
 
 
 if __name__ == "__main__":

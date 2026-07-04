@@ -58,6 +58,10 @@ class Settings(BaseSettings):
     llm_cache_enabled: bool = False
     llm_cache_path: str = "./llm_cache.db"
 
+    # Ablation study — "relevant-but-incorrect" divergence category
+    rbi_relevancy_min: float = 0.7  # answer_relevancy above this AND ...
+    rbi_correctness_max: float = 0.5  # correctness below this = highlighted failure
+
     # Logging
     log_level: str = "INFO"
 
