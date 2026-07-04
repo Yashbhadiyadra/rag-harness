@@ -111,3 +111,18 @@ Gated behind `CORRECTIVE_RAG_ENABLED=false` by default. Users opt in.
   count, per-chunk scores, and the reformulated query if used. Phase 7
   (observability) and Phase 8 (ablation study) will use this to attribute
   wins and losses to specific corrective branches.
+
+## Amendments
+
+**2026-07-04 — Latency observation from the Phase 8 ablation.** Stacking the
+corrective loop on top of the most expensive retrieval strategy (`full` =
+HyDE + Rerank + Hybrid) roughly **doubles the p50 latency**: `full` baseline
+p50 is 10.5s per case; `full` + corrective p50 is 18.8s per case (p95 grows
+from 17.6s to 24.0s). See `evals/experiments/ablation_20260704T092511+0000_e148311.md`.
+
+Combined with the ablation's finding that corrective showed no consistent
+improvement across strategies at n=30, this argues against enabling corrective
+on top of `full` for latency-sensitive deployments. Corrective is best kept
+as an opt-in feature for cases where retrieval is expected to be weak — a
+degradation-recovery tool, not a default enhancement to the strongest
+pipeline. Larger golden sets in future phases may revise this stance.
