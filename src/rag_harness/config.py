@@ -42,6 +42,10 @@ class Settings(BaseSettings):
     critic_incorrect_threshold: float = 0.3  # top chunk below this = Incorrect
     corrective_max_retries: int = 1  # extra retrieval attempts after query reformulation
 
+    # Observability — override the built-in pricing table without editing source.
+    # Values are (input_rate_per_million, output_rate_per_million) in USD.
+    model_rates_overrides: dict[str, tuple[float, float]] = {}
+
     # Logging
     log_level: str = "INFO"
 

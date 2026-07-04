@@ -5,6 +5,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+- Observability foundation (Phase 7): model rates pricing table
+  (`observability/pricing.py`), immutable `TokenUsage` record, and a
+  `collect_usage()` ContextVar collector for opting into per-block token
+  and cost tracking without changing existing function signatures.
+- `MODEL_RATES_OVERRIDES` config for overriding per-token costs from `.env`.
+- ADR-0008: rationale for ContextVar over signature changes.
+
 ## [0.5.0] — 2026-07-02
 
 ### Added
