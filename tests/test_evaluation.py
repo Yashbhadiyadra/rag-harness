@@ -5,7 +5,11 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from rag_harness.evaluation.metrics import context_recall
+from rag_harness.evaluation.metrics import (
+    answer_relevancy,
+    context_precision,
+    context_recall,
+)
 from rag_harness.evaluation.runner import export_results, load_golden_cases, run_eval
 from rag_harness.models import Chunk, EvalResult, EvalSummary
 
@@ -171,3 +175,88 @@ def test_export_results_csv(tmp_path: Path) -> None:
 def test_export_results_unsupported_extension(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="Unsupported output format"):
         export_results(_make_summary(), tmp_path / "results.txt")
+
+
+# --- answer_relevancy ---
+
+
+def _mock_llm_score(score: str) -> MagicMock:
+    """Return a mock OpenAI client whose chat completion returns a raw score string."""
+    client = MagicMock()
+    resp = MagicMock()
+    resp.choices = [MagicMock()]
+    resp.choices[0].message.content = score
+    resp.usage = MagicMock(prompt_tokens=50, completion_tokens=3)
+    client.chat.completions.create.return_value = resp
+    return client
+
+
+def test_answer_relevancy_parses_score() -> None:
+    with patch("rag_harness.evaluation.metrics._client", _mock_llm_score("0.85")):
+        score = answer_relevancy("What is RBAC?", "RBAC controls permissions.")
+    assert score == 0.85
+
+
+def test_answer_relevancy_empty_answer_returns_zero() -> None:
+    # No LLM call needed for empty answer — short-circuit
+    with patch("rag_harness.evaluation.metrics._client") as mock_client:
+        score = answer_relevancy("What is RBAC?", "")
+    assert score == 0.0
+    mock_client.chat.completions.create.assert_not_called()
+
+
+def test_answer_relevancy_whitespace_only_returns_zero() -> None:
+    with patch("rag_harness.evaluation.metrics._client") as mock_client:
+        score = answer_relevancy("What is RBAC?", "   \n   ")
+    assert score == 0.0
+    mock_client.chat.completions.create.assert_not_called()
+
+
+def test_answer_relevancy_clamps_out_of_range() -> None:
+    with patch("rag_harness.evaluation.metrics._client", _mock_llm_score("1.7")):
+        assert answer_relevancy("Q?", "A.") == 1.0
+    with patch("rag_harness.evaluation.metrics._client", _mock_llm_score("-0.3")):
+        assert answer_relevancy("Q?", "A.") == 0.0
+
+
+# --- context_precision ---
+
+
+def test_context_precision_parses_score() -> None:
+    chunks = [_make_chunk("content/en/docs/security/rbac.md")]
+    with patch("rag_harness.evaluation.metrics._client", _mock_llm_score("0.6")):
+        score = context_precision("What is RBAC?", chunks, "RBAC controls permissions.")
+    assert score == 0.6
+
+
+def test_context_precision_empty_chunks_returns_zero() -> None:
+    with patch("rag_harness.evaluation.metrics._client") as mock_client:
+        score = context_precision("Q?", [], "reference")
+    assert score == 0.0
+    # No LLM call when there are no chunks to score
+    mock_client.chat.completions.create.assert_not_called()
+
+
+def test_context_precision_includes_all_chunks_in_prompt() -> None:
+    chunks = [
+        _make_chunk("docs/a.md"),
+        _make_chunk("docs/b.md"),
+        _make_chunk("docs/c.md"),
+    ]
+    with patch("rag_harness.evaluation.metrics._client", _mock_llm_score("0.5")) as mc:
+        context_precision("Q?", chunks, "ref")
+    # Verify all chunk texts appear in the LLM prompt (order doesn't matter for this test)
+    call_kwargs = mc.chat.completions.create.call_args.kwargs
+    user_msg = call_kwargs["messages"][1]["content"]
+    assert "[1]" in user_msg and "[2]" in user_msg and "[3]" in user_msg
+
+
+def test_context_precision_handles_non_numeric_response() -> None:
+    chunks = [_make_chunk("docs/a.md")]
+    with patch(
+        "rag_harness.evaluation.metrics._client",
+        _mock_llm_score("this is not a number"),
+    ):
+        score = context_precision("Q?", chunks, "ref")
+    # Falls back to 0.0 per the LLM judge parsing contract
+    assert score == 0.0

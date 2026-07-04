@@ -6,6 +6,7 @@ from openai import OpenAI
 
 from rag_harness.config import settings
 from rag_harness.models import Chunk
+from rag_harness.observability.usage import TokenUsage, record_usage
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +36,39 @@ Return a score between 0.0 and 1.0:
 Respond with ONLY a decimal number, nothing else. Example: 0.75
 """
 
+_ANSWER_RELEVANCY_PROMPT = """\
+You are an evaluation judge. Given a question and an answer, decide whether the \
+answer is on-topic and directly addresses the question — regardless of whether \
+the answer is factually correct.
+
+This measures topicality only, not accuracy. An answer can be highly relevant \
+(directly on-topic) and still be wrong; that combination is the most dangerous \
+failure mode.
+
+Return a score between 0.0 and 1.0:
+- 1.0 means the answer is fully on-topic and squarely addresses the question.
+- 0.5 means the answer partially addresses the question or is only tangentially related.
+- 0.0 means the answer is off-topic or does not address the question at all.
+
+Respond with ONLY a decimal number, nothing else. Example: 0.9
+"""
+
+_CONTEXT_PRECISION_PROMPT = """\
+You are an evaluation judge. Given a question, a reference answer, and a list of \
+retrieved passages, decide what fraction of the passages materially contain \
+information needed to produce the reference answer.
+
+This measures retrieval precision: were the retrieved chunks actually useful, or \
+was the retriever fetching noise alongside signal?
+
+Return a score between 0.0 and 1.0:
+- 1.0 means every retrieved passage contains information supporting the reference answer.
+- 0.5 means half the passages are useful; the other half are noise.
+- 0.0 means none of the passages contain information supporting the reference answer.
+
+Respond with ONLY a decimal number, nothing else. Example: 0.6
+"""
+
 
 def _llm_score(system_prompt: str, user_message: str) -> float:
     """Call the generation model as a judge and parse its 0–1 score response."""
@@ -46,6 +80,7 @@ def _llm_score(system_prompt: str, user_message: str) -> float:
         ],
         temperature=0,
     )
+    record_usage(TokenUsage.from_openai(settings.generation_model, response))
     raw = (response.choices[0].message.content or "0").strip()
     try:
         score = float(raw)
@@ -83,3 +118,33 @@ def correctness(question: str, answer: str, reference_answer: str) -> float:
         f"Generated answer: {answer}"
     )
     return _llm_score(_CORRECTNESS_PROMPT, user_message)
+
+
+def answer_relevancy(question: str, answer: str) -> float:
+    """Score whether the answer is on-topic for the question (regardless of correctness).
+
+    Complements ``correctness``: an answer can score high on relevancy and low on
+    correctness — that combination is confident-sounding hallucination and is
+    highlighted as its own failure category in Phase 8's ablation output.
+    """
+    if not answer.strip():
+        return 0.0
+    user_message = f"Question: {question}\n\nAnswer: {answer}"
+    return _llm_score(_ANSWER_RELEVANCY_PROMPT, user_message)
+
+
+def context_precision(question: str, retrieved_chunks: list[Chunk], reference_answer: str) -> float:
+    """Score the fraction of retrieved chunks that materially support the reference answer.
+
+    Complements ``context_recall``: recall answers "did we get all the right
+    chunks?", precision answers "of what we retrieved, how much was useful?".
+    """
+    if not retrieved_chunks:
+        return 0.0
+    passages = "\n\n".join(f"[{i + 1}] {c.text}" for i, c in enumerate(retrieved_chunks))
+    user_message = (
+        f"Question: {question}\n\n"
+        f"Reference answer: {reference_answer}\n\n"
+        f"Retrieved passages:\n{passages}"
+    )
+    return _llm_score(_CONTEXT_PRECISION_PROMPT, user_message)

@@ -34,8 +34,10 @@ class EvalResult(BaseModel):
     generated_answer: str
     retrieved_doc_ids: list[str]
     context_recall: float  # fraction of relevant_doc_ids that were retrieved
+    context_precision: float = 0.0  # fraction of retrieved chunks that were useful
     faithfulness: float  # 0–1: is every claim in the answer grounded in context?
     correctness: float  # 0–1: does the answer match the reference answer?
+    answer_relevancy: float = 0.0  # 0–1: is the answer on-topic (regardless of correctness)?
 
 
 class EvalSummary(BaseModel):

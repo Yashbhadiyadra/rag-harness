@@ -4,13 +4,15 @@
 Accepted
 
 ## Context
-The evaluation layer scores each generated answer on three metrics:
+The evaluation layer scores each generated answer on five metrics:
 
-| Metric | Type |
-|---|---|
-| Context Recall | Deterministic (set intersection) |
-| Faithfulness | Semantic — requires understanding |
-| Correctness | Semantic — requires understanding |
+| Metric | Type | Failure it detects |
+|---|---|---|
+| Context Recall | Deterministic (set intersection) | Retrieval missed relevant docs |
+| Context Precision | Semantic (LLM judge, added Phase 7) | Retriever fetched noise alongside signal |
+| Faithfulness | Semantic — requires understanding | Answer includes claims not in the context |
+| Correctness | Semantic — requires understanding | Answer disagrees with reference |
+| Answer Relevancy | Semantic (LLM judge, added Phase 7) | Answer is off-topic for the question |
 
 Faithfulness asks: "Is every claim in the answer supported by the retrieved context?"
 Correctness asks: "Does the answer capture the key points of the reference answer?"
@@ -55,3 +57,17 @@ enforced by keeping the nightly eval workflow separate from the per-PR CI workfl
 - **Dedicated eval frameworks (RAGAS, TruLens)**: considered but add heavyweight
   dependencies and obscure the scoring logic. Building our own keeps the eval layer
   transparent and reusable for Project 3.
+
+## Amendments
+
+**2026-07-03 — Phase 7 additions.** `answer_relevancy` and `context_precision`
+added to the metric suite. Cost impact: two additional `gpt-4o-mini` calls per
+case, ~$0.02 per full-suite run at 30 cases. Neither metric enters the reliability
+gate this phase — thresholds require baseline numbers from Phase 8's ablation
+before any gate change is justified.
+
+The two new metrics enable a key Phase 8 measurement: cases where
+`answer_relevancy` is high and `correctness` is low are flagged as
+"relevant but incorrect" — confident-sounding hallucination. That failure mode
+is distinct from off-topic responses and more dangerous, so it gets a dedicated
+row in the ablation output.
