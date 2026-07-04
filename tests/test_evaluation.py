@@ -310,6 +310,167 @@ def test_percentile_unsorted_input() -> None:
 # --- run_eval operational aggregation ---
 
 
+# --- corrective mode in run_eval ---
+
+
+def test_run_eval_corrective_routes_through_corrective_generate(tmp_path: Path) -> None:
+    from rag_harness.generation.corrective import CorrectiveResult
+    from rag_harness.generation.critic import Category
+
+    data = [
+        {
+            "id": "test-001",
+            "question": "What is RBAC?",
+            "reference_answer": "Role-Based Access Control.",
+            "relevant_doc_ids": ["docs/rbac.md"],
+        }
+    ]
+    (tmp_path / "cases.json").write_text(json.dumps(data))
+
+    mock_retriever = MagicMock()
+    fake_chunk = _make_chunk("docs/rbac.md")
+    fake_result = CorrectiveResult(
+        answer="Role-Based Access Control.",
+        chunks_used=[fake_chunk],
+        category=Category.CORRECT,
+        attempts=1,
+        scores=[0.9],
+        reformulated_query=None,
+    )
+
+    with (
+        patch(
+            "rag_harness.evaluation.runner.corrective_generate", return_value=fake_result
+        ) as mock_corrective,
+        patch("rag_harness.evaluation.runner.generate") as mock_generate,
+        patch("rag_harness.evaluation.runner.faithfulness", return_value=0.9),
+        patch("rag_harness.evaluation.runner.correctness", return_value=0.9),
+        patch("rag_harness.evaluation.runner.answer_relevancy", return_value=0.9),
+        patch("rag_harness.evaluation.runner.context_precision", return_value=0.9),
+    ):
+        summary = run_eval(mock_retriever, golden_dir=tmp_path, use_corrective=True)
+
+    # Corrective path taken; baseline generate not called
+    mock_corrective.assert_called_once()
+    mock_generate.assert_not_called()
+
+    # Corrective telemetry populated on the EvalResult
+    result = summary.results[0]
+    assert result.corrective_category == "correct"
+    assert result.corrective_attempts == 1
+    assert result.corrective_reformulated_query is None
+
+
+def test_run_eval_corrective_off_uses_baseline_generate(tmp_path: Path) -> None:
+    data = [
+        {
+            "id": "test-001",
+            "question": "What is RBAC?",
+            "reference_answer": "Role-Based Access Control.",
+            "relevant_doc_ids": ["docs/rbac.md"],
+        }
+    ]
+    (tmp_path / "cases.json").write_text(json.dumps(data))
+
+    mock_retriever = MagicMock()
+    mock_retriever.retrieve.return_value = [_make_chunk("docs/rbac.md")]
+
+    with (
+        patch("rag_harness.evaluation.runner.corrective_generate") as mock_corrective,
+        patch("rag_harness.evaluation.runner.generate", return_value="answer"),
+        patch("rag_harness.evaluation.runner.faithfulness", return_value=0.9),
+        patch("rag_harness.evaluation.runner.correctness", return_value=0.9),
+        patch("rag_harness.evaluation.runner.answer_relevancy", return_value=0.9),
+        patch("rag_harness.evaluation.runner.context_precision", return_value=0.9),
+    ):
+        summary = run_eval(mock_retriever, golden_dir=tmp_path, use_corrective=False)
+
+    mock_corrective.assert_not_called()
+    # Baseline telemetry fields stay None
+    result = summary.results[0]
+    assert result.corrective_category is None
+    assert result.corrective_attempts is None
+    assert result.corrective_reformulated_query is None
+
+
+def test_run_eval_corrective_captures_reformulation(tmp_path: Path) -> None:
+    from rag_harness.generation.corrective import CorrectiveResult
+    from rag_harness.generation.critic import Category
+
+    data = [
+        {
+            "id": "test-001",
+            "question": "Q?",
+            "reference_answer": "A.",
+            "relevant_doc_ids": ["docs/a.md"],
+        }
+    ]
+    (tmp_path / "cases.json").write_text(json.dumps(data))
+
+    fake_result = CorrectiveResult(
+        answer="answer after retry",
+        chunks_used=[_make_chunk("docs/a.md")],
+        category=Category.CORRECT,
+        attempts=2,
+        scores=[0.8],
+        reformulated_query="better keywords Q?",
+    )
+
+    with (
+        patch("rag_harness.evaluation.runner.corrective_generate", return_value=fake_result),
+        patch("rag_harness.evaluation.runner.faithfulness", return_value=0.9),
+        patch("rag_harness.evaluation.runner.correctness", return_value=0.9),
+        patch("rag_harness.evaluation.runner.answer_relevancy", return_value=0.9),
+        patch("rag_harness.evaluation.runner.context_precision", return_value=0.9),
+    ):
+        summary = run_eval(MagicMock(), golden_dir=tmp_path, use_corrective=True)
+
+    r = summary.results[0]
+    assert r.corrective_attempts == 2
+    assert r.corrective_reformulated_query == "better keywords Q?"
+
+
+def test_run_eval_corrective_refusal_still_scored(tmp_path: Path) -> None:
+    from rag_harness.generation.corrective import NO_INFO_MESSAGE, CorrectiveResult
+    from rag_harness.generation.critic import Category
+
+    data = [
+        {
+            "id": "test-001",
+            "question": "Q?",
+            "reference_answer": "A.",
+            "relevant_doc_ids": ["docs/a.md"],
+        }
+    ]
+    (tmp_path / "cases.json").write_text(json.dumps(data))
+
+    # Refusal path: no chunks used, standard NO_INFO_MESSAGE
+    fake_result = CorrectiveResult(
+        answer=NO_INFO_MESSAGE,
+        chunks_used=[],
+        category=Category.INCORRECT,
+        attempts=2,
+        scores=[0.1],
+        reformulated_query="rewritten Q?",
+    )
+
+    with (
+        patch("rag_harness.evaluation.runner.corrective_generate", return_value=fake_result),
+        patch("rag_harness.evaluation.runner.faithfulness", return_value=0.5),
+        patch("rag_harness.evaluation.runner.correctness", return_value=0.0),
+        patch("rag_harness.evaluation.runner.answer_relevancy", return_value=0.0),
+        patch("rag_harness.evaluation.runner.context_precision", return_value=0.0),
+    ):
+        summary = run_eval(MagicMock(), golden_dir=tmp_path, use_corrective=True)
+
+    r = summary.results[0]
+    assert r.generated_answer == NO_INFO_MESSAGE
+    assert r.retrieved_doc_ids == []
+    assert r.corrective_category == "incorrect"
+    # A refusal correctly scored low on correctness — that's the intended signal
+    assert r.correctness == 0.0
+
+
 def test_run_eval_aggregates_operational_metrics(tmp_path: Path) -> None:
     data = [
         {

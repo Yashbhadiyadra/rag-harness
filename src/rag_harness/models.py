@@ -43,6 +43,10 @@ class EvalResult(BaseModel):
     input_tokens: int = 0
     output_tokens: int = 0
     estimated_cost_usd: float = 0.0
+    # Corrective RAG telemetry (added Phase 8; None on baseline runs)
+    corrective_category: str | None = None
+    corrective_attempts: int | None = None
+    corrective_reformulated_query: str | None = None
 
 
 class EvalSummary(BaseModel):

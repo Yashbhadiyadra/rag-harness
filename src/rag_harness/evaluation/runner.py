@@ -15,8 +15,9 @@ from rag_harness.evaluation.metrics import (
     correctness,
     faithfulness,
 )
+from rag_harness.generation.corrective import CorrectiveResult, corrective_generate
 from rag_harness.generation.generator import generate
-from rag_harness.models import EvalResult, EvalSummary, GoldenCase
+from rag_harness.models import Chunk, EvalResult, EvalSummary, GoldenCase
 from rag_harness.observability.tracing import traced_span
 from rag_harness.observability.usage import collect_usage
 from rag_harness.retrieval.base import Retriever
@@ -37,23 +38,44 @@ def load_golden_cases(golden_dir: Path | None = None) -> list[GoldenCase]:
     return cases
 
 
-def evaluate_case(case: GoldenCase, retriever: Retriever) -> EvalResult:
+def evaluate_case(
+    case: GoldenCase,
+    retriever: Retriever,
+    *,
+    use_corrective: bool = False,
+) -> EvalResult:
     """Run the full RAG pipeline for one golden case and score every metric.
 
     Measures wall-clock latency for the retrieve + generate + score sequence,
     and aggregates token counts and cost from every LLM call made inside via
     the `collect_usage()` collector.
+
+    When *use_corrective* is True, the answer is produced by
+    `corrective_generate` (critic-scored, may reformulate + retry, may refuse)
+    instead of the plain generator. Scoring is identical against the answer
+    and chunks the corrective path actually used.
     """
     start = time.perf_counter()
+
+    chunks: list[Chunk]
+    answer: str
+    corrective_result: CorrectiveResult | None = None
 
     with (
         traced_span("evaluate_case", case_id=case.id) as case_span,
         collect_usage() as usage_list,
     ):
-        with traced_span("retrieve"):
-            chunks = retriever.retrieve(case.question)
-        with traced_span("generate", chunk_count=len(chunks)):
-            answer = generate(case.question, chunks)
+        if use_corrective:
+            with traced_span("corrective_generate"):
+                corrective_result = corrective_generate(case.question, retriever)
+            chunks = corrective_result.chunks_used
+            answer = corrective_result.answer
+        else:
+            with traced_span("retrieve"):
+                chunks = retriever.retrieve(case.question)
+            with traced_span("generate", chunk_count=len(chunks)):
+                answer = generate(case.question, chunks)
+
         with traced_span("score"):
             recall = context_recall(chunks, case.relevant_doc_ids)
             precision = context_precision(case.question, chunks, case.reference_answer)
@@ -69,6 +91,9 @@ def evaluate_case(case: GoldenCase, retriever: Retriever) -> EvalResult:
             case_span.set_attribute("metric.faithfulness", faith)
             case_span.set_attribute("metric.correctness", correct)
             case_span.set_attribute("metric.answer_relevancy", relevancy)
+            if corrective_result is not None:
+                case_span.set_attribute("corrective.category", corrective_result.category.value)
+                case_span.set_attribute("corrective.attempts", corrective_result.attempts)
 
     latency_ms = (time.perf_counter() - start) * 1000.0
     input_tokens = sum(u.input_tokens for u in usage_list)
@@ -77,7 +102,7 @@ def evaluate_case(case: GoldenCase, retriever: Retriever) -> EvalResult:
 
     logger.debug(
         "case %s — recall=%.2f prec=%.2f faith=%.2f correct=%.2f rel=%.2f "
-        "latency=%.0fms cost=$%.4f",
+        "latency=%.0fms cost=$%.4f corrective=%s",
         case.id,
         recall,
         precision,
@@ -86,6 +111,7 @@ def evaluate_case(case: GoldenCase, retriever: Retriever) -> EvalResult:
         relevancy,
         latency_ms,
         cost_usd,
+        use_corrective,
     )
     return EvalResult(
         case_id=case.id,
@@ -101,6 +127,11 @@ def evaluate_case(case: GoldenCase, retriever: Retriever) -> EvalResult:
         input_tokens=input_tokens,
         output_tokens=output_tokens,
         estimated_cost_usd=cost_usd,
+        corrective_category=(corrective_result.category.value if corrective_result else None),
+        corrective_attempts=(corrective_result.attempts if corrective_result else None),
+        corrective_reformulated_query=(
+            corrective_result.reformulated_query if corrective_result else None
+        ),
     )
 
 
@@ -123,13 +154,20 @@ def _percentile(values: list[float], pct: float) -> float:
 def run_eval(
     retriever: Retriever,
     golden_dir: Path | None = None,
+    *,
+    use_corrective: bool = False,
 ) -> EvalSummary:
-    """Evaluate all golden cases and return a summary with pass/fail gate."""
+    """Evaluate all golden cases and return a summary with pass/fail gate.
+
+    When *use_corrective* is True, every case routes through the corrective
+    critic-and-retry loop. Baseline metrics stay comparable — the same set of
+    quality judges score whatever the corrective path produced.
+    """
     cases = load_golden_cases(golden_dir)
     if not cases:
         raise ValueError(f"No golden cases found in {golden_dir or _GOLDEN_DIR}")
 
-    results = [evaluate_case(case, retriever) for case in cases]
+    results = [evaluate_case(case, retriever, use_corrective=use_corrective) for case in cases]
     n = len(results)
 
     mean_recall = sum(r.context_recall for r in results) / n

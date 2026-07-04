@@ -51,7 +51,7 @@ def _cmd_eval(args: argparse.Namespace) -> None:
     from rag_harness.retrieval.factory import build_retriever
 
     retriever = build_retriever(args.strategy)
-    summary = run_eval(retriever)
+    summary = run_eval(retriever, use_corrective=args.corrective)
 
     print("\nEvaluation Results")
     print("=" * 56)
@@ -71,6 +71,28 @@ def _cmd_eval(args: argparse.Namespace) -> None:
     print("  " + "-" * 40)
     print(f"  Gate               : {'PASSED' if summary.passed else 'FAILED'}")
     print()
+
+    if args.corrective:
+        # Corrective telemetry — how the critic-and-retry loop actually behaved
+        cat_counts: dict[str, int] = {}
+        retries = 0
+        refusals = 0
+        for r in summary.results:
+            if r.corrective_category is None:
+                continue
+            cat_counts[r.corrective_category] = cat_counts.get(r.corrective_category, 0) + 1
+            if r.corrective_attempts and r.corrective_attempts > 1:
+                retries += 1
+            # A refusal returns the "not enough information" answer with no chunks
+            if r.corrective_category == "incorrect" and not r.retrieved_doc_ids:
+                refusals += 1
+        print("Corrective telemetry")
+        print("=" * 56)
+        parts = ", ".join(f"{k}={v}" for k, v in sorted(cat_counts.items()))
+        print(f"  Categories         : {parts}")
+        print(f"  Retries fired      : {retries}")
+        print(f"  Refusals           : {refusals}")
+        print()
 
     if args.verbose:
         for result in summary.results:
@@ -130,6 +152,12 @@ def main() -> None:
         choices=strategy_choices,
         default=settings.retrieval_strategy,
         help="Retrieval strategy (default: %(default)s).",
+    )
+    eval_p.add_argument(
+        "--corrective",
+        action="store_true",
+        default=settings.corrective_rag_enabled,
+        help="Route every case through the corrective critic-and-retry loop.",
     )
 
     args = parser.parse_args()
