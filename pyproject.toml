@@ -26,7 +26,16 @@ eval = [
     "openai>=1.30",   # LLM-as-judge; kept separate so eval doesn't run on every PR
 ]
 rerank = [
-    "sentence-transformers>=3.0",  # cross-encoder reranker; ~500MB with PyTorch
+    # sentence-transformers 4.x/5.x pull transformers 5.x, which shipped a
+    # `nn.Module` type annotation without importing `torch.nn as nn`, breaking
+    # `from sentence_transformers import CrossEncoder`. Pin to the 3.x line
+    # (transitively pulls transformers 4.x, which works).
+    "sentence-transformers>=3.0,<4.0",  # cross-encoder reranker; ~500MB with PyTorch
+    # torch 2.2.2 (transitive dep of sentence-transformers 3.x) was compiled
+    # against NumPy 1.x. NumPy 2.x breaks torch.Tensor→numpy round-trips at
+    # runtime with a "Numpy is not available" error. Pin NumPy < 2 until we
+    # upgrade to torch >= 2.4 (which supports NumPy 2).
+    "numpy<2.0",
 ]
 observability = [
     "arize-phoenix-otel>=0.6",
