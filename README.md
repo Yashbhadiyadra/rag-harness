@@ -119,6 +119,34 @@ to commits. See `evals/history/README.md` for the schema.
 The LLM judge cache is opt-in on by default for ablation runs, making
 subsequent runs against unchanged code near-free.
 
+**Latest results** (2026-07-04, `e148311`, 30 golden cases, `gpt-4o-mini`):
+
+| Strategy | Corrective | Recall | Precision | Faith | Correct | Relevancy | Cost | p50 |
+|---|:---:|---:|---:|---:|---:|---:|---:|---:|
+| dense | no | 0.77 | 0.91 | 0.87 | 0.74 | 0.80 | $0.009 | 3.0s |
+| hybrid | no | 0.78 | 0.86 | 0.86 | 0.76 | 0.87 | $0.010 | 2.5s |
+| hybrid-rerank | no | 0.73 | 0.86 | 0.92 | 0.83 | 0.93 | $0.021 | 5.6s |
+| **hyde** | no | **0.90** | **0.95** | 0.93 | **0.87** | 0.93 | $0.017 | 6.1s |
+| full | no | 0.72 | 0.94 | **0.98** | **0.91** | **1.00** | $0.028 | 10.5s |
+
+Full 10-row table (both corrective modes) and per-case data in
+[`evals/experiments/`](evals/experiments/).
+
+Key findings:
+- **HyDE dominates on retrieval quality** (recall 0.90, precision 0.95) at
+  moderate cost. The vocabulary bridge between short questions and long
+  answer chunks matters more than any other single technique on this corpus.
+- **Cross-encoder reranking is a precision play, not a recall play** —
+  `hybrid-rerank` has the lowest recall but the highest faithfulness. The
+  reranker drops relevant chunks alongside noise; survivors are extremely tight.
+- **Corrective is a wash on retrieval-strong strategies** — on `hyde`
+  (recall 0.90), the critic-and-retry loop slightly *hurts* recall (0.90 →
+  0.88). Best used when retrieval is weak enough for the critic to have
+  room to reformulate.
+- **Zero relevant-but-incorrect cases across every configuration** — this
+  corpus doesn't produce confident-sounding hallucinations. The LLM either
+  answers correctly or refuses cleanly.
+
 Serve the API:
 
 ```bash
