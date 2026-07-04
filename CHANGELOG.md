@@ -10,8 +10,39 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   (`observability/pricing.py`), immutable `TokenUsage` record, and a
   `collect_usage()` ContextVar collector for opting into per-block token
   and cost tracking without changing existing function signatures.
-- `MODEL_RATES_OVERRIDES` config for overriding per-token costs from `.env`.
+- `record_usage()` calls at every OpenAI boundary — chat completions in
+  generator/critic/corrective-reformulation/HyDE, query embeddings in the
+  dense retriever, batched chunk embeddings in the ingest embedder.
+- Two new LLM-as-judge metrics: `answer_relevancy` (is the answer
+  on-topic?) and `context_precision` (fraction of retrieved chunks that
+  materially support the reference answer). Complete the five-metric suite.
+- Extended `EvalResult` with `latency_ms`, `input_tokens`, `output_tokens`,
+  `estimated_cost_usd`. Extended `EvalSummary` with `mean_context_precision`,
+  `mean_answer_relevancy`, `latency_p50_ms`, `latency_p95_ms`,
+  `total_cost_usd`, `total_input_tokens`, `total_output_tokens`.
+- `python -m rag_harness eval` now prints quality + operational metrics in
+  one unified table (Phase 7 exit criterion).
+- `GET /metrics` Prometheus endpoint on the API server with counters for
+  query volume, errors, tokens (by direction/model), and cost; histogram
+  for latency by strategy. Default process/GC collectors are unregistered
+  so the endpoint is RAG-focused.
+- Per-stage tracing (Arize Phoenix backend, see ADR-0009). New
+  `observability/tracing.py` with a `configure_tracing()` bootstrapper
+  and a `traced_span()` context manager that is a cheap no-op when
+  disabled. Stages instrumented: `evaluate_case`, `retrieve`, `generate`,
+  `score` in the eval runner; `query`, `retrieve`, `generate`,
+  `corrective_generate` on the API server. OpenAI SDK calls
+  auto-instrumented via `openinference-instrumentation-openai` so they
+  nest inside stage spans.
+- `docker-compose.yml` gains a `phoenix` service (image
+  `arizephoenix/phoenix:latest`, UI on `:6006`).
+- `MODEL_RATES_OVERRIDES`, `TRACING_ENABLED`, `TRACING_ENDPOINT`,
+  `TRACING_SERVICE_NAME` config keys.
+- Optional `[observability]` extra: `arize-phoenix-otel`,
+  `openinference-instrumentation-openai`. Base install stays lightweight.
 - ADR-0008: rationale for ContextVar over signature changes.
+- ADR-0009: Phoenix vs Langfuse comparison; **Phoenix chosen** on
+  operational fit, Cloud Run alignment, and reversibility.
 
 ## [0.5.0] — 2026-07-02
 

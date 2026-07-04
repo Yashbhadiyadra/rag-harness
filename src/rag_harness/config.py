@@ -46,6 +46,11 @@ class Settings(BaseSettings):
     # Values are (input_rate_per_million, output_rate_per_million) in USD.
     model_rates_overrides: dict[str, tuple[float, float]] = {}
 
+    # Tracing (requires `pip install -e '.[observability]'`; see ADR-0009)
+    tracing_enabled: bool = False
+    tracing_endpoint: str = "http://localhost:6006/v1/traces"
+    tracing_service_name: str = "rag-harness"
+
     # Logging
     log_level: str = "INFO"
 

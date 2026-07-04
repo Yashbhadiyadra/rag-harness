@@ -20,6 +20,7 @@ from rag_harness.config import settings
 from rag_harness.generation.corrective import corrective_generate
 from rag_harness.generation.generator import generate
 from rag_harness.logging_setup import configure_logging
+from rag_harness.observability.tracing import configure_tracing, traced_span
 from rag_harness.observability.usage import collect_usage
 from rag_harness.retrieval.base import Retriever
 from rag_harness.retrieval.factory import build_retriever
@@ -29,8 +30,9 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def _lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    """Configure logging once at server startup."""
+    """Configure logging and tracing once at server startup."""
     configure_logging(settings.log_level)
+    configure_tracing()
     yield
 
 
@@ -98,14 +100,25 @@ def query(request: QueryRequest) -> QueryResponse:
 
     start = time.perf_counter()
     try:
-        with collect_usage() as usage_list:
+        with (
+            traced_span(
+                "query",
+                strategy=strategy,
+                corrective=use_corrective,
+                top_k=request.top_k,
+            ),
+            collect_usage() as usage_list,
+        ):
             if use_corrective:
-                result = corrective_generate(request.question, retriever, top_k=request.top_k)
-                answer = result.answer
-                chunks = result.chunks_used
+                with traced_span("corrective_generate"):
+                    result = corrective_generate(request.question, retriever, top_k=request.top_k)
+                    answer = result.answer
+                    chunks = result.chunks_used
             else:
-                chunks = retriever.retrieve(request.question, top_k=request.top_k)
-                answer = generate(request.question, chunks)
+                with traced_span("retrieve"):
+                    chunks = retriever.retrieve(request.question, top_k=request.top_k)
+                with traced_span("generate", chunk_count=len(chunks)):
+                    answer = generate(request.question, chunks)
     except Exception as e:
         QUERY_ERRORS_TOTAL.labels(strategy=strategy, error_type=type(e).__name__).inc()
         raise

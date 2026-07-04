@@ -224,6 +224,8 @@ All non-trivial decisions are captured as Architecture Decision Records in
 - [ADR-0005](docs/adr/ADR-0005-embedding-cache.md) — SQLite embedding cache
 - [ADR-0006](docs/adr/ADR-0006-hybrid-retrieval-and-reranking.md) — Hybrid retrieval, reranking, HyDE
 - [ADR-0007](docs/adr/ADR-0007-corrective-rag.md) — Corrective RAG critic-and-retry loop
+- [ADR-0008](docs/adr/ADR-0008-observability-usage-tracking.md) — ContextVar collector for token usage
+- [ADR-0009](docs/adr/ADR-0009-tracing-backend.md) — Arize Phoenix for per-stage tracing
 
 ## Research foundations
 

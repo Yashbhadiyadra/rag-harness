@@ -17,6 +17,7 @@ from rag_harness.evaluation.metrics import (
 )
 from rag_harness.generation.generator import generate
 from rag_harness.models import EvalResult, EvalSummary, GoldenCase
+from rag_harness.observability.tracing import traced_span
 from rag_harness.observability.usage import collect_usage
 from rag_harness.retrieval.base import Retriever
 
@@ -45,15 +46,29 @@ def evaluate_case(case: GoldenCase, retriever: Retriever) -> EvalResult:
     """
     start = time.perf_counter()
 
-    with collect_usage() as usage_list:
-        chunks = retriever.retrieve(case.question)
-        answer = generate(case.question, chunks)
+    with (
+        traced_span("evaluate_case", case_id=case.id) as case_span,
+        collect_usage() as usage_list,
+    ):
+        with traced_span("retrieve"):
+            chunks = retriever.retrieve(case.question)
+        with traced_span("generate", chunk_count=len(chunks)):
+            answer = generate(case.question, chunks)
+        with traced_span("score"):
+            recall = context_recall(chunks, case.relevant_doc_ids)
+            precision = context_precision(case.question, chunks, case.reference_answer)
+            faith = faithfulness(case.question, answer, chunks)
+            correct = correctness(case.question, answer, case.reference_answer)
+            relevancy = answer_relevancy(case.question, answer)
 
-        recall = context_recall(chunks, case.relevant_doc_ids)
-        precision = context_precision(case.question, chunks, case.reference_answer)
-        faith = faithfulness(case.question, answer, chunks)
-        correct = correctness(case.question, answer, case.reference_answer)
-        relevancy = answer_relevancy(case.question, answer)
+        if case_span is not None:
+            # Record every headline score as a span attribute so the Phoenix
+            # UI can filter/sort cases by metric without opening each one.
+            case_span.set_attribute("metric.context_recall", recall)
+            case_span.set_attribute("metric.context_precision", precision)
+            case_span.set_attribute("metric.faithfulness", faith)
+            case_span.set_attribute("metric.correctness", correct)
+            case_span.set_attribute("metric.answer_relevancy", relevancy)
 
     latency_ms = (time.perf_counter() - start) * 1000.0
     input_tokens = sum(u.input_tokens for u in usage_list)

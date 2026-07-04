@@ -8,8 +8,22 @@ services:
     volumes:
       - chroma_data:/app/chroma_db
       - embed_cache:/app/embedding_cache.db
+    depends_on:
+      - phoenix
+    restart: unless-stopped
+
+  # Arize Phoenix — per-stage LLM tracing UI (see ADR-0009). The API server
+  # sends spans here when TRACING_ENABLED=true. Not required for normal
+  # operation; skip with `docker compose up api` if you want the API only.
+  phoenix:
+    image: arizephoenix/phoenix:latest
+    ports:
+      - "6006:6006"  # UI + OTLP HTTP receiver
+    volumes:
+      - phoenix_data:/mnt/data
     restart: unless-stopped
 
 volumes:
   chroma_data:
   embed_cache:
+  phoenix_data:

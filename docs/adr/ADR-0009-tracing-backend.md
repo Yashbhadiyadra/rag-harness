@@ -1,7 +1,17 @@
-# ADR-0009 — Tracing backend: Phoenix vs Langfuse (DRAFT)
+# ADR-0009 — Tracing backend: Arize Phoenix
 
-**Status:** Proposed — awaits owner approval before implementation
+**Status:** Accepted
 **Date:** 2026-07-03
+**Decided by:** Owner, 2026-07-03
+
+## Decision
+
+**Arize Phoenix** was chosen over Langfuse. Rationale: operational fit with
+the "self-hosted keeps cost ~zero" rule, cleaner Cloud Run deploy story
+(SQLite default vs Postgres required), and OpenTelemetry-native
+instrumentation preserves reversibility if we later want to swap backends.
+
+The comparison analysis below is preserved for future reference.
 
 ## Context
 
@@ -146,7 +156,3 @@ Once you pick, the follow-up work is:
 Estimated size: ~200 LOC + 8 tests. One commit, one dependency, ~half a day
 of focused work.
 
----
-
-**Awaiting decision:** Phoenix, Langfuse, or override with a different
-backend. No tracing code will be written until this ADR moves to `Accepted`.
