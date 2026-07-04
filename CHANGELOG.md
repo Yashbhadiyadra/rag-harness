@@ -5,6 +5,45 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.7.0] — 2026-07-04
+
+### Added (Phase 8 — evaluation completeness + ablation study)
+- Corrective RAG wired into `run_eval` behind a keyword-only
+  `use_corrective` flag (also `--corrective` on the CLI's `eval`
+  subcommand). `EvalResult` gains `corrective_category`,
+  `corrective_attempts`, `corrective_reformulated_query`.
+- SQLite LLM judge response cache (`observability/llm_cache.py`) —
+  wraps `faithfulness`, `correctness`, `answer_relevancy`,
+  `context_precision`. **Not** wired to `generate()` or the corrective
+  critic (deliberate footgun avoidance). Cache hits skip the API and
+  record no token usage. Off by default.
+- Ablation runner (`evaluation/ablation.py`) — sweeps every strategy in
+  `VALID_STRATEGIES` × [baseline, corrective] and emits a single
+  comparative markdown table + full CSV. New CLI: `rag-harness ablation
+  [--output-dir evals/experiments] [--no-cache]`.
+- **Relevant-but-incorrect** as a first-class output. Cases where
+  `answer_relevancy > 0.7` AND `correctness < 0.5` — confident-sounding
+  hallucination — get their own column in the ablation markdown, their
+  own row in the terminal summary, and a per-case boolean flag in the
+  CSV.
+- Append-only eval history at `evals/history/runs.jsonl`. One line per
+  `run_eval` invocation and per ablation configuration. Grows with git
+  history so quality drift and cost blowups are attributable to
+  specific commits.
+- Per-PR reliability gate — `.github/workflows/eval-pr.yml` runs the
+  gate against a 5-case subset on every PR to main. `~$0.02 per PR`.
+  Guarded so PRs from forks can't spend the repo's `OPENAI_API_KEY`.
+  Full suite still runs nightly.
+- `EVAL_PR_SUBSET_IDS`, `RBI_RELEVANCY_MIN`, `RBI_CORRECTNESS_MAX`,
+  `LLM_CACHE_ENABLED`, `LLM_CACHE_PATH` config keys.
+- CLI `--subset pr|id1,id2,...` on the `eval` subcommand.
+
+### Changed
+- `run_eval` grows keyword-only `strategy_label`, `record_history`, and
+  `case_filter` parameters. Default behaviour unchanged.
+
+## [0.6.0] — 2026-07-03
+
 ### Added
 - Observability foundation (Phase 7): model rates pricing table
   (`observability/pricing.py`), immutable `TokenUsage` record, and a

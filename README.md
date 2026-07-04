@@ -91,7 +91,33 @@ make eval
 
 # Save per-case scores for regression tracking
 python -m rag_harness eval --output results.json    # or .csv
+
+# Run the ablation study across every strategy × mode (see below)
+python -m rag_harness ablation
 ```
+
+### PR reliability gate
+
+Every pull request to `main` runs a 5-case reliability subset against the real
+LLM (`~$0.02/PR`). The full 30-case suite runs nightly. Both enforce the same
+thresholds; the difference is coverage vs cost. PR gate config lives in
+`EVAL_PR_SUBSET_IDS`. See `.github/workflows/eval-pr.yml`.
+
+### Ablation study
+
+`python -m rag_harness ablation` sweeps every retrieval strategy in
+`{dense, hybrid, hybrid-rerank, hyde, full}` × `{baseline, corrective}` — 10
+configurations — and emits a comparative markdown table + full CSV. Highlights
+the **relevant-but-incorrect** category (confident, on-topic answers that get
+the facts wrong) as a dedicated column.
+
+Outputs land in `evals/experiments/ablation_<utc-ts>_<git-sha>.{md,csv}`.
+Every run also appends one line per configuration to
+`evals/history/runs.jsonl` (append-only) so quality trends are attributable
+to commits. See `evals/history/README.md` for the schema.
+
+The LLM judge cache is opt-in on by default for ablation runs, making
+subsequent runs against unchanged code near-free.
 
 Serve the API:
 
