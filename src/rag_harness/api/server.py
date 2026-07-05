@@ -13,6 +13,7 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from slowapi.util import get_remote_address
 
+from rag_harness.api.errors import GuardrailRejection, RagHarnessError
 from rag_harness.api.guardrails import screen_for_injection
 from rag_harness.api.metrics import (
     QUERY_COST_USD,
@@ -58,6 +59,33 @@ limiter = Limiter(key_func=get_remote_address, default_limits=[settings.api_rate
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 app.add_middleware(SlowAPIMiddleware)
+
+
+@app.exception_handler(RagHarnessError)
+async def _rag_harness_error_handler(request: Request, exc: RagHarnessError) -> Response:
+    """Map every RagHarnessError subclass to a structured JSON response."""
+    import json
+
+    logger.warning(
+        "api error: %s",
+        exc.message,
+        extra={
+            "error_type": exc.error_type,
+            "status_code": exc.status_code,
+            "detail": exc.detail,
+        },
+    )
+    body = {
+        "error_type": exc.error_type,
+        "message": exc.message,
+        "detail": exc.detail,
+    }
+    return Response(
+        content=json.dumps(body),
+        status_code=exc.status_code,
+        media_type="application/json",
+    )
+
 
 _retriever: Retriever | None = None
 
@@ -114,8 +142,7 @@ async def query(request: Request, body: QueryRequest) -> QueryResponse:
 
     reason = screen_for_injection(body.question)
     if reason is not None:
-        logger.warning("guardrail rejection: %s", reason)
-        raise HTTPException(status_code=422, detail=f"rejected: {reason}")
+        raise GuardrailRejection("input rejected by guardrail", detail=reason)
 
     retriever = _get_retriever()
     strategy = settings.retrieval_strategy
