@@ -17,8 +17,8 @@ from rag_harness.api.metrics import (
     prometheus_response,
 )
 from rag_harness.config import settings
-from rag_harness.generation.corrective import corrective_generate
-from rag_harness.generation.generator import generate
+from rag_harness.generation.corrective import corrective_generate_async
+from rag_harness.generation.generator import generate_async
 from rag_harness.logging_setup import configure_logging
 from rag_harness.observability.tracing import configure_tracing, traced_span
 from rag_harness.observability.usage import collect_usage
@@ -81,7 +81,7 @@ class QueryResponse(BaseModel):
 
 
 @app.post("/query", response_model=QueryResponse)
-def query(request: QueryRequest) -> QueryResponse:
+async def query(request: QueryRequest) -> QueryResponse:
     """Retrieve relevant chunks and return a grounded answer with source attribution.
 
     Wrapped in a `collect_usage()` block so every LLM call made downstream
@@ -111,14 +111,16 @@ def query(request: QueryRequest) -> QueryResponse:
         ):
             if use_corrective:
                 with traced_span("corrective_generate"):
-                    result = corrective_generate(request.question, retriever, top_k=request.top_k)
+                    result = await corrective_generate_async(
+                        request.question, retriever, top_k=request.top_k
+                    )
                     answer = result.answer
                     chunks = result.chunks_used
             else:
                 with traced_span("retrieve"):
-                    chunks = retriever.retrieve(request.question, top_k=request.top_k)
+                    chunks = await retriever.retrieve_async(request.question, top_k=request.top_k)
                 with traced_span("generate", chunk_count=len(chunks)):
-                    answer = generate(request.question, chunks)
+                    answer = await generate_async(request.question, chunks)
     except Exception as e:
         QUERY_ERRORS_TOTAL.labels(strategy=strategy, error_type=type(e).__name__).inc()
         raise

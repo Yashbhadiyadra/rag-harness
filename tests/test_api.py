@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from fastapi.testclient import TestClient
 
@@ -30,11 +30,15 @@ def test_query_returns_answer_and_sources() -> None:
     chunk = _make_chunk("content/en/docs/security/rbac.md", ["Security", "RBAC"])
 
     mock_retriever = MagicMock()
-    mock_retriever.retrieve.return_value = [chunk]
+    mock_retriever.retrieve_async = AsyncMock(return_value=[chunk])
 
     with (
         patch("rag_harness.api.server._get_retriever", return_value=mock_retriever),
-        patch("rag_harness.api.server.generate", return_value="Use RoleBinding."),
+        patch(
+            "rag_harness.api.server.generate_async",
+            new_callable=AsyncMock,
+            return_value="Use RoleBinding.",
+        ),
     ):
         response = client.post("/query", json={"question": "How do I configure RBAC?"})
 
@@ -53,11 +57,15 @@ def test_query_rejects_empty_question() -> None:
 
 def test_query_respects_top_k() -> None:
     mock_retriever = MagicMock()
-    mock_retriever.retrieve.return_value = []
+    mock_retriever.retrieve_async = AsyncMock(return_value=[])
 
     with (
         patch("rag_harness.api.server._get_retriever", return_value=mock_retriever),
-        patch("rag_harness.api.server.generate", return_value="Answer."),
+        patch(
+            "rag_harness.api.server.generate_async",
+            new_callable=AsyncMock,
+            return_value="Answer.",
+        ),
     ):
         client.post("/query", json={"question": "Some question?", "top_k": 3})
-        mock_retriever.retrieve.assert_called_once_with("Some question?", top_k=3)
+        mock_retriever.retrieve_async.assert_awaited_once_with("Some question?", top_k=3)

@@ -1,6 +1,6 @@
 """Unit tests for the Prometheus /metrics endpoint and counters."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -59,13 +59,17 @@ def test_metrics_excludes_default_process_and_platform_families() -> None:
 def test_query_counter_increments_on_successful_query() -> None:
     chunk = _make_chunk()
     mock_retriever = MagicMock()
-    mock_retriever.retrieve.return_value = [chunk]
+    mock_retriever.retrieve_async = AsyncMock(return_value=[chunk])
 
     before = QUERY_TOTAL.labels(strategy="dense", corrective="false")._value.get()
 
     with (
         patch("rag_harness.api.server._get_retriever", return_value=mock_retriever),
-        patch("rag_harness.api.server.generate", return_value="answer"),
+        patch(
+            "rag_harness.api.server.generate_async",
+            new_callable=AsyncMock,
+            return_value="answer",
+        ),
     ):
         response = client.post("/query", json={"question": "test?"})
 
@@ -77,19 +81,19 @@ def test_query_counter_increments_on_successful_query() -> None:
 def test_query_cost_counter_increments_from_recorded_usage() -> None:
     chunk = _make_chunk()
     mock_retriever = MagicMock()
-    mock_retriever.retrieve.return_value = [chunk]
+    mock_retriever.retrieve_async = AsyncMock(return_value=[chunk])
 
     before = QUERY_COST_USD._value.get()
 
     from rag_harness.observability.usage import TokenUsage, record_usage
 
-    def _fake_generate(question: str, chunks: list) -> str:
+    async def _fake_generate(question: str, chunks: list) -> str:
         record_usage(TokenUsage("gpt-4o-mini", 100, 50, 0.045))
         return "answer"
 
     with (
         patch("rag_harness.api.server._get_retriever", return_value=mock_retriever),
-        patch("rag_harness.api.server.generate", side_effect=_fake_generate),
+        patch("rag_harness.api.server.generate_async", side_effect=_fake_generate),
     ):
         client.post("/query", json={"question": "test?"})
 
@@ -102,7 +106,7 @@ def test_error_counter_increments_when_retriever_raises() -> None:
     from rag_harness.api.metrics import QUERY_ERRORS_TOTAL
 
     mock_retriever = MagicMock()
-    mock_retriever.retrieve.side_effect = RuntimeError("boom")
+    mock_retriever.retrieve_async = AsyncMock(side_effect=RuntimeError("boom"))
 
     before = QUERY_ERRORS_TOTAL.labels(strategy="dense", error_type="RuntimeError")._value.get()
 
