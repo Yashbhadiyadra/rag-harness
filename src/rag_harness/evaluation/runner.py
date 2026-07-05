@@ -10,14 +10,14 @@ from pathlib import Path
 from rag_harness.config import settings
 from rag_harness.evaluation.history import record_run
 from rag_harness.evaluation.metrics import (
-    answer_relevancy,
-    context_precision,
+    answer_relevancy_async,
+    context_precision_async,
     context_recall,
-    correctness,
-    faithfulness,
+    correctness_async,
+    faithfulness_async,
 )
-from rag_harness.generation.corrective import CorrectiveResult, corrective_generate
-from rag_harness.generation.generator import generate
+from rag_harness.generation.corrective import CorrectiveResult, corrective_generate_async
+from rag_harness.generation.generator import generate_async
 from rag_harness.models import Chunk, EvalResult, EvalSummary, GoldenCase
 from rag_harness.observability.tracing import traced_span
 from rag_harness.observability.usage import collect_usage
@@ -39,7 +39,7 @@ def load_golden_cases(golden_dir: Path | None = None) -> list[GoldenCase]:
     return cases
 
 
-def evaluate_case(
+async def evaluate_case(
     case: GoldenCase,
     retriever: Retriever,
     *,
@@ -52,9 +52,9 @@ def evaluate_case(
     the `collect_usage()` collector.
 
     When *use_corrective* is True, the answer is produced by
-    `corrective_generate` (critic-scored, may reformulate + retry, may refuse)
-    instead of the plain generator. Scoring is identical against the answer
-    and chunks the corrective path actually used.
+    ``corrective_generate_async`` (critic-scored, may reformulate + retry,
+    may refuse) instead of the plain generator. Scoring is identical against
+    the answer and chunks the corrective path actually used.
     """
     start = time.perf_counter()
 
@@ -68,21 +68,21 @@ def evaluate_case(
     ):
         if use_corrective:
             with traced_span("corrective_generate"):
-                corrective_result = corrective_generate(case.question, retriever)
+                corrective_result = await corrective_generate_async(case.question, retriever)
             chunks = corrective_result.chunks_used
             answer = corrective_result.answer
         else:
             with traced_span("retrieve"):
-                chunks = retriever.retrieve(case.question)
+                chunks = await retriever.retrieve_async(case.question)
             with traced_span("generate", chunk_count=len(chunks)):
-                answer = generate(case.question, chunks)
+                answer = await generate_async(case.question, chunks)
 
         with traced_span("score"):
             recall = context_recall(chunks, case.relevant_doc_ids)
-            precision = context_precision(case.question, chunks, case.reference_answer)
-            faith = faithfulness(case.question, answer, chunks)
-            correct = correctness(case.question, answer, case.reference_answer)
-            relevancy = answer_relevancy(case.question, answer)
+            precision = await context_precision_async(case.question, chunks, case.reference_answer)
+            faith = await faithfulness_async(case.question, answer, chunks)
+            correct = await correctness_async(case.question, answer, case.reference_answer)
+            relevancy = await answer_relevancy_async(case.question, answer)
 
         if case_span is not None:
             # Record every headline score as a span attribute so the Phoenix
@@ -152,7 +152,7 @@ def _percentile(values: list[float], pct: float) -> float:
     return sorted_values[max(0, rank - 1)]
 
 
-def run_eval(
+async def run_eval(
     retriever: Retriever,
     golden_dir: Path | None = None,
     *,
@@ -183,7 +183,12 @@ def run_eval(
     if not cases:
         raise ValueError(f"No golden cases found in {golden_dir or _GOLDEN_DIR}")
 
-    results = [evaluate_case(case, retriever, use_corrective=use_corrective) for case in cases]
+    # Sequential cases (not asyncio.gather) — golden set order matters for
+    # reproducibility and the LLM cache benefits from deterministic ordering.
+    results = []
+    for case in cases:
+        result = await evaluate_case(case, retriever, use_corrective=use_corrective)
+        results.append(result)
     n = len(results)
 
     mean_recall = sum(r.context_recall for r in results) / n

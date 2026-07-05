@@ -85,7 +85,7 @@ def relevant_but_incorrect_cases(summary: EvalSummary) -> list[EvalResult]:
     return [r for r in summary.results if is_relevant_but_incorrect(r)]
 
 
-def run_ablation(
+async def run_ablation(
     strategies: list[str] | None = None,
     corrective_modes: list[bool] | None = None,
     golden_dir: Path | None = None,
@@ -111,7 +111,7 @@ def run_ablation(
             logger.info("ablation: strategy=%s corrective=%s", strategy, corrective)
             try:
                 retriever = build_retriever(strategy)
-                summary = run_eval(
+                summary = await run_eval(
                     retriever,
                     golden_dir=golden_dir,
                     use_corrective=corrective,

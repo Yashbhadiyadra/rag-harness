@@ -3,8 +3,9 @@
 All LLM calls and retrievers are mocked — nothing here hits the network.
 """
 
+import asyncio
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from rag_harness.evaluation.ablation import (
     AblationRun,
@@ -115,10 +116,11 @@ def test_run_ablation_invokes_run_eval_per_configuration() -> None:
         ) as mock_build,
         patch(
             "rag_harness.evaluation.ablation.run_eval",
+            new_callable=AsyncMock,
             return_value=dummy_summary,
         ) as mock_run_eval,
     ):
-        runs = run_ablation()
+        runs = asyncio.run(run_ablation())
 
     # 5 strategies × 2 modes = 10 configurations
     assert len(runs) == 10
@@ -137,10 +139,11 @@ def test_run_ablation_respects_explicit_strategies_and_modes() -> None:
         patch("rag_harness.evaluation.ablation.build_retriever", return_value=MagicMock()),
         patch(
             "rag_harness.evaluation.ablation.run_eval",
+            new_callable=AsyncMock,
             return_value=dummy_summary,
         ) as mock_run_eval,
     ):
-        runs = run_ablation(strategies=["dense", "hybrid"], corrective_modes=[False])
+        runs = asyncio.run(run_ablation(strategies=["dense", "hybrid"], corrective_modes=[False]))
 
     assert len(runs) == 2
     assert {r.strategy for r in runs} == {"dense", "hybrid"}
@@ -153,9 +156,13 @@ def test_run_ablation_skips_unknown_strategy() -> None:
 
     with (
         patch("rag_harness.evaluation.ablation.build_retriever", return_value=MagicMock()),
-        patch("rag_harness.evaluation.ablation.run_eval", return_value=dummy_summary),
+        patch(
+            "rag_harness.evaluation.ablation.run_eval",
+            new_callable=AsyncMock,
+            return_value=dummy_summary,
+        ),
     ):
-        runs = run_ablation(strategies=["dense", "bogus"], corrective_modes=[False])
+        runs = asyncio.run(run_ablation(strategies=["dense", "bogus"], corrective_modes=[False]))
 
     assert len(runs) == 1
     assert runs[0].strategy == "dense"
@@ -170,9 +177,11 @@ def test_run_ablation_records_rbi_count_and_rate() -> None:
 
     with (
         patch("rag_harness.evaluation.ablation.build_retriever", return_value=MagicMock()),
-        patch("rag_harness.evaluation.ablation.run_eval", return_value=summary),
+        patch(
+            "rag_harness.evaluation.ablation.run_eval", new_callable=AsyncMock, return_value=summary
+        ),
     ):
-        runs = run_ablation(strategies=["dense"], corrective_modes=[False])
+        runs = asyncio.run(run_ablation(strategies=["dense"], corrective_modes=[False]))
 
     assert runs[0].rbi_count == 1
     assert runs[0].rbi_rate == 0.5
@@ -194,10 +203,13 @@ def test_run_ablation_continues_after_a_configuration_raises() -> None:
         patch("rag_harness.evaluation.ablation.build_retriever", return_value=MagicMock()),
         patch(
             "rag_harness.evaluation.ablation.run_eval",
+            new_callable=AsyncMock,
             side_effect=_run_eval_side,
         ),
     ):
-        runs = run_ablation(strategies=["dense", "hybrid", "hyde"], corrective_modes=[False])
+        runs = asyncio.run(
+            run_ablation(strategies=["dense", "hybrid", "hyde"], corrective_modes=[False])
+        )
 
     # Second config skipped, others recorded
     assert len(runs) == 2

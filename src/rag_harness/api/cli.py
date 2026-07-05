@@ -1,6 +1,7 @@
 """Command-line interface: ingest, query, and eval subcommands."""
 
 import argparse
+import asyncio
 import sys
 
 from rag_harness.config import settings
@@ -16,25 +17,29 @@ def _cmd_ingest(args: argparse.Namespace) -> None:
 
 
 def _cmd_query(args: argparse.Namespace) -> None:
-    from rag_harness.generation.corrective import corrective_generate
-    from rag_harness.generation.generator import generate
+    from rag_harness.generation.corrective import corrective_generate_async
+    from rag_harness.generation.generator import generate_async
     from rag_harness.retrieval.factory import build_retriever
 
     retriever = build_retriever(args.strategy)
 
-    if args.corrective:
-        result = corrective_generate(args.question, retriever, top_k=args.top_k)
-        answer = result.answer
-        chunks = result.chunks_used
-        print(
-            f"\n[corrective: category={result.category.value} "
-            f"attempts={result.attempts}"
-            + (f" reformulated={result.reformulated_query!r}" if result.reformulated_query else "")
-            + "]"
-        )
-    else:
-        chunks = retriever.retrieve(args.question, top_k=args.top_k)
-        answer = generate(args.question, chunks)
+    from rag_harness.models import Chunk
+
+    async def _run() -> tuple[str, list[Chunk]]:
+        if args.corrective:
+            r = await corrective_generate_async(args.question, retriever, top_k=args.top_k)
+            print(
+                f"\n[corrective: category={r.category.value} attempts={r.attempts}"
+                + (f" reformulated={r.reformulated_query!r}" if r.reformulated_query else "")
+                + "]"
+            )
+            return r.answer, r.chunks_used
+        else:
+            c = await retriever.retrieve_async(args.question, top_k=args.top_k)
+            a = await generate_async(args.question, c)
+            return a, c
+
+    answer, chunks = asyncio.run(_run())
 
     print(f"\nAnswer:\n{answer}\n")
     if chunks:
@@ -57,11 +62,13 @@ def _cmd_eval(args: argparse.Namespace) -> None:
     elif args.subset:
         case_filter = [s.strip() for s in args.subset.split(",") if s.strip()]
 
-    summary = run_eval(
-        retriever,
-        use_corrective=args.corrective,
-        strategy_label=args.strategy,
-        case_filter=case_filter,
+    summary = asyncio.run(
+        run_eval(
+            retriever,
+            use_corrective=args.corrective,
+            strategy_label=args.strategy,
+            case_filter=case_filter,
+        )
     )
 
     print("\nEvaluation Results")
@@ -141,7 +148,7 @@ def _cmd_ablation(args: argparse.Namespace) -> None:
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    runs = run_ablation()
+    runs = asyncio.run(run_ablation())
     if not runs:
         print("No successful ablation configurations. See logs for details.")
         sys.exit(1)

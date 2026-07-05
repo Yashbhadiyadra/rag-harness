@@ -1,9 +1,10 @@
 """Evaluation metrics: deterministic context recall and LLM-as-judge faithfulness/correctness."""
 
+import asyncio
 import logging
 from pathlib import Path
 
-from openai import OpenAI
+from openai import AsyncOpenAI
 
 from rag_harness.config import settings
 from rag_harness.models import Chunk
@@ -12,7 +13,7 @@ from rag_harness.observability.usage import TokenUsage, record_usage
 
 logger = logging.getLogger(__name__)
 
-_client = OpenAI(api_key=settings.openai_api_key)
+_client = AsyncOpenAI(api_key=settings.openai_api_key)
 
 # Cache handle is lazy — opened on first use only when llm_cache_enabled=true.
 _cache: LLMResponseCache | None = None
@@ -86,15 +87,8 @@ Respond with ONLY a decimal number, nothing else. Example: 0.6
 """
 
 
-def _llm_score(system_prompt: str, user_message: str) -> float:
-    """Call the generation model as a judge and parse its 0–1 score response.
-
-    When the LLM cache is enabled (see ``settings.llm_cache_enabled``), the
-    ``(model, system_prompt, user_message)`` triple is looked up first. Cache
-    hits skip the API call entirely — no TokenUsage is recorded because no
-    tokens were consumed. On a miss, the raw response is stored so subsequent
-    identical calls are free.
-    """
+async def _llm_score_async(system_prompt: str, user_message: str) -> float:
+    """Async judge call. See sync facade below for details."""
     cache = _get_cache()
     cache_key: str | None = None
     if cache is not None:
@@ -105,7 +99,7 @@ def _llm_score(system_prompt: str, user_message: str) -> float:
         if cached_raw is not None:
             return _parse_score(cached_raw)
 
-    response = _client.chat.completions.create(
+    response = await _client.chat.completions.create(
         model=settings.generation_model,
         messages=[
             {"role": "system", "content": system_prompt},
@@ -118,6 +112,18 @@ def _llm_score(system_prompt: str, user_message: str) -> float:
     if cache is not None and cache_key is not None:
         cache.set(cache_key, raw)
     return _parse_score(raw)
+
+
+def _llm_score(system_prompt: str, user_message: str) -> float:
+    """Sync facade — runs the async implementation in a fresh event loop.
+
+    When the LLM cache is enabled (see ``settings.llm_cache_enabled``), the
+    ``(model, system_prompt, user_message)`` triple is looked up first. Cache
+    hits skip the API call entirely — no TokenUsage is recorded because no
+    tokens were consumed. On a miss, the raw response is stored so subsequent
+    identical calls are free.
+    """
+    return asyncio.run(_llm_score_async(system_prompt, user_message))
 
 
 def _parse_score(raw: str) -> float:
@@ -142,42 +148,55 @@ def context_recall(retrieved_chunks: list[Chunk], relevant_doc_ids: list[str]) -
     return hits / len(relevant_doc_ids)
 
 
-def faithfulness(question: str, answer: str, retrieved_chunks: list[Chunk]) -> float:
-    """Score whether every claim in the answer is grounded in the retrieved context."""
+async def faithfulness_async(question: str, answer: str, retrieved_chunks: list[Chunk]) -> float:
+    """Async version — score whether answer claims are grounded in the context."""
     context = "\n\n".join(c.text for c in retrieved_chunks)
     user_message = f"Question: {question}\n\nContext:\n{context}\n\nAnswer: {answer}"
-    return _llm_score(_FAITHFULNESS_PROMPT, user_message)
+    return await _llm_score_async(_FAITHFULNESS_PROMPT, user_message)
 
 
-def correctness(question: str, answer: str, reference_answer: str) -> float:
-    """Score how correct the generated answer is relative to the reference answer."""
+def faithfulness(question: str, answer: str, retrieved_chunks: list[Chunk]) -> float:
+    """Sync facade — score whether answer claims are grounded in the retrieved context."""
+    return asyncio.run(faithfulness_async(question, answer, retrieved_chunks))
+
+
+async def correctness_async(question: str, answer: str, reference_answer: str) -> float:
+    """Async version — score how correct the generated answer is."""
     user_message = (
         f"Question: {question}\n\n"
         f"Reference answer: {reference_answer}\n\n"
         f"Generated answer: {answer}"
     )
-    return _llm_score(_CORRECTNESS_PROMPT, user_message)
+    return await _llm_score_async(_CORRECTNESS_PROMPT, user_message)
+
+
+def correctness(question: str, answer: str, reference_answer: str) -> float:
+    """Sync facade — score how correct the generated answer is relative to the reference."""
+    return asyncio.run(correctness_async(question, answer, reference_answer))
+
+
+async def answer_relevancy_async(question: str, answer: str) -> float:
+    """Async version — score whether the answer is on-topic for the question."""
+    if not answer.strip():
+        return 0.0
+    user_message = f"Question: {question}\n\nAnswer: {answer}"
+    return await _llm_score_async(_ANSWER_RELEVANCY_PROMPT, user_message)
 
 
 def answer_relevancy(question: str, answer: str) -> float:
-    """Score whether the answer is on-topic for the question (regardless of correctness).
+    """Sync facade — score whether the answer is on-topic for the question.
 
     Complements ``correctness``: an answer can score high on relevancy and low on
     correctness — that combination is confident-sounding hallucination and is
     highlighted as its own failure category in Phase 8's ablation output.
     """
-    if not answer.strip():
-        return 0.0
-    user_message = f"Question: {question}\n\nAnswer: {answer}"
-    return _llm_score(_ANSWER_RELEVANCY_PROMPT, user_message)
+    return asyncio.run(answer_relevancy_async(question, answer))
 
 
-def context_precision(question: str, retrieved_chunks: list[Chunk], reference_answer: str) -> float:
-    """Score the fraction of retrieved chunks that materially support the reference answer.
-
-    Complements ``context_recall``: recall answers "did we get all the right
-    chunks?", precision answers "of what we retrieved, how much was useful?".
-    """
+async def context_precision_async(
+    question: str, retrieved_chunks: list[Chunk], reference_answer: str
+) -> float:
+    """Async version — score the fraction of retrieved chunks supporting the reference."""
     if not retrieved_chunks:
         return 0.0
     passages = "\n\n".join(f"[{i + 1}] {c.text}" for i, c in enumerate(retrieved_chunks))
@@ -186,4 +205,13 @@ def context_precision(question: str, retrieved_chunks: list[Chunk], reference_an
         f"Reference answer: {reference_answer}\n\n"
         f"Retrieved passages:\n{passages}"
     )
-    return _llm_score(_CONTEXT_PRECISION_PROMPT, user_message)
+    return await _llm_score_async(_CONTEXT_PRECISION_PROMPT, user_message)
+
+
+def context_precision(question: str, retrieved_chunks: list[Chunk], reference_answer: str) -> float:
+    """Sync facade — score the fraction of retrieved chunks that materially support the reference.
+
+    Complements ``context_recall``: recall answers "did we get all the right
+    chunks?", precision answers "of what we retrieved, how much was useful?".
+    """
+    return asyncio.run(context_precision_async(question, retrieved_chunks, reference_answer))

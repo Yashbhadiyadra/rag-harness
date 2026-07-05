@@ -1,7 +1,8 @@
+import asyncio
 import csv
 import json
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -97,16 +98,38 @@ def test_run_eval_passes_when_above_thresholds(tmp_path: Path) -> None:
     (tmp_path / "cases.json").write_text(json.dumps(data))
 
     mock_retriever = MagicMock()
-    mock_retriever.retrieve.return_value = [_make_chunk("content/en/docs/security/rbac.md")]
+    mock_retriever.retrieve_async = AsyncMock(
+        return_value=[_make_chunk("content/en/docs/security/rbac.md")]
+    )
 
     with (
-        patch("rag_harness.evaluation.runner.generate", return_value="Role-Based Access Control."),
-        patch("rag_harness.evaluation.runner.faithfulness", return_value=0.95),
-        patch("rag_harness.evaluation.runner.correctness", return_value=0.90),
-        patch("rag_harness.evaluation.runner.answer_relevancy", return_value=0.9),
-        patch("rag_harness.evaluation.runner.context_precision", return_value=0.8),
+        patch(
+            "rag_harness.evaluation.runner.generate_async",
+            new_callable=AsyncMock,
+            return_value="Role-Based Access Control.",
+        ),
+        patch(
+            "rag_harness.evaluation.runner.faithfulness_async",
+            new_callable=AsyncMock,
+            return_value=0.95,
+        ),
+        patch(
+            "rag_harness.evaluation.runner.correctness_async",
+            new_callable=AsyncMock,
+            return_value=0.90,
+        ),
+        patch(
+            "rag_harness.evaluation.runner.answer_relevancy_async",
+            new_callable=AsyncMock,
+            return_value=0.9,
+        ),
+        patch(
+            "rag_harness.evaluation.runner.context_precision_async",
+            new_callable=AsyncMock,
+            return_value=0.8,
+        ),
     ):
-        summary = run_eval(mock_retriever, golden_dir=tmp_path)
+        summary = asyncio.run(run_eval(mock_retriever, golden_dir=tmp_path))
 
     assert summary.passed is True
     assert summary.mean_context_recall == 1.0
@@ -127,16 +150,36 @@ def test_run_eval_fails_when_below_threshold(tmp_path: Path) -> None:
     (tmp_path / "cases.json").write_text(json.dumps(data))
 
     mock_retriever = MagicMock()
-    mock_retriever.retrieve.return_value = []  # retrieval miss → recall=0.0
+    mock_retriever.retrieve_async = AsyncMock(return_value=[])  # retrieval miss → recall=0.0
 
     with (
-        patch("rag_harness.evaluation.runner.generate", return_value="I do not know."),
-        patch("rag_harness.evaluation.runner.faithfulness", return_value=0.90),
-        patch("rag_harness.evaluation.runner.correctness", return_value=0.80),
-        patch("rag_harness.evaluation.runner.answer_relevancy", return_value=0.5),
-        patch("rag_harness.evaluation.runner.context_precision", return_value=0.0),
+        patch(
+            "rag_harness.evaluation.runner.generate_async",
+            new_callable=AsyncMock,
+            return_value="I do not know.",
+        ),
+        patch(
+            "rag_harness.evaluation.runner.faithfulness_async",
+            new_callable=AsyncMock,
+            return_value=0.90,
+        ),
+        patch(
+            "rag_harness.evaluation.runner.correctness_async",
+            new_callable=AsyncMock,
+            return_value=0.80,
+        ),
+        patch(
+            "rag_harness.evaluation.runner.answer_relevancy_async",
+            new_callable=AsyncMock,
+            return_value=0.5,
+        ),
+        patch(
+            "rag_harness.evaluation.runner.context_precision_async",
+            new_callable=AsyncMock,
+            return_value=0.0,
+        ),
     ):
-        summary = run_eval(mock_retriever, golden_dir=tmp_path)
+        summary = asyncio.run(run_eval(mock_retriever, golden_dir=tmp_path))
 
     assert summary.passed is False
     assert summary.mean_context_recall == 0.0
@@ -199,13 +242,13 @@ def test_export_results_unsupported_extension(tmp_path: Path) -> None:
 
 
 def _mock_llm_score(score: str) -> MagicMock:
-    """Return a mock OpenAI client whose chat completion returns a raw score string."""
+    """Return a mock AsyncOpenAI client whose async .create returns a raw score string."""
     client = MagicMock()
     resp = MagicMock()
     resp.choices = [MagicMock()]
     resp.choices[0].message.content = score
     resp.usage = MagicMock(prompt_tokens=50, completion_tokens=3)
-    client.chat.completions.create.return_value = resp
+    client.chat.completions.create = AsyncMock(return_value=resp)
     return client
 
 
@@ -340,15 +383,35 @@ def test_run_eval_corrective_routes_through_corrective_generate(tmp_path: Path) 
 
     with (
         patch(
-            "rag_harness.evaluation.runner.corrective_generate", return_value=fake_result
+            "rag_harness.evaluation.runner.corrective_generate_async",
+            new_callable=AsyncMock,
+            return_value=fake_result,
         ) as mock_corrective,
-        patch("rag_harness.evaluation.runner.generate") as mock_generate,
-        patch("rag_harness.evaluation.runner.faithfulness", return_value=0.9),
-        patch("rag_harness.evaluation.runner.correctness", return_value=0.9),
-        patch("rag_harness.evaluation.runner.answer_relevancy", return_value=0.9),
-        patch("rag_harness.evaluation.runner.context_precision", return_value=0.9),
+        patch(
+            "rag_harness.evaluation.runner.generate_async", new_callable=AsyncMock
+        ) as mock_generate,
+        patch(
+            "rag_harness.evaluation.runner.faithfulness_async",
+            new_callable=AsyncMock,
+            return_value=0.9,
+        ),
+        patch(
+            "rag_harness.evaluation.runner.correctness_async",
+            new_callable=AsyncMock,
+            return_value=0.9,
+        ),
+        patch(
+            "rag_harness.evaluation.runner.answer_relevancy_async",
+            new_callable=AsyncMock,
+            return_value=0.9,
+        ),
+        patch(
+            "rag_harness.evaluation.runner.context_precision_async",
+            new_callable=AsyncMock,
+            return_value=0.9,
+        ),
     ):
-        summary = run_eval(mock_retriever, golden_dir=tmp_path, use_corrective=True)
+        summary = asyncio.run(run_eval(mock_retriever, golden_dir=tmp_path, use_corrective=True))
 
     # Corrective path taken; baseline generate not called
     mock_corrective.assert_called_once()
@@ -373,17 +436,39 @@ def test_run_eval_corrective_off_uses_baseline_generate(tmp_path: Path) -> None:
     (tmp_path / "cases.json").write_text(json.dumps(data))
 
     mock_retriever = MagicMock()
-    mock_retriever.retrieve.return_value = [_make_chunk("docs/rbac.md")]
+    mock_retriever.retrieve_async = AsyncMock(return_value=[_make_chunk("docs/rbac.md")])
 
     with (
-        patch("rag_harness.evaluation.runner.corrective_generate") as mock_corrective,
-        patch("rag_harness.evaluation.runner.generate", return_value="answer"),
-        patch("rag_harness.evaluation.runner.faithfulness", return_value=0.9),
-        patch("rag_harness.evaluation.runner.correctness", return_value=0.9),
-        patch("rag_harness.evaluation.runner.answer_relevancy", return_value=0.9),
-        patch("rag_harness.evaluation.runner.context_precision", return_value=0.9),
+        patch(
+            "rag_harness.evaluation.runner.corrective_generate_async", new_callable=AsyncMock
+        ) as mock_corrective,
+        patch(
+            "rag_harness.evaluation.runner.generate_async",
+            new_callable=AsyncMock,
+            return_value="answer",
+        ),
+        patch(
+            "rag_harness.evaluation.runner.faithfulness_async",
+            new_callable=AsyncMock,
+            return_value=0.9,
+        ),
+        patch(
+            "rag_harness.evaluation.runner.correctness_async",
+            new_callable=AsyncMock,
+            return_value=0.9,
+        ),
+        patch(
+            "rag_harness.evaluation.runner.answer_relevancy_async",
+            new_callable=AsyncMock,
+            return_value=0.9,
+        ),
+        patch(
+            "rag_harness.evaluation.runner.context_precision_async",
+            new_callable=AsyncMock,
+            return_value=0.9,
+        ),
     ):
-        summary = run_eval(mock_retriever, golden_dir=tmp_path, use_corrective=False)
+        summary = asyncio.run(run_eval(mock_retriever, golden_dir=tmp_path, use_corrective=False))
 
     mock_corrective.assert_not_called()
     # Baseline telemetry fields stay None
@@ -417,13 +502,33 @@ def test_run_eval_corrective_captures_reformulation(tmp_path: Path) -> None:
     )
 
     with (
-        patch("rag_harness.evaluation.runner.corrective_generate", return_value=fake_result),
-        patch("rag_harness.evaluation.runner.faithfulness", return_value=0.9),
-        patch("rag_harness.evaluation.runner.correctness", return_value=0.9),
-        patch("rag_harness.evaluation.runner.answer_relevancy", return_value=0.9),
-        patch("rag_harness.evaluation.runner.context_precision", return_value=0.9),
+        patch(
+            "rag_harness.evaluation.runner.corrective_generate_async",
+            new_callable=AsyncMock,
+            return_value=fake_result,
+        ),
+        patch(
+            "rag_harness.evaluation.runner.faithfulness_async",
+            new_callable=AsyncMock,
+            return_value=0.9,
+        ),
+        patch(
+            "rag_harness.evaluation.runner.correctness_async",
+            new_callable=AsyncMock,
+            return_value=0.9,
+        ),
+        patch(
+            "rag_harness.evaluation.runner.answer_relevancy_async",
+            new_callable=AsyncMock,
+            return_value=0.9,
+        ),
+        patch(
+            "rag_harness.evaluation.runner.context_precision_async",
+            new_callable=AsyncMock,
+            return_value=0.9,
+        ),
     ):
-        summary = run_eval(MagicMock(), golden_dir=tmp_path, use_corrective=True)
+        summary = asyncio.run(run_eval(MagicMock(), golden_dir=tmp_path, use_corrective=True))
 
     r = summary.results[0]
     assert r.corrective_attempts == 2
@@ -455,13 +560,33 @@ def test_run_eval_corrective_refusal_still_scored(tmp_path: Path) -> None:
     )
 
     with (
-        patch("rag_harness.evaluation.runner.corrective_generate", return_value=fake_result),
-        patch("rag_harness.evaluation.runner.faithfulness", return_value=0.5),
-        patch("rag_harness.evaluation.runner.correctness", return_value=0.0),
-        patch("rag_harness.evaluation.runner.answer_relevancy", return_value=0.0),
-        patch("rag_harness.evaluation.runner.context_precision", return_value=0.0),
+        patch(
+            "rag_harness.evaluation.runner.corrective_generate_async",
+            new_callable=AsyncMock,
+            return_value=fake_result,
+        ),
+        patch(
+            "rag_harness.evaluation.runner.faithfulness_async",
+            new_callable=AsyncMock,
+            return_value=0.5,
+        ),
+        patch(
+            "rag_harness.evaluation.runner.correctness_async",
+            new_callable=AsyncMock,
+            return_value=0.0,
+        ),
+        patch(
+            "rag_harness.evaluation.runner.answer_relevancy_async",
+            new_callable=AsyncMock,
+            return_value=0.0,
+        ),
+        patch(
+            "rag_harness.evaluation.runner.context_precision_async",
+            new_callable=AsyncMock,
+            return_value=0.0,
+        ),
     ):
-        summary = run_eval(MagicMock(), golden_dir=tmp_path, use_corrective=True)
+        summary = asyncio.run(run_eval(MagicMock(), golden_dir=tmp_path, use_corrective=True))
 
     r = summary.results[0]
     assert r.generated_answer == NO_INFO_MESSAGE
@@ -484,19 +609,41 @@ def test_run_eval_case_filter_restricts_to_ids(tmp_path: Path) -> None:
     (tmp_path / "cases.json").write_text(json.dumps(data))
 
     mock_retriever = MagicMock()
-    mock_retriever.retrieve.return_value = [_make_chunk("a")]
+    mock_retriever.retrieve_async = AsyncMock(return_value=[_make_chunk("a")])
 
     with (
-        patch("rag_harness.evaluation.runner.generate", return_value="ans"),
-        patch("rag_harness.evaluation.runner.faithfulness", return_value=0.9),
-        patch("rag_harness.evaluation.runner.correctness", return_value=0.9),
-        patch("rag_harness.evaluation.runner.answer_relevancy", return_value=0.9),
-        patch("rag_harness.evaluation.runner.context_precision", return_value=0.9),
+        patch(
+            "rag_harness.evaluation.runner.generate_async",
+            new_callable=AsyncMock,
+            return_value="ans",
+        ),
+        patch(
+            "rag_harness.evaluation.runner.faithfulness_async",
+            new_callable=AsyncMock,
+            return_value=0.9,
+        ),
+        patch(
+            "rag_harness.evaluation.runner.correctness_async",
+            new_callable=AsyncMock,
+            return_value=0.9,
+        ),
+        patch(
+            "rag_harness.evaluation.runner.answer_relevancy_async",
+            new_callable=AsyncMock,
+            return_value=0.9,
+        ),
+        patch(
+            "rag_harness.evaluation.runner.context_precision_async",
+            new_callable=AsyncMock,
+            return_value=0.9,
+        ),
     ):
-        summary = run_eval(
-            mock_retriever,
-            golden_dir=tmp_path,
-            case_filter=["keep", "also-keep"],
+        summary = asyncio.run(
+            run_eval(
+                mock_retriever,
+                golden_dir=tmp_path,
+                case_filter=["keep", "also-keep"],
+            )
         )
 
     ids = {r.case_id for r in summary.results}
@@ -511,16 +658,36 @@ def test_run_eval_case_filter_none_runs_all_cases(tmp_path: Path) -> None:
     (tmp_path / "cases.json").write_text(json.dumps(data))
 
     mock_retriever = MagicMock()
-    mock_retriever.retrieve.return_value = [_make_chunk("a")]
+    mock_retriever.retrieve_async = AsyncMock(return_value=[_make_chunk("a")])
 
     with (
-        patch("rag_harness.evaluation.runner.generate", return_value="ans"),
-        patch("rag_harness.evaluation.runner.faithfulness", return_value=0.9),
-        patch("rag_harness.evaluation.runner.correctness", return_value=0.9),
-        patch("rag_harness.evaluation.runner.answer_relevancy", return_value=0.9),
-        patch("rag_harness.evaluation.runner.context_precision", return_value=0.9),
+        patch(
+            "rag_harness.evaluation.runner.generate_async",
+            new_callable=AsyncMock,
+            return_value="ans",
+        ),
+        patch(
+            "rag_harness.evaluation.runner.faithfulness_async",
+            new_callable=AsyncMock,
+            return_value=0.9,
+        ),
+        patch(
+            "rag_harness.evaluation.runner.correctness_async",
+            new_callable=AsyncMock,
+            return_value=0.9,
+        ),
+        patch(
+            "rag_harness.evaluation.runner.answer_relevancy_async",
+            new_callable=AsyncMock,
+            return_value=0.9,
+        ),
+        patch(
+            "rag_harness.evaluation.runner.context_precision_async",
+            new_callable=AsyncMock,
+            return_value=0.9,
+        ),
     ):
-        summary = run_eval(mock_retriever, golden_dir=tmp_path, case_filter=None)
+        summary = asyncio.run(run_eval(mock_retriever, golden_dir=tmp_path, case_filter=None))
 
     assert len(summary.results) == 3
 
@@ -532,7 +699,7 @@ def test_run_eval_case_filter_no_matches_raises(tmp_path: Path) -> None:
     (tmp_path / "cases.json").write_text(json.dumps(data))
 
     with pytest.raises(ValueError, match="No golden cases"):
-        run_eval(MagicMock(), golden_dir=tmp_path, case_filter=["nonexistent"])
+        asyncio.run(run_eval(MagicMock(), golden_dir=tmp_path, case_filter=["nonexistent"]))
 
 
 def test_run_eval_aggregates_operational_metrics(tmp_path: Path) -> None:
@@ -548,7 +715,7 @@ def test_run_eval_aggregates_operational_metrics(tmp_path: Path) -> None:
     (tmp_path / "cases.json").write_text(json.dumps(data))
 
     mock_retriever = MagicMock()
-    mock_retriever.retrieve.return_value = [_make_chunk("docs/a.md")]
+    mock_retriever.retrieve_async = AsyncMock(return_value=[_make_chunk("docs/a.md")])
 
     # Simulate a real call recording usage — the evaluate_case wrapper opens
     # its own collect_usage() block, so we need something inside to record.
@@ -563,13 +730,33 @@ def test_run_eval_aggregates_operational_metrics(tmp_path: Path) -> None:
         return f"answer for {question}"
 
     with (
-        patch("rag_harness.evaluation.runner.generate", side_effect=_generate_stub),
-        patch("rag_harness.evaluation.runner.faithfulness", return_value=0.9),
-        patch("rag_harness.evaluation.runner.correctness", return_value=0.9),
-        patch("rag_harness.evaluation.runner.answer_relevancy", return_value=0.9),
-        patch("rag_harness.evaluation.runner.context_precision", return_value=0.9),
+        patch(
+            "rag_harness.evaluation.runner.generate_async",
+            new_callable=AsyncMock,
+            side_effect=_generate_stub,
+        ),
+        patch(
+            "rag_harness.evaluation.runner.faithfulness_async",
+            new_callable=AsyncMock,
+            return_value=0.9,
+        ),
+        patch(
+            "rag_harness.evaluation.runner.correctness_async",
+            new_callable=AsyncMock,
+            return_value=0.9,
+        ),
+        patch(
+            "rag_harness.evaluation.runner.answer_relevancy_async",
+            new_callable=AsyncMock,
+            return_value=0.9,
+        ),
+        patch(
+            "rag_harness.evaluation.runner.context_precision_async",
+            new_callable=AsyncMock,
+            return_value=0.9,
+        ),
     ):
-        summary = run_eval(mock_retriever, golden_dir=tmp_path)
+        summary = asyncio.run(run_eval(mock_retriever, golden_dir=tmp_path))
 
     # 3 cases × (100 in, 20 out, $0.030)
     assert summary.total_input_tokens == 300

@@ -1,7 +1,7 @@
 """Unit tests for the SQLite LLM response cache and its metrics wiring."""
 
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -74,13 +74,13 @@ def test_cache_corrupted_row_treated_as_miss(cache: LLMResponseCache) -> None:
 
 
 def _mock_client_returning(score: str) -> MagicMock:
-    """Return a mock OpenAI client whose chat completion returns *score*."""
+    """Return a mock AsyncOpenAI client whose async .create returns *score*."""
     client = MagicMock()
     resp = MagicMock()
     resp.choices = [MagicMock()]
     resp.choices[0].message.content = score
     resp.usage = MagicMock(prompt_tokens=50, completion_tokens=3)
-    client.chat.completions.create.return_value = resp
+    client.chat.completions.create = AsyncMock(return_value=resp)
     return client
 
 
