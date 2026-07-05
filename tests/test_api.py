@@ -57,6 +57,19 @@ def test_query_rejects_empty_question() -> None:
     assert response.status_code == 422
 
 
+def test_query_rejects_oversized_question() -> None:
+    from rag_harness.config import settings
+
+    oversized = "x" * (settings.api_max_question_length + 1)
+    response = client.post("/query", json={"question": oversized})
+    assert response.status_code == 422
+
+
+def test_query_rejects_zero_top_k() -> None:
+    response = client.post("/query", json={"question": "hi", "top_k": 0})
+    assert response.status_code == 422
+
+
 def test_query_returns_refusal_on_openai_error() -> None:
     """When the LLM boundary raises OpenAIError (exhausted retries), the
     handler must degrade to the honest refusal answer with an empty sources

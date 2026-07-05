@@ -19,6 +19,7 @@ dependencies = [
     "rank_bm25>=0.2.2",
     "prometheus_client>=0.20",
     "opentelemetry-api>=1.20",
+    "slowapi>=0.1.9",
 ]
 
 [project.optional-dependencies]

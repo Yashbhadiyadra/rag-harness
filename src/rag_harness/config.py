@@ -38,6 +38,10 @@ class Settings(BaseSettings):
     openai_max_retries: int = 2
     openai_timeout_seconds: float = 20.0
 
+    # API request limits (per-IP)
+    api_rate_limit: str = "60/minute"
+    api_max_question_length: int = 2000
+
     # Retrieval
     retrieval_top_k: int = 5
     retrieval_strategy: str = "dense"  # "dense" | "hybrid" | "hybrid-rerank" | "hyde" | "full"

@@ -5,9 +5,13 @@ import time
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, Response
+from fastapi import FastAPI, HTTPException, Request, Response
 from openai import OpenAIError
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+from slowapi.util import get_remote_address
 
 from rag_harness.api.metrics import (
     QUERY_COST_USD,
@@ -45,6 +49,15 @@ app = FastAPI(
     lifespan=_lifespan,
 )
 
+# Rate limiting: per-IP by default. See settings.api_rate_limit
+# (default 60/minute) and .env.example. In a single-instance demo the
+# in-memory limiter is fine; swap to a Redis backend later without code
+# changes if we horizontally scale.
+limiter = Limiter(key_func=get_remote_address, default_limits=[settings.api_rate_limit])
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
+app.add_middleware(SlowAPIMiddleware)
+
 _retriever: Retriever | None = None
 
 
@@ -62,8 +75,8 @@ def _get_retriever() -> Retriever:
 class QueryRequest(BaseModel):
     """Request body for POST /query."""
 
-    question: str
-    top_k: int = settings.retrieval_top_k
+    question: str = Field(min_length=1, max_length=settings.api_max_question_length)
+    top_k: int = Field(default=settings.retrieval_top_k, ge=1, le=50)
     corrective: bool | None = None  # None = fall back to CORRECTIVE_RAG_ENABLED
 
 
@@ -83,20 +96,25 @@ class QueryResponse(BaseModel):
 
 
 @app.post("/query", response_model=QueryResponse)
-async def query(request: QueryRequest) -> QueryResponse:
+@limiter.limit(settings.api_rate_limit)
+async def query(request: Request, body: QueryRequest) -> QueryResponse:
     """Retrieve relevant chunks and return a grounded answer with source attribution.
 
-    Wrapped in a `collect_usage()` block so every LLM call made downstream
-    contributes to the Prometheus `rag_query_tokens_total` and
-    `rag_query_cost_usd_total` counters.
+    Rate-limited at ``settings.api_rate_limit`` (default 60/minute per IP).
+    The ``request`` parameter is required by slowapi even though it is not
+    used directly here.
+
+    Wrapped in a ``collect_usage()`` block so every LLM call made downstream
+    contributes to the Prometheus ``rag_query_tokens_total`` and
+    ``rag_query_cost_usd_total`` counters.
     """
-    if not request.question.strip():
+    if not body.question.strip():
         raise HTTPException(status_code=422, detail="question must not be empty")
 
     retriever = _get_retriever()
     strategy = settings.retrieval_strategy
     use_corrective = (
-        request.corrective if request.corrective is not None else settings.corrective_rag_enabled
+        body.corrective if body.corrective is not None else settings.corrective_rag_enabled
     )
     corrective_label = "true" if use_corrective else "false"
 
@@ -109,22 +127,22 @@ async def query(request: QueryRequest) -> QueryResponse:
                 "query",
                 strategy=strategy,
                 corrective=use_corrective,
-                top_k=request.top_k,
+                top_k=body.top_k,
             ),
             collect_usage() as usage_list,
         ):
             if use_corrective:
                 with traced_span("corrective_generate"):
                     result = await corrective_generate_async(
-                        request.question, retriever, top_k=request.top_k
+                        body.question, retriever, top_k=body.top_k
                     )
                     answer = result.answer
                     chunks = result.chunks_used
             else:
                 with traced_span("retrieve"):
-                    chunks = await retriever.retrieve_async(request.question, top_k=request.top_k)
+                    chunks = await retriever.retrieve_async(body.question, top_k=body.top_k)
                 with traced_span("generate", chunk_count=len(chunks)):
-                    answer = await generate_async(request.question, chunks)
+                    answer = await generate_async(body.question, chunks)
     except OpenAIError as e:
         # LLM boundary exhausted its retries. Return the honest refusal
         # rather than a 5xx — the API contract stays useful and the user
@@ -135,7 +153,7 @@ async def query(request: QueryRequest) -> QueryResponse:
             "LLM boundary exhausted (%s: %s) — returning refusal for query: %.60s",
             type(e).__name__,
             e,
-            request.question,
+            body.question,
         )
         answer = NO_INFO_MESSAGE
         chunks = []
@@ -156,7 +174,7 @@ async def query(request: QueryRequest) -> QueryResponse:
 
     sources = [Source(source_file=c.source_file, heading_path=c.heading_path) for c in chunks]
     logger.info("query answered — %d sources used, corrective=%s", len(sources), use_corrective)
-    return QueryResponse(question=request.question, answer=answer, sources=sources)
+    return QueryResponse(question=body.question, answer=answer, sources=sources)
 
 
 @app.get("/health")
