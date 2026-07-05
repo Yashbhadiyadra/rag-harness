@@ -32,6 +32,7 @@ from rag_harness.generation.critic import Category, RelevanceCritic
 from rag_harness.generation.generator import generate_async
 from rag_harness.models import Chunk
 from rag_harness.observability.usage import TokenUsage, record_usage
+from rag_harness.openai_client import build_async_client
 from rag_harness.retrieval.base import Retriever
 
 logger = logging.getLogger(__name__)
@@ -97,7 +98,7 @@ async def corrective_generate_async(
     critic = critic or RelevanceCritic()
     retry_cap = max_retries if max_retries is not None else settings.corrective_max_retries
 
-    client = AsyncOpenAI(api_key=settings.openai_api_key)
+    client = build_async_client()
     model = settings.generation_model
 
     current_query = query

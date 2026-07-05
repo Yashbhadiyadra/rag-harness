@@ -5,11 +5,11 @@ import json
 import logging
 
 import chromadb
-from openai import AsyncOpenAI
 
 from rag_harness.config import settings
 from rag_harness.models import Chunk
 from rag_harness.observability.usage import TokenUsage, record_usage
+from rag_harness.openai_client import build_async_client
 from rag_harness.retrieval.base import Retriever
 
 logger = logging.getLogger(__name__)
@@ -19,7 +19,7 @@ class DenseRetriever(Retriever):
     """Retrieves chunks using dense vector similarity search against ChromaDB."""
 
     def __init__(self) -> None:
-        self._openai = AsyncOpenAI(api_key=settings.openai_api_key)
+        self._openai = build_async_client()
         client = chromadb.PersistentClient(path=settings.chroma_db_path)
         self._collection = client.get_collection(name=settings.chroma_collection)
 

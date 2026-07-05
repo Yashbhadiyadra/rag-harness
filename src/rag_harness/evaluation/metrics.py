@@ -4,16 +4,15 @@ import asyncio
 import logging
 from pathlib import Path
 
-from openai import AsyncOpenAI
-
 from rag_harness.config import settings
 from rag_harness.models import Chunk
 from rag_harness.observability.llm_cache import LLMResponseCache
 from rag_harness.observability.usage import TokenUsage, record_usage
+from rag_harness.openai_client import build_async_client
 
 logger = logging.getLogger(__name__)
 
-_client = AsyncOpenAI(api_key=settings.openai_api_key)
+_client = build_async_client()
 
 # Cache handle is lazy — opened on first use only when llm_cache_enabled=true.
 _cache: LLMResponseCache | None = None

@@ -22,12 +22,12 @@ import logging
 from enum import StrEnum
 from typing import Literal
 
-from openai import AsyncOpenAI
 from pydantic import BaseModel, Field
 
 from rag_harness.config import settings
 from rag_harness.models import Chunk
 from rag_harness.observability.usage import TokenUsage, record_usage
+from rag_harness.openai_client import build_async_client
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +78,7 @@ class RelevanceCritic:
         whose max score falls below `incorrect_threshold` is INCORRECT;
         everything in between is AMBIGUOUS.
         """
-        self._client = AsyncOpenAI(api_key=settings.openai_api_key)
+        self._client = build_async_client()
         self._model = model or settings.generation_model
         self._correct_threshold = (
             correct_threshold

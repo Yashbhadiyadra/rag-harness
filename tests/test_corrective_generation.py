@@ -60,7 +60,7 @@ def test_correct_category_filters_and_generates() -> None:
             new_callable=AsyncMock,
             return_value="Answer.",
         ),
-        patch("rag_harness.generation.corrective.AsyncOpenAI"),
+        patch("rag_harness.generation.corrective.build_async_client"),
     ):
         result = corrective_generate("query", retriever, critic=critic, max_retries=0)
 
@@ -86,7 +86,7 @@ def test_ambiguous_category_generates_with_surviving_chunks() -> None:
             new_callable=AsyncMock,
             return_value="Maybe answer.",
         ) as gen_mock,
-        patch("rag_harness.generation.corrective.AsyncOpenAI"),
+        patch("rag_harness.generation.corrective.build_async_client"),
     ):
         result = corrective_generate("query", retriever, critic=critic, max_retries=0)
 
@@ -126,7 +126,7 @@ def test_incorrect_triggers_reformulation_and_retry() -> None:
             new_callable=AsyncMock,
             return_value="Answer.",
         ),
-        patch("rag_harness.generation.corrective.AsyncOpenAI") as mock_openai_cls,
+        patch("rag_harness.generation.corrective.build_async_client") as mock_openai_cls,
     ):
         mock_openai_cls.return_value = _mock_openai_returning("What is a Pod controller?")
         result = corrective_generate("query", retriever, critic=critic, max_retries=1)
@@ -148,7 +148,7 @@ def test_all_incorrect_returns_refusal_message() -> None:
 
     with (
         patch("rag_harness.generation.corrective.generate_async", new_callable=AsyncMock),
-        patch("rag_harness.generation.corrective.AsyncOpenAI") as mock_openai_cls,
+        patch("rag_harness.generation.corrective.build_async_client") as mock_openai_cls,
     ):
         mock_openai_cls.return_value = _mock_openai_returning("rewritten query")
         result = corrective_generate("query", retriever, critic=critic, max_retries=1)
@@ -166,7 +166,7 @@ def test_no_retries_returns_refusal_immediately_on_incorrect() -> None:
 
     with (
         patch("rag_harness.generation.corrective.generate_async", new_callable=AsyncMock),
-        patch("rag_harness.generation.corrective.AsyncOpenAI"),
+        patch("rag_harness.generation.corrective.build_async_client"),
     ):
         result = corrective_generate("query", retriever, critic=critic, max_retries=0)
 
@@ -196,7 +196,7 @@ def test_critic_scores_against_original_query_after_reformulation() -> None:
             new_callable=AsyncMock,
             return_value="Answer.",
         ),
-        patch("rag_harness.generation.corrective.AsyncOpenAI") as mock_openai_cls,
+        patch("rag_harness.generation.corrective.build_async_client") as mock_openai_cls,
     ):
         mock_openai_cls.return_value = _mock_openai_returning("rewritten")
         corrective_generate("original query", retriever, critic=critic, max_retries=1)
@@ -214,7 +214,7 @@ def test_reformulation_failure_falls_back_to_original_query() -> None:
 
     with (
         patch("rag_harness.generation.corrective.generate_async", new_callable=AsyncMock),
-        patch("rag_harness.generation.corrective.AsyncOpenAI") as mock_openai_cls,
+        patch("rag_harness.generation.corrective.build_async_client") as mock_openai_cls,
     ):
         client = MagicMock()
         client.chat.completions.create = AsyncMock(side_effect=RuntimeError("api down"))
@@ -236,7 +236,7 @@ def test_reformulation_records_usage_inside_collect_block() -> None:
 
     with (
         patch("rag_harness.generation.corrective.generate_async", new_callable=AsyncMock),
-        patch("rag_harness.generation.corrective.AsyncOpenAI") as mock_openai_cls,
+        patch("rag_harness.generation.corrective.build_async_client") as mock_openai_cls,
     ):
         mock_openai_cls.return_value = _mock_openai_returning(
             "rewritten", prompt_tokens=15, completion_tokens=5

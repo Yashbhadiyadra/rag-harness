@@ -31,6 +31,13 @@ class Settings(BaseSettings):
     # text-embedding-3-small at 512-input batches.
     ingest_embed_concurrency: int = 4
 
+    # OpenAI SDK resilience — the SDK does exponential backoff + jitter
+    # automatically. Two retries × ~20s timeout gives roughly a 40s worst-case
+    # per call before we degrade to the honest refusal path. Tighter than
+    # the SDK default (2 retries × 600s) but sensible for an interactive demo.
+    openai_max_retries: int = 2
+    openai_timeout_seconds: float = 20.0
+
     # Retrieval
     retrieval_top_k: int = 5
     retrieval_strategy: str = "dense"  # "dense" | "hybrid" | "hybrid-rerank" | "hyde" | "full"

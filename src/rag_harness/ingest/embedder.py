@@ -5,18 +5,17 @@ import logging
 from collections.abc import Iterator
 from itertools import islice
 
-from openai import AsyncOpenAI
-
 from rag_harness.config import settings
 from rag_harness.ingest.embedding_cache import EmbeddingCache
 from rag_harness.models import Chunk
 from rag_harness.observability.usage import TokenUsage, record_usage
+from rag_harness.openai_client import build_async_client
 
 logger = logging.getLogger(__name__)
 
 _BATCH_SIZE = 512  # well within OpenAI's 2048-input limit; keeps payloads manageable
 
-_client = AsyncOpenAI(api_key=settings.openai_api_key)
+_client = build_async_client()
 
 
 def _batched(items: list[Chunk], size: int) -> Iterator[list[Chunk]]:

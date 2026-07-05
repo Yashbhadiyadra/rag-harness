@@ -6,6 +6,7 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Response
+from openai import OpenAIError
 from pydantic import BaseModel
 
 from rag_harness.api.metrics import (
@@ -17,9 +18,10 @@ from rag_harness.api.metrics import (
     prometheus_response,
 )
 from rag_harness.config import settings
-from rag_harness.generation.corrective import corrective_generate_async
+from rag_harness.generation.corrective import NO_INFO_MESSAGE, corrective_generate_async
 from rag_harness.generation.generator import generate_async
 from rag_harness.logging_setup import configure_logging
+from rag_harness.models import Chunk
 from rag_harness.observability.tracing import configure_tracing, traced_span
 from rag_harness.observability.usage import collect_usage
 from rag_harness.retrieval.base import Retriever
@@ -99,6 +101,8 @@ async def query(request: QueryRequest) -> QueryResponse:
     corrective_label = "true" if use_corrective else "false"
 
     start = time.perf_counter()
+    chunks: list[Chunk] = []
+    answer = ""
     try:
         with (
             traced_span(
@@ -121,6 +125,20 @@ async def query(request: QueryRequest) -> QueryResponse:
                     chunks = await retriever.retrieve_async(request.question, top_k=request.top_k)
                 with traced_span("generate", chunk_count=len(chunks)):
                     answer = await generate_async(request.question, chunks)
+    except OpenAIError as e:
+        # LLM boundary exhausted its retries. Return the honest refusal
+        # rather than a 5xx — the API contract stays useful and the user
+        # sees the same "not enough information" signal they would from
+        # a corrective-flow refusal. Distinct log event for ops.
+        QUERY_ERRORS_TOTAL.labels(strategy=strategy, error_type=type(e).__name__).inc()
+        logger.warning(
+            "LLM boundary exhausted (%s: %s) — returning refusal for query: %.60s",
+            type(e).__name__,
+            e,
+            request.question,
+        )
+        answer = NO_INFO_MESSAGE
+        chunks = []
     except Exception as e:
         QUERY_ERRORS_TOTAL.labels(strategy=strategy, error_type=type(e).__name__).inc()
         raise

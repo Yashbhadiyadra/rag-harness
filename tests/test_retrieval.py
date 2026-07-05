@@ -7,7 +7,7 @@ from rag_harness.retrieval.dense import DenseRetriever
 def _make_retriever() -> DenseRetriever:
     """Construct a DenseRetriever with all external clients mocked out."""
     with (
-        patch("rag_harness.retrieval.dense.AsyncOpenAI"),
+        patch("rag_harness.retrieval.dense.build_async_client"),
         patch("rag_harness.retrieval.dense.chromadb.PersistentClient"),
     ):
         return DenseRetriever()

@@ -18,11 +18,10 @@ underlying retriever (dense, hybrid, hybrid+rerank) as a query-time transform.
 
 import logging
 
-from openai import AsyncOpenAI
-
 from rag_harness.config import settings
 from rag_harness.models import Chunk
 from rag_harness.observability.usage import TokenUsage, record_usage
+from rag_harness.openai_client import build_async_client
 from rag_harness.retrieval.base import Retriever
 
 logger = logging.getLogger(__name__)
@@ -46,7 +45,7 @@ class HyDERetriever(Retriever):
         """Build a HyDE retriever around *base_retriever*."""
         self._base = base_retriever
         self._model = model or settings.generation_model
-        self._client = AsyncOpenAI(api_key=settings.openai_api_key)
+        self._client = build_async_client()
 
     async def _hypothesise(self, query: str) -> str:
         """Ask the LLM to draft a hypothetical answer passage for *query*."""

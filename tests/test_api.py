@@ -1,8 +1,10 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from fastapi.testclient import TestClient
+from openai import APIConnectionError
 
 from rag_harness.api.server import app
+from rag_harness.generation.corrective import NO_INFO_MESSAGE
 from rag_harness.models import Chunk
 
 client = TestClient(app)
@@ -53,6 +55,31 @@ def test_query_returns_answer_and_sources() -> None:
 def test_query_rejects_empty_question() -> None:
     response = client.post("/query", json={"question": "   "})
     assert response.status_code == 422
+
+
+def test_query_returns_refusal_on_openai_error() -> None:
+    """When the LLM boundary raises OpenAIError (exhausted retries), the
+    handler must degrade to the honest refusal answer with an empty sources
+    list — NOT a 5xx. Distinct log event for ops."""
+    chunk = _make_chunk("docs/a.md", ["A"])
+
+    mock_retriever = MagicMock()
+    mock_retriever.retrieve_async = AsyncMock(return_value=[chunk])
+
+    with (
+        patch("rag_harness.api.server._get_retriever", return_value=mock_retriever),
+        patch(
+            "rag_harness.api.server.generate_async",
+            new_callable=AsyncMock,
+            side_effect=APIConnectionError(request=MagicMock()),
+        ),
+    ):
+        response = client.post("/query", json={"question": "test?"})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["answer"] == NO_INFO_MESSAGE
+    assert body["sources"] == []
 
 
 def test_query_respects_top_k() -> None:

@@ -8,11 +8,10 @@ be retired once every caller is async (Phase 9 progression).
 import asyncio
 import logging
 
-from openai import AsyncOpenAI
-
 from rag_harness.config import settings
 from rag_harness.models import Chunk
 from rag_harness.observability.usage import TokenUsage, record_usage
+from rag_harness.openai_client import build_async_client
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +23,7 @@ If the context does not contain enough information to answer, say:
 Do not use any outside knowledge. Be concise and precise.
 """
 
-_client = AsyncOpenAI(api_key=settings.openai_api_key)
+_client = build_async_client()
 
 
 def _build_context(chunks: list[Chunk]) -> str:
