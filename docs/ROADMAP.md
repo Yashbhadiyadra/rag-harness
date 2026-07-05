@@ -170,3 +170,48 @@ P7 → P8 are the immediate priority (measurement before anything new — they c
 existing features into evidence). P9 → P10 make it survive and ship. P11 packages it.
 At the current build pace: roughly 4–6 focused weeks to v1.0, keeping Projects 2 and 3
 on schedule. Scope beyond this document goes to the backlog, not the sprint.
+
+---
+
+## Corpus scope
+
+The English docs under `content/en/docs/`, ingested from a pinned baseline git commit,
+with a bounded window of release history retained as the change stream. See ADR-0002.
+
+## Project-portfolio context (Projects 2 & 3)
+
+This is Project 1 of a three-part reliability portfolio, and later projects depend on
+choices made here. Do not paint them into a corner:
+
+- **Project 2 (stale-embedding detection)** consumes this repo's ingest history.
+  Therefore ingest MUST record, for every chunk, the source file path and the git
+  commit / doc version it came from. Never discard that provenance — it is Project 2's
+  input signal.
+- **Project 3 (agent trajectory evaluator)** reuses this repo's `evaluation` layer.
+  Keep evaluation metrics and the golden-set format reusable and not hard-wired to
+  single-turn RAG only.
+- **Corrective / "self-healing" RAG** — originally listed as a planned Project 1 v2
+  feature (critic step that checks answer faithfulness and, on low confidence,
+  re-retrieves with a reformulated query or returns "not enough information").
+  **Shipped in Phase 6 (see ADR-0007).** Real finding from the Phase 8 ablation at
+  n=30: **no consistent improvement across strategies, plus added latency** (p50 grows
+  1–8s depending on strategy; `full`+corrective p50 doubles from 10.5s to 18.8s).
+  Kept as an opt-in feature — best used where retrieval is weak enough for the critic
+  to have room to reformulate. Larger golden sets in future phases may revise this.
+
+## Evaluation discipline
+
+- The golden set lives in `evals/golden/` as `(question, reference_answer,
+  relevant_doc_ids)` cases. It is **version-controlled and reviewed like code.** Start
+  small (~30 hand-checked cases) and grow; never auto-generate cases into it without
+  review.
+- The reliability gate fails when a metric drops below its threshold. Treat a metric
+  regression as a build failure, not a warning.
+
+## Cost awareness
+
+- Default to cheap models (`text-embedding-3-small`, `gpt-4o-mini`); don't switch to
+  expensive models without flagging it.
+- The eval gate calls an LLM, so it runs **nightly / on-demand, not on every PR.**
+  Don't wire LLM-calling evals into the per-PR CI without discussing cost.
+- Cache embeddings and avoid needless re-embedding during development.
