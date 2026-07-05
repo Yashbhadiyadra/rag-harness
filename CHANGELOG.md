@@ -5,6 +5,63 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.8.0] — 2026-07-05
+
+### Added (Phase 9 — production hardening)
+- **Async request path end-to-end.** Every I/O-bound function now uses
+  ``AsyncOpenAI`` and ``await``; the FastAPI /query handler is
+  ``async def``. Retrieval, generation, corrective, HyDE, critic, and
+  the eval + ablation runners all have first-class ``_async`` variants
+  with sync facades for the CLI boundary. Ingest embedder gains
+  bounded-concurrency batching via ``asyncio.Semaphore`` (default 4).
+- **Retries + timeouts at the LLM boundary.** New
+  ``observability/openai_client.build_async_client()`` returns an
+  ``AsyncOpenAI`` configured with ``openai_max_retries=2`` and
+  ``openai_timeout_seconds=20.0``. Combined worst case ~40 s per call
+  before we degrade to the honest refusal.
+- **Graceful refusal on total LLM failure.** ``OpenAIError`` in the
+  /query handler returns 200 with ``NO_INFO_MESSAGE`` and an empty
+  sources list; the ``rag_query_errors_total`` counter and a
+  ``logger.warning`` still fire so ops can see the degradation.
+- **Rate limiting.** ``slowapi`` (core dep) with in-memory per-IP
+  ``60/minute`` default limiter. Configurable via ``API_RATE_LIMIT``.
+- **Request size caps.** ``QueryRequest.question`` gains
+  ``min_length=1, max_length=2000`` (``API_MAX_QUESTION_LENGTH``);
+  ``top_k`` gains ``ge=1, le=50``.
+- **Minimal prompt-injection screening.**
+  ``src/rag_harness/api/guardrails.py`` — regex-based screening for the
+  most common patterns (``ignore previous instructions``, ``you are
+  now …``, ``<system>`` tags, etc.). Explicit non-goal: this is a
+  hygiene layer, not a full guardrails engine.
+- **Typed exception hierarchy.**
+  ``src/rag_harness/api/errors.py`` — ``RagHarnessError`` root with
+  ``GuardrailRejection``, ``RetrievalError``, ``GenerationError``, and
+  ``NotReadyError`` subclasses; each maps to the correct HTTP status
+  and a structured JSON body via a single FastAPI exception handler.
+- **``/ready`` endpoint** distinct from ``/health``. ``/health`` stays
+  trivial (liveness only); ``/ready`` checks ChromaDB heartbeat,
+  ``OPENAI_API_KEY`` presence, and (strict) cross-encoder importability
+  when the strategy needs it.
+- **Load-check script + baseline results.** ``scripts/load_check.py``
+  boots the FastAPI app in-process with mocks, fires N concurrent
+  requests, measures p50/p95/p99 latency and throughput at multiple
+  concurrency levels, writes a markdown table to
+  ``docs/load-check/<ts>.md``. First run (10/25/50/100 concurrent,
+  200 ms injected LLM latency) records 100% success and near-linear
+  throughput up to 100 concurrent — see
+  ``docs/load-check/20260705T050836Z.md``.
+
+### Changed
+- ``retriever.retrieve`` becomes a sync facade over the new
+  ``retrieve_async`` abstract method on every Retriever implementation.
+- LLM-judge metrics (``faithfulness``, ``correctness``,
+  ``answer_relevancy``, ``context_precision``) gain ``_async``
+  variants; sync facades kept.
+- ``QueryRequest`` field ``question`` renamed on the handler signature
+  to ``body`` (``request: fastapi.Request`` is required by slowapi).
+- ``NO_INFO_MESSAGE`` is now the graceful-degradation path for both
+  the corrective refusal and any post-retry LLM failure.
+
 ## [0.7.0] — 2026-07-04
 
 ### Added (Phase 8 — evaluation completeness + ablation study)

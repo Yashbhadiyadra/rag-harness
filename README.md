@@ -96,6 +96,30 @@ python -m rag_harness eval --output results.json    # or .csv
 python -m rag_harness ablation
 ```
 
+### Production hardening
+
+The API service (`POST /query`, `GET /health`, `GET /ready`, `GET /metrics`)
+runs on an async request path end-to-end:
+
+- **Retries + timeouts** at the LLM boundary — `AsyncOpenAI` with
+  `max_retries=2, timeout=20s`. Total LLM failure returns the honest
+  "not enough information" refusal at HTTP 200 rather than a 5xx.
+- **Rate limiting** — per-IP via `slowapi`; default `60/minute`,
+  configurable.
+- **Input caps** — question length ≤ 2000, `top_k` in `[1, 50]`.
+- **Prompt-injection screening** — regex hygiene at the boundary
+  catches the common patterns. Deliberately narrow; not a full
+  guardrails engine.
+- **Typed error responses** — every user-facing error path raises a
+  `RagHarnessError` subclass mapped to a structured JSON body:
+  `{ error_type, message, detail }`.
+- **`/health` vs `/ready`** — `/health` is trivial liveness (200 while
+  the process is alive); `/ready` checks ChromaDB heartbeat, the
+  OpenAI key, and (when needed) the cross-encoder import.
+- **Load-check** — `scripts/load_check.py` boots the app in-process
+  with mocks and measures async-wiring overhead at 10/25/50/100
+  concurrent. First results in `docs/load-check/`.
+
 ### PR reliability gate
 
 Every pull request to `main` runs a 5-case reliability subset against the real
