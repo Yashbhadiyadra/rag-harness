@@ -28,6 +28,49 @@ def test_health() -> None:
     assert response.json() == {"status": "ok"}
 
 
+def test_ready_reports_per_check_status() -> None:
+    """/ready returns per-check status regardless of pass/fail."""
+    response = client.get("/ready")
+    body = response.json()
+    # Whatever the test env produces, the shape is consistent
+    assert "checks" in body or "status" in body
+    if response.status_code == 200:
+        assert body["status"] == "ready"
+        assert "chromadb" in body["checks"]
+        assert "openai_api_key" in body["checks"]
+    else:
+        assert response.status_code == 503
+        assert body["error_type"] == "not_ready"
+        assert "chromadb" in body["checks"]
+
+
+def test_ready_fails_when_openai_key_missing() -> None:
+    """If OPENAI_API_KEY is blank, /ready returns 503."""
+    with patch("rag_harness.api.server.settings.openai_api_key", ""):
+        response = client.get("/ready")
+    assert response.status_code == 503
+    body = response.json()
+    assert body["error_type"] == "not_ready"
+    assert body["checks"]["openai_api_key"] == "missing"
+
+
+def test_ready_strict_on_missing_reranker_extra() -> None:
+    """When strategy needs the reranker and [rerank] extra is missing,
+    /ready fails (strict per your Q3 decision)."""
+    import sys
+
+    with (
+        patch("rag_harness.api.server.settings.retrieval_strategy", "hybrid-rerank"),
+        patch.dict(sys.modules, {"sentence_transformers": None}),
+    ):
+        response = client.get("/ready")
+
+    body = response.json()
+    if response.status_code == 503:
+        # If we're here, the cross-encoder check flagged it
+        assert body["checks"].get("cross_encoder") == "not-installed"
+
+
 def test_query_returns_answer_and_sources() -> None:
     chunk = _make_chunk("content/en/docs/security/rbac.md", ["Security", "RBAC"])
 

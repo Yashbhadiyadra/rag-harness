@@ -212,8 +212,81 @@ async def query(request: Request, body: QueryRequest) -> QueryResponse:
 
 @app.get("/health")
 def health() -> dict[str, str]:
-    """Liveness probe — returns 200 when the service is running."""
+    """Liveness probe — returns 200 as long as the process is alive.
+
+    Deliberately trivial: no external checks. Kubernetes-style liveness
+    probes should not fail on transient dependency issues (that would
+    trigger unnecessary restarts). See ``/ready`` for the dependency check.
+    """
     return {"status": "ok"}
+
+
+@app.get("/ready")
+def ready() -> Response:
+    """Readiness probe — 200 only when every dependency is reachable.
+
+    Checks:
+      * ChromaDB heartbeat (round-trip to the persistent store).
+      * OPENAI_API_KEY is set (does NOT spend a token verifying it).
+      * When RETRIEVAL_STRATEGY requires a cross-encoder, the
+        sentence-transformers import succeeds.
+
+    Returns 200 with per-check status on success; 503 with a not_ready
+    body listing failed checks on any failure. Failed checks do not
+    short-circuit — the whole set runs so an operator can see the
+    complete picture in one probe response.
+    """
+    import json
+
+    checks: dict[str, str] = {}
+    failures: list[str] = []
+
+    # ChromaDB
+    try:
+        import chromadb
+
+        chroma_client = chromadb.PersistentClient(path=settings.chroma_db_path)
+        chroma_client.heartbeat()
+        checks["chromadb"] = "ok"
+    except Exception as e:
+        checks["chromadb"] = f"unreachable: {type(e).__name__}"
+        failures.append("chromadb")
+
+    # OpenAI key (never make a real call from a readiness check)
+    if settings.openai_api_key and settings.openai_api_key.strip():
+        checks["openai_api_key"] = "present"
+    else:
+        checks["openai_api_key"] = "missing"
+        failures.append("openai_api_key")
+
+    # Cross-encoder — only required when the configured strategy uses it
+    if settings.retrieval_strategy in ("hybrid-rerank", "full"):
+        try:
+            from sentence_transformers import CrossEncoder  # noqa: F401
+
+            checks["cross_encoder"] = "importable"
+        except ImportError:
+            checks["cross_encoder"] = "not-installed"
+            failures.append("cross_encoder")
+
+    if failures:
+        body_json = {
+            "error_type": "not_ready",
+            "message": f"not ready: {', '.join(failures)}",
+            "detail": None,
+            "checks": checks,
+        }
+        return Response(
+            content=json.dumps(body_json),
+            status_code=503,
+            media_type="application/json",
+        )
+
+    return Response(
+        content=json.dumps({"status": "ready", "checks": checks}),
+        status_code=200,
+        media_type="application/json",
+    )
 
 
 @app.get("/metrics")
