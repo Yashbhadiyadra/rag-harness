@@ -1,6 +1,6 @@
 """Unit tests for the ingest embedder — usage recording, batching semantics."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from rag_harness.models import Chunk
 from rag_harness.observability.usage import collect_usage
@@ -29,8 +29,8 @@ def test_embed_chunks_records_usage_once_per_batch() -> None:
     chunks = [_chunk(str(i), text=f"text {i}") for i in range(3)]
 
     with patch("rag_harness.ingest.embedder._client") as mock_client:
-        mock_client.embeddings.create.return_value = _mock_response(
-            [[0.1] * 4, [0.2] * 4, [0.3] * 4], prompt_tokens=30
+        mock_client.embeddings.create = AsyncMock(
+            return_value=_mock_response([[0.1] * 4, [0.2] * 4, [0.3] * 4], prompt_tokens=30)
         )
         with collect_usage() as usage_list:
             from rag_harness.ingest.embedder import embed_chunks
@@ -51,6 +51,7 @@ def test_embed_chunks_skips_api_and_records_no_usage_on_cache_hit() -> None:
     cache.get.return_value = [0.5, 0.5, 0.5, 0.5]  # cache hit
 
     with patch("rag_harness.ingest.embedder._client") as mock_client:
+        mock_client.embeddings.create = AsyncMock()
         with collect_usage() as usage_list:
             from rag_harness.ingest.embedder import embed_chunks
 

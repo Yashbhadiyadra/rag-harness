@@ -26,6 +26,11 @@ class Settings(BaseSettings):
     chroma_collection: str = "rag_harness"
     embedding_cache_path: str = "./embedding_cache.db"
 
+    # Ingest concurrency — bound parallel embedding-API calls to avoid rate
+    # limits and preserve back-pressure. 4 is a reasonable default for
+    # text-embedding-3-small at 512-input batches.
+    ingest_embed_concurrency: int = 4
+
     # Retrieval
     retrieval_top_k: int = 5
     retrieval_strategy: str = "dense"  # "dense" | "hybrid" | "hybrid-rerank" | "hyde" | "full"

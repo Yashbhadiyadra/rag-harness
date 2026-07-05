@@ -11,9 +11,9 @@ configure_logging(settings.log_level)
 
 
 def _cmd_ingest(args: argparse.Namespace) -> None:
-    from rag_harness.ingest import run_ingest
+    from rag_harness.ingest import run_ingest_async
 
-    run_ingest()
+    asyncio.run(run_ingest_async())
 
 
 def _cmd_query(args: argparse.Namespace) -> None:
