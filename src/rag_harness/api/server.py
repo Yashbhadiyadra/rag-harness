@@ -13,6 +13,7 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from slowapi.util import get_remote_address
 
+from rag_harness.api.guardrails import screen_for_injection
 from rag_harness.api.metrics import (
     QUERY_COST_USD,
     QUERY_ERRORS_TOTAL,
@@ -110,6 +111,11 @@ async def query(request: Request, body: QueryRequest) -> QueryResponse:
     """
     if not body.question.strip():
         raise HTTPException(status_code=422, detail="question must not be empty")
+
+    reason = screen_for_injection(body.question)
+    if reason is not None:
+        logger.warning("guardrail rejection: %s", reason)
+        raise HTTPException(status_code=422, detail=f"rejected: {reason}")
 
     retriever = _get_retriever()
     strategy = settings.retrieval_strategy
