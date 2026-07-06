@@ -1,0 +1,90 @@
+# Cloud Run service manifest — RAG harness public demo.
+#
+# Applied via `gcloud run services replace deploy/cloud-run.yaml`.
+# The release workflow (.github/workflows/release.yml) substitutes the
+# __PROJECT_ID__ and __IMAGE_TAG__ placeholders before applying.
+#
+# Config values follow ADR-0010:
+#   - min=0 (scale to zero)
+#   - max=1 (single-writer property for the in-memory daily-cap counter)
+#   - concurrency=40 (bursts queued in-process, not spread across instances)
+#   - memory=1Gi, cpu=1, timeout=60s
+#   - OPENAI_API_KEY from Secret Manager — never baked into the image.
+#
+# Region and service-account naming come from deploy/README.md, which
+# documents the one-time GCP setup.
+
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: rag-harness
+  labels:
+    cloud.googleapis.com/location: us-central1
+  annotations:
+    run.googleapis.com/launch-stage: GA
+    run.googleapis.com/description: "Reliability-first RAG over pinned K8s docs (ADR-0010)"
+spec:
+  template:
+    metadata:
+      annotations:
+        # Scale-to-zero + single-instance ceiling. See ADR-0010 §
+        # "Cost guardrail architecture" for the max=1 rationale.
+        autoscaling.knative.dev/minScale: "0"
+        autoscaling.knative.dev/maxScale: "1"
+        # CPU throttling: only allocated during requests. Keeps idle
+        # cost at zero while scale-to-zero warms up.
+        run.googleapis.com/cpu-throttling: "true"
+        # Slightly faster cold start; free feature.
+        run.googleapis.com/startup-cpu-boost: "true"
+    spec:
+      # Bursts queued in-process (up to 40) — see ADR-0010.
+      containerConcurrency: 40
+      # Wider than settings.openai_timeout_seconds (20s) so a legitimate
+      # long generation is not truncated by the request timeout.
+      timeoutSeconds: 60
+      serviceAccountName: rag-harness-runtime@__PROJECT_ID__.iam.gserviceaccount.com
+      containers:
+        - image: __IMAGE_TAG__
+          ports:
+            - name: http1
+              containerPort: 8080
+          env:
+            # Cloud Run injects PORT; setting it explicitly makes the
+            # manifest self-documenting and matches the Dockerfile default.
+            - name: PORT
+              value: "8080"
+            # OPENAI_API_KEY comes from Secret Manager. Rotate by adding
+            # a new version to the secret — the container reads
+            # `latest` at cold start.
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: openai-api-key
+                  key: latest
+          resources:
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          # Startup probe: give the container time to open the baked
+          # Chroma index (~2–4 s per ADR-0010) before flipping to healthy.
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 6
+          # Liveness probe: cheap /health endpoint (no external checks).
+          # /ready is deliberately NOT wired here — a transient Chroma
+          # blip should not restart the container. See api/server.py.
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+  traffic:
+    - percent: 100
+      latestRevision: true
