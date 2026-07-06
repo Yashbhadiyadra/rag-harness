@@ -52,6 +52,12 @@ dev = [
     "opentelemetry-sdk>=1.20",  # needed for tests with InMemorySpanExporter
 ]
 
+[project.urls]
+Homepage = "https://github.com/Yashbhadiyadra/rag-harness"
+Repository = "https://github.com/Yashbhadiyadra/rag-harness"
+Issues = "https://github.com/Yashbhadiyadra/rag-harness/issues"
+Changelog = "https://github.com/Yashbhadiyadra/rag-harness/blob/main/CHANGELOG.md"
+
 [project.scripts]
 rag-harness = "rag_harness.api.cli:main"
 
