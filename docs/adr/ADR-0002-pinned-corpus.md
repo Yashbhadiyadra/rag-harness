@@ -1,7 +1,8 @@
-# ADR-0002: Pin the K8s docs corpus to a specific git commit
+# ADR-0002 — Pin the K8s docs corpus to a specific git commit
 
-## Status
-Accepted
+**Status:** Accepted  
+**Date:** 2026-06-30  
+**Decided by:** Owner, 2026-06-30
 
 ## Context
 The Kubernetes documentation changes with every release. Reproducible evaluation

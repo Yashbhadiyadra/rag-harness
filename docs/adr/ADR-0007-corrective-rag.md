@@ -1,7 +1,8 @@
 # ADR-0007 — Corrective RAG: critic-and-retry loop
 
-**Status:** Accepted
-**Date:** 2026-07-02
+**Status:** Accepted  
+**Date:** 2026-07-02  
+**Decided by:** Owner, 2026-07-02
 
 ## Context
 

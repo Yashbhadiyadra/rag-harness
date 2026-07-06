@@ -1,7 +1,7 @@
 # ADR-0010 — Cloud Run + scale-to-zero + baked Chroma index
 
-**Status:** Accepted
-**Date:** 2026-07-05
+**Status:** Accepted  
+**Date:** 2026-07-05  
 **Decided by:** Owner, 2026-07-05
 
 ## Decision

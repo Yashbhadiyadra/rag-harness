@@ -1,7 +1,8 @@
-# ADR-0001: Use ChromaDB as the vector store
+# ADR-0001 — Use ChromaDB as the vector store
 
-## Status
-Accepted
+**Status:** Accepted  
+**Date:** 2026-06-30  
+**Decided by:** Owner, 2026-06-30
 
 ## Context
 We need a vector store to hold embedded chunks and their provenance metadata.

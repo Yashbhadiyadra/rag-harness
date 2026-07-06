@@ -1,7 +1,8 @@
-# ADR-0004: Use LLM-as-judge for faithfulness and correctness metrics
+# ADR-0004 — Use LLM-as-judge for faithfulness and correctness metrics
 
-## Status
-Accepted
+**Status:** Accepted  
+**Date:** 2026-06-30  
+**Decided by:** Owner, 2026-06-30
 
 ## Context
 The evaluation layer scores each generated answer on five metrics:

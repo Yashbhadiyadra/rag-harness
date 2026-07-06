@@ -1,7 +1,8 @@
 # ADR-0005 — SQLite embedding cache
 
 **Status:** Accepted  
-**Date:** 2026-07-01
+**Date:** 2026-07-01  
+**Decided by:** Owner, 2026-07-01
 
 ## Context
 

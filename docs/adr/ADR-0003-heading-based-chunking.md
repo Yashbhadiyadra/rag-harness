@@ -1,7 +1,8 @@
-# ADR-0003: Chunk markdown on heading boundaries, not token count
+# ADR-0003 — Chunk markdown on heading boundaries, not token count
 
-## Status
-Accepted
+**Status:** Accepted  
+**Date:** 2026-06-30  
+**Decided by:** Owner, 2026-06-30
 
 ## Context
 The K8s docs are structured markdown. We need a chunking strategy that produces
