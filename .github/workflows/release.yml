@@ -1,0 +1,268 @@
+# Release CD pipeline (ADR-0010).
+#
+# Trigger: pushing a tag matching v*.*.* (e.g. v1.0.0, v1.2.3).
+# Pipeline: test → eval gate (full suite) → build image → push → deploy →
+# verify. Every stage must pass before the next runs.
+#
+# One-time setup: run deploy/README.md through step 5. Then set the
+# following GitHub Actions REPO VARIABLES (Settings → Secrets and
+# variables → Actions → Variables tab). These are values, not secrets —
+# knowing them does not grant impersonation because the WIF
+# attribute-condition scopes to this repository.
+#
+#   GCP_WIF_PROVIDER   projects/N/locations/global/workloadIdentityPools/github/providers/github-actions
+#   GCP_DEPLOY_SA      rag-harness-deployer@PROJECT_ID.iam.gserviceaccount.com
+#   GCP_PROJECT_ID     rag-harness-demo             (optional; default here)
+#   GCP_REGION         us-central1                  (optional; default here)
+#   GCP_ARTIFACT_REPO  rag-harness                  (optional; default here)
+#   GCP_SERVICE_NAME   rag-harness                  (optional; default here)
+#
+# One SECRET is still required: OPENAI_API_KEY, used by the eval-gate
+# job (and by the build-and-deploy job if the Chroma cache misses and
+# ingest re-runs). Set it under Secrets → Actions.
+
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:  # allow manual dispatch for dry runs / re-releases
+
+# Serialize releases — never deploy two revisions concurrently.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: read     # checkout
+  id-token: write    # Workload Identity Federation
+
+env:
+  GCP_REGION: ${{ vars.GCP_REGION || 'us-central1' }}
+  GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID || 'rag-harness-demo' }}
+  GCP_ARTIFACT_REPO: ${{ vars.GCP_ARTIFACT_REPO || 'rag-harness' }}
+  GCP_SERVICE_NAME: ${{ vars.GCP_SERVICE_NAME || 'rag-harness' }}
+
+jobs:
+
+  # -------------------------------------------------------------------
+  # 1. Static gate: lint + type-check + unit tests. Same command as CI
+  #    but re-run on the release-critical path so a broken main branch
+  #    tagged for release still fails here rather than shipping.
+  # -------------------------------------------------------------------
+  test:
+    name: make check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+      - name: Create virtual environment
+        run: uv venv .venv --python 3.12
+      - name: Install dependencies
+        run: uv pip install -e ".[dev,eval]"
+      - name: Run make check
+        run: make check
+
+  # -------------------------------------------------------------------
+  # 2. Eval gate: the full 30-case reliability suite. Fails the release
+  #    if quality metrics regress below the thresholds encoded in
+  #    src/rag_harness/evaluation. See ADR-0004.
+  # -------------------------------------------------------------------
+  eval-gate:
+    name: Reliability gate (full suite)
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+      - name: Create virtual environment
+        run: uv venv .venv --python 3.12
+      - name: Install dependencies
+        run: uv pip install -e ".[dev,eval]"
+
+      # Chroma cache. Key = os + config.py hash, which includes the
+      # pinned K8S_GIT_COMMIT (ADR-0002). Same key used by ci-pr and
+      # nightly workflows, so releases piggyback on the warmed cache.
+      - name: Restore ChromaDB cache
+        id: chroma-cache
+        uses: actions/cache@v4
+        with:
+          path: chroma_db/
+          key: chroma-${{ runner.os }}-${{ hashFiles('src/rag_harness/config.py') }}
+
+      - name: Ingest K8s docs (cache miss only)
+        if: steps.chroma-cache.outputs.cache-hit != 'true'
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: uv run --no-sync python -m rag_harness ingest
+
+      - name: Save ChromaDB cache
+        if: steps.chroma-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: chroma_db/
+          key: chroma-${{ runner.os }}-${{ hashFiles('src/rag_harness/config.py') }}
+
+      - name: Run full eval
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: uv run --no-sync python -m rag_harness eval --verbose
+
+  # -------------------------------------------------------------------
+  # 3. Build the image with the baked Chroma index, push to Artifact
+  #    Registry, deploy via Cloud Run manifest, verify the new
+  #    revision reached "ready" and that /health returns 200 through
+  #    the public URL.
+  # -------------------------------------------------------------------
+  build-and-deploy:
+    name: Build + push + deploy
+    needs: eval-gate
+    runs-on: ubuntu-latest
+    # A GitHub deployment environment lets you optionally add manual
+    # approval and gives the URL a real link on the repo page.
+    environment:
+      name: production
+      url: ${{ steps.probe.outputs.service_url }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+      - name: Create virtual environment
+        run: uv venv .venv --python 3.12
+      - name: Install dependencies (for ingest on cache miss)
+        run: uv pip install -e ".[eval]"
+
+      # Reuse the eval-gate's Chroma cache. Same key → same cache
+      # entry. On the rare miss we re-ingest — costs ~$0.05-0.20 once.
+      - name: Restore ChromaDB cache
+        id: chroma-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: chroma_db/
+          key: chroma-${{ runner.os }}-${{ hashFiles('src/rag_harness/config.py') }}
+
+      - name: Ingest K8s docs (cache miss only)
+        if: steps.chroma-cache.outputs.cache-hit != 'true'
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: uv run --no-sync python -m rag_harness ingest
+
+      - name: Authenticate to Google Cloud (Workload Identity Federation)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SA }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker "${GCP_REGION}-docker.pkg.dev" --quiet
+
+      - name: Compute image tag
+        id: image
+        run: |
+          image="${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${GCP_ARTIFACT_REPO}/${GCP_SERVICE_NAME}:${GITHUB_REF_NAME}"
+          echo "image=${image}" >> "$GITHUB_OUTPUT"
+          echo "Image: ${image}"
+
+      - name: Build and push image
+        env:
+          IMAGE: ${{ steps.image.outputs.image }}
+        run: |
+          docker build \
+            --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
+            --label "org.opencontainers.image.version=${GITHUB_REF_NAME}" \
+            --label "org.opencontainers.image.source=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" \
+            --label "org.opencontainers.image.created=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            -t "$IMAGE" \
+            .
+          docker push "$IMAGE"
+
+      - name: Render Cloud Run manifest
+        env:
+          IMAGE: ${{ steps.image.outputs.image }}
+        run: |
+          sed -e "s|__PROJECT_ID__|${GCP_PROJECT_ID}|g" \
+              -e "s|__IMAGE_TAG__|${IMAGE}|g" \
+              deploy/cloud-run.yaml > cloud-run.rendered.yaml
+          echo "--- rendered manifest ---"
+          cat cloud-run.rendered.yaml
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run services replace cloud-run.rendered.yaml \
+            --region "${GCP_REGION}" \
+            --quiet
+
+      - name: Verify new revision reached "ready"
+        # gcloud run services replace returns success even if the new
+        # revision fails its startup probe. Compare latestCreated to
+        # latestReady; if they diverge, Cloud Run kept traffic on the
+        # previous revision — which is the automatic rollback we want,
+        # but this workflow still fails so the release is marked
+        # failed and the tag doesn't silently claim success.
+        run: |
+          set -e
+          latest_created=$(gcloud run services describe "${GCP_SERVICE_NAME}" \
+            --region "${GCP_REGION}" \
+            --format='value(status.latestCreatedRevisionName)')
+          latest_ready=$(gcloud run services describe "${GCP_SERVICE_NAME}" \
+            --region "${GCP_REGION}" \
+            --format='value(status.latestReadyRevisionName)')
+          echo "Latest created: $latest_created"
+          echo "Latest ready:   $latest_ready"
+          if [ "$latest_created" != "$latest_ready" ]; then
+            echo "::error title=Deploy rolled back by Cloud Run::New revision did not become ready. Cloud Run kept traffic on the previous revision. Check startup logs in the Cloud Run console."
+            exit 1
+          fi
+
+      - name: Smoke test /health
+        id: probe
+        run: |
+          set -e
+          url=$(gcloud run services describe "${GCP_SERVICE_NAME}" \
+            --region "${GCP_REGION}" \
+            --format='value(status.url)')
+          echo "service_url=${url}" >> "$GITHUB_OUTPUT"
+          echo "Deployed URL: ${url}"
+          # Cloud Run cold-start can take a few seconds. Retry the
+          # probe up to 5 times with a 3s gap.
+          for attempt in 1 2 3 4 5; do
+            if curl -fsS "${url}/health" >/dev/null; then
+              echo "/health returned 200 (attempt ${attempt})"
+              exit 0
+            fi
+            echo "/health probe attempt ${attempt} failed; sleeping 3s"
+            sleep 3
+          done
+          echo "::error title=Smoke test failed::/health did not return 200 after 5 attempts on ${url}"
+          exit 1
+
+      - name: Release summary
+        if: always()
+        run: |
+          {
+            echo "## Release \`${GITHUB_REF_NAME}\`"
+            echo ""
+            echo "- Image: \`${{ steps.image.outputs.image }}\`"
+            echo "- Region: \`${GCP_REGION}\`"
+            echo "- Service: \`${GCP_SERVICE_NAME}\`"
+            echo "- URL: ${{ steps.probe.outputs.service_url }}"
+          } >> "$GITHUB_STEP_SUMMARY"
