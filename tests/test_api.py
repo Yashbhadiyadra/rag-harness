@@ -227,6 +227,20 @@ def test_demo_ui_index_served_at_root() -> None:
     assert "/static/app.js" in body
 
 
+def test_demo_ui_index_accepts_head() -> None:
+    """HEAD / must return 200 so uptime monitors don't false-alert.
+
+    curl -I against the deployed URL is a common health probe; uptime
+    services (UptimeRobot, Better Uptime, GCP uptime checks) default to
+    HEAD. FastAPI's @app.get would return 405 for HEAD by default.
+    """
+    response = client.head("/")
+    assert response.status_code == 200
+    # HEAD responses carry the same content-type as GET but no body
+    assert response.headers["content-type"].startswith("text/html")
+    assert response.content == b""
+
+
 def test_demo_ui_static_assets_reachable() -> None:
     """CSS and JS under /static/ are served with reasonable content types."""
     css = client.get("/static/styles.css")

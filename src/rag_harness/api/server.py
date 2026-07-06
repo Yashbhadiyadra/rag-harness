@@ -344,7 +344,12 @@ _STATIC_DIR = Path(__file__).parent / "static"
 app.mount("/static", StaticFiles(directory=_STATIC_DIR), name="static")
 
 
-@app.get("/", include_in_schema=False)
+@app.api_route("/", methods=["GET", "HEAD"], include_in_schema=False)
 def index() -> FileResponse:
-    """Serve the demo UI's single HTML page."""
+    """Serve the demo UI's single HTML page.
+
+    Accepts HEAD as well as GET so uptime monitors (which default to HEAD)
+    do not fire false "site down" alerts against the root URL. Starlette
+    returns HEAD responses with identical headers and no body.
+    """
     return FileResponse(_STATIC_DIR / "index.html", media_type="text/html")
