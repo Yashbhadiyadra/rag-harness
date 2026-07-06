@@ -23,6 +23,21 @@ The evaluation suite runs against a hand-verified golden set of 30 cases
 spanning workloads, networking, storage, scheduling, and cluster operations.
 A build fails when any metric drops below its threshold.
 
+## Public demo
+
+A minimal hosted instance runs on Cloud Run with scale-to-zero. Ask a
+question, see the answer, sources, per-stage trace, and this query's
+cost/latency. Guardrails keep the demo cheap to run:
+
+- Per-IP: **10/hour + 3/minute burst**.
+- Global daily cap: **200 requests/day** (00:00 UTC reset).
+- Monthly Cloud Billing ceiling: **$10** with 50/90/100% alerts.
+- `DEMO_ENABLED=false` env var → instant 503 kill switch.
+
+The live URL is set after the first tagged release; see
+[docs/DEMO.md](docs/DEMO.md) for the URL, a tour of the UI, the
+guardrail rationale, and how to reproduce the demo locally.
+
 ## Retrieval strategies
 
 Five composable retrieval strategies, selectable via `--strategy` or the
@@ -104,8 +119,14 @@ runs on an async request path end-to-end:
 - **Retries + timeouts** at the LLM boundary — `AsyncOpenAI` with
   `max_retries=2, timeout=20s`. Total LLM failure returns the honest
   "not enough information" refusal at HTTP 200 rather than a 5xx.
-- **Rate limiting** — per-IP via `slowapi`; default `60/minute`,
-  configurable.
+- **Rate limiting** — per-IP via `slowapi`; default sized for the
+  public demo at `10/hour;3/minute` (see [ADR-0010](docs/adr/ADR-0010-cloud-run-and-persistence.md));
+  override with `API_RATE_LIMIT` for local development.
+- **Global daily cap + kill switch** — an in-memory counter (single
+  writer under Cloud Run `max-instances=1`) caps the public demo at
+  200 requests/day; `DEMO_ENABLED=false` is an emergency kill switch.
+  Both middlewares scoped to `/query` so `/health`, `/ready`, and
+  `/metrics` stay reachable in every state. See [docs/DEMO.md](docs/DEMO.md).
 - **Input caps** — question length ≤ 2000, `top_k` in `[1, 50]`.
 - **Prompt-injection screening** — regex hygiene at the boundary
   catches the common patterns. Deliberately narrow; not a full
@@ -309,6 +330,7 @@ All non-trivial decisions are captured as Architecture Decision Records in
 - [ADR-0007](docs/adr/ADR-0007-corrective-rag.md) — Corrective RAG critic-and-retry loop
 - [ADR-0008](docs/adr/ADR-0008-observability-usage-tracking.md) — ContextVar collector for token usage
 - [ADR-0009](docs/adr/ADR-0009-tracing-backend.md) — Arize Phoenix for per-stage tracing
+- [ADR-0010](docs/adr/ADR-0010-cloud-run-and-persistence.md) — Cloud Run, scale-to-zero, baked Chroma index, cost guardrails
 
 ## Research foundations
 

@@ -1,0 +1,143 @@
+# Public demo
+
+A minimal, hosted instance of the RAG harness for visitors to try
+without setting anything up. See
+[ADR-0010](adr/ADR-0010-cloud-run-and-persistence.md) for the design
+decisions this document implements.
+
+## Try it
+
+> **Live URL:** _to be added after the first tagged release; the
+> service will be reachable at `https://rag-harness-<hash>.<region>.run.app`
+> and this section will be updated in the follow-up commit that
+> attaches a custom domain._
+
+Open the URL, type a question about Kubernetes documentation
+(e.g. "What is a Pod?", "How do I configure RBAC?", "What's the
+difference between a Deployment and a StatefulSet?"), and click **Ask**.
+
+## What you're seeing
+
+The demo page shows four things per query:
+
+| Element | What it is | Why it's on the page |
+|---|---|---|
+| **Answer** | The grounded response from `gpt-4o-mini` given the retrieved chunks. | The visible product. |
+| **Sources** | Chunks that fed the answer, with source file and heading path. | Provenance — you can verify every claim against real K8s docs. |
+| **Per-stage trace** | Waterfall of the internal stages (`retrieve`, `generate`, `query`). | Reliability isn't just claimed. This is the same data that goes to the Phoenix tracing backend (see [ADR-0009](adr/ADR-0009-tracing-backend.md)) — surfaced on the response payload for the demo UI (see [ADR-0010](adr/ADR-0010-cloud-run-and-persistence.md) §Demo UI). |
+| **Cost + latency footer** | This query's OpenAI spend and wall-clock latency. | You see what the query costs, live. |
+
+For the aggregate quality story across every retrieval strategy and
+ablation, open [`docs/metrics/index.html`](metrics/index.html) in the
+repo tree.
+
+## Cost guardrails
+
+A public demo attached to a live OpenAI key must be impossible to run
+up a surprise bill against. The demo enforces three independent
+guardrails, all specified in
+[ADR-0010](adr/ADR-0010-cloud-run-and-persistence.md):
+
+| Guardrail | Value | Enforced by |
+|---|---|---|
+| Per-IP rate limit | `10/hour` sustained, `3/minute` burst | `slowapi` middleware in `src/rag_harness/api/server.py` |
+| Global daily cap | 200 requests per UTC day | `DailyCapMiddleware` reading an in-memory counter; Cloud Run `max-instances=1` keeps that counter a single writer |
+| Monthly budget ceiling | $10 with email alerts at 50%, 90%, 100% | Cloud Billing budget (created in `deploy/README.md` step 6) |
+| Emergency kill switch | `DEMO_ENABLED=false` env var → 503 `demo_disabled` on `/query` | `KillSwitchMiddleware`; `/health`, `/ready`, `/metrics` stay reachable so operators can still probe |
+
+**Worst-case math** (from [ADR-0010](adr/ADR-0010-cloud-run-and-persistence.md)):
+at $0.002/query worst case × 200 requests/day × 30 days = $12/month.
+The $10 alert fires before the ceiling; the daily cap prevents any
+single day from spiking. The demo goes down before the budget does.
+
+### Cap-tripped states you might see
+
+- **`demo_daily_limit_reached`** — 200/day globally exhausted; comes
+  back at 00:00 UTC. The UI renders a friendly banner.
+- **`demo_disabled`** — the owner has paused the demo via
+  `DEMO_ENABLED=false`. Health probes still work.
+- **429 (per-IP)** — you've hit `10/hour` or `3/minute` from your IP;
+  slow down or wait a minute.
+
+## Run it locally
+
+Ships with everything needed to reproduce the demo without touching a
+cloud provider.
+
+```bash
+git clone https://github.com/Yashbhadiyadra/rag-harness.git
+cd rag-harness
+
+python -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev,eval]"
+
+cp .env.example .env
+# set OPENAI_API_KEY in .env
+
+make ingest        # clone pinned K8s docs, chunk, embed, index (~15 min first run)
+make serve         # uvicorn on http://localhost:8000
+```
+
+Open `http://localhost:8000` in a browser. The demo UI, guardrails,
+and per-stage trace all work identically to the hosted instance —
+the deploy adds infrastructure, not features.
+
+To iterate on the demo UI itself: files live under
+`src/rag_harness/api/static/` (`index.html`, `styles.css`, `app.js`).
+FastAPI serves them via `StaticFiles`; no build step.
+
+## Deploying your own
+
+See [`deploy/README.md`](../deploy/README.md) for the one-time GCP
+setup runbook. Every command is one you paste into your own shell;
+nothing runs automatically. Steps cover:
+
+1. Project + APIs
+2. Artifact Registry
+3. OpenAI key in Secret Manager
+4. Runtime service account with least-privilege roles
+5. Workload Identity Federation for GitHub Actions
+6. Cloud Billing budget with alerts
+7. First manual deploy + probe checklist
+
+After the runbook, tagged releases (`git tag v0.1.0 && git push --tags`)
+build the image, run the eval gate, and deploy automatically via
+[`.github/workflows/release.yml`](../.github/workflows/release.yml).
+
+## Evaluation metrics
+
+The public metrics page ([`docs/metrics/index.html`](metrics/index.html))
+is generated from every eval run in `evals/history/runs.jsonl` and
+regenerated by the nightly `metrics-page.yml` workflow. It shows:
+
+- **Latest run** — gate pass/fail, current production configuration.
+- **Ablation table** — one row per (strategy, corrective) combination
+  with inline sparklines for each metric column.
+- **Quality vs cost scatter** — every configuration plotted as a
+  labeled dot; up-and-to-the-left is better.
+- **Impact of corrective RAG** — the delta per strategy that has both
+  corrective on and off runs, colored by whether the corrective loop
+  helped (green) or hurt (red).
+
+### Publishing the metrics page live (optional follow-up)
+
+The metrics page is committed to `docs/metrics/index.html` in the
+repo. To surface it at a live URL without any code change, enable
+GitHub Pages in repo settings pointing at `docs/`. The page becomes
+reachable at `https://yashbhadiyadra.github.io/rag-harness/metrics/`.
+The nightly workflow already commits regenerated pages back to `main`,
+so Pages picks them up automatically.
+
+## References
+
+- [ADR-0010](adr/ADR-0010-cloud-run-and-persistence.md) — hosting,
+  persistence, and cost-guardrail decisions.
+- [ADR-0009](adr/ADR-0009-tracing-backend.md) — tracing backend
+  (Phoenix) and how the demo UI's trace panel connects to it.
+- [ADR-0008](adr/ADR-0008-observability-usage-tracking.md) —
+  per-call token/cost accounting exposed on the response.
+- [ADR-0007](adr/ADR-0007-corrective-rag.md) — the tradeoff surfaced
+  by the "Impact of corrective RAG" panel on the metrics page.
+- [ADR-0002](adr/ADR-0002-pinned-corpus.md) — corpus is pinned to an
+  immutable SHA; that's why baking the Chroma index into the image
+  is safe.
