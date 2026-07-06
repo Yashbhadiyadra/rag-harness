@@ -214,7 +214,25 @@ docker compose up -d
 
 ## Architecture
 
-Data flow (ingest + query):
+Request path, rendered on GitHub via Mermaid:
+
+```mermaid
+flowchart LR
+    Q[POST /query] --> KS[KillSwitchMiddleware]
+    KS -->|DEMO_ENABLED=false| D1[503 demo_disabled]
+    KS --> DC[DailyCapMiddleware]
+    DC -->|>= 200 today| D2[429 demo_daily_limit_reached]
+    DC --> RL[SlowAPI rate limit]
+    RL -->|>10/hr or >3/min| D3[429]
+    RL --> V[pydantic + guardrail]
+    V --> R[Retrieval<br/>dense · hybrid · hyde · rerank]
+    R --> G[Generation<br/>gpt-4o-mini<br/>+ optional corrective]
+    G --> Resp["{ answer, sources,<br/>trace, cost_usd, latency_ms }"]
+    R -.reads.-> C[(ChromaDB<br/>baked into image)]
+    G -.calls.-> O(((OpenAI API)))
+```
+
+Data flow (ingest + query), ASCII fallback:
 
 ```
 ┌─────────────────┐     ┌──────────────────┐     ┌─────────────┐
