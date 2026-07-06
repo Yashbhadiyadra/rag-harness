@@ -33,3 +33,17 @@ def _reset_rate_limiter() -> None:
     from rag_harness.api.server import app
 
     app.state.limiter.reset()
+
+
+@pytest.fixture(autouse=True)
+def _reset_daily_budget() -> None:
+    """Clear the global daily-budget counter between tests.
+
+    The demo daily cap (ADR-0010) is enforced by an in-memory counter on
+    ``app.state.daily_budget``. Every /query hit consumes one slot, so
+    without this fixture tests accumulate consumption and later tests can
+    fail with spurious 429 / demo_daily_limit_reached responses.
+    """
+    from rag_harness.api.server import app
+
+    app.state.daily_budget.reset()

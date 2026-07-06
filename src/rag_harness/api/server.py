@@ -13,6 +13,7 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from slowapi.util import get_remote_address
 
+from rag_harness.api.budget import DailyBudget
 from rag_harness.api.errors import GuardrailRejection, RagHarnessError
 from rag_harness.api.guardrails import screen_for_injection
 from rag_harness.api.metrics import (
@@ -23,6 +24,8 @@ from rag_harness.api.metrics import (
     QUERY_TOTAL,
     prometheus_response,
 )
+from rag_harness.api.middleware.daily_cap import DailyCapMiddleware
+from rag_harness.api.middleware.kill_switch import KillSwitchMiddleware
 from rag_harness.config import settings
 from rag_harness.generation.corrective import NO_INFO_MESSAGE, corrective_generate_async
 from rag_harness.generation.generator import generate_async
@@ -52,13 +55,22 @@ app = FastAPI(
 )
 
 # Rate limiting: per-IP by default. See settings.api_rate_limit
-# (default 60/minute) and .env.example. In a single-instance demo the
-# in-memory limiter is fine; swap to a Redis backend later without code
-# changes if we horizontally scale.
+# (default 10/hour;3/minute for the public demo — ADR-0010) and .env.example.
+# In a single-instance demo the in-memory limiter is fine; swap to a Redis
+# backend later without code changes if we horizontally scale.
 limiter = Limiter(key_func=get_remote_address, default_limits=[settings.api_rate_limit])
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 app.add_middleware(SlowAPIMiddleware)
+
+# Public-demo cost guardrails (ADR-0010). The DailyBudget is shared on
+# app.state so tests can reach it via `app.state.daily_budget.reset()`.
+#
+# Middleware add order matters: the LAST middleware added runs FIRST on
+# the inbound path. Order below = kill switch → daily cap → slowapi.
+app.state.daily_budget = DailyBudget(cap=settings.demo_daily_request_cap)
+app.add_middleware(DailyCapMiddleware, budget=app.state.daily_budget)
+app.add_middleware(KillSwitchMiddleware)
 
 
 @app.exception_handler(RagHarnessError)

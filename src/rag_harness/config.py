@@ -44,6 +44,13 @@ class Settings(BaseSettings):
     api_rate_limit: str = "10/hour;3/minute"
     api_max_question_length: int = 2000
 
+    # Public-demo cost guardrails (ADR-0010). The daily cap is enforced
+    # in-process — Cloud Run max-instances=1 keeps the counter single-writer.
+    # DEMO_ENABLED=false is the emergency kill switch: /query returns 503 with
+    # a demo_disabled body while health/ready/metrics stay reachable.
+    demo_enabled: bool = True
+    demo_daily_request_cap: int = 200
+
     # Retrieval
     retrieval_top_k: int = 5
     retrieval_strategy: str = "dense"  # "dense" | "hybrid" | "hybrid-rerank" | "hyde" | "full"
