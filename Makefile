@@ -1,4 +1,4 @@
-.PHONY: check lint format typecheck test install ingest serve eval docker-build docker-run
+.PHONY: check lint format typecheck test install ingest serve eval docker-build docker-run metrics-page
 
 # `uv run --no-sync` uses the existing .venv without re-resolving deps.
 # Run `make install` once after clone to populate it.
@@ -39,3 +39,10 @@ docker-build:
 
 docker-run:
 	docker run --rm -p 8080:8080 -e PORT=8080 --env-file .env rag-harness:local
+
+# --- Metrics page (ADR-0010) --------------------------------------------
+# Regenerates docs/metrics/index.html from evals/history/runs.jsonl.
+# Called by CI on every nightly eval and every release.
+
+metrics-page:
+	uv run --no-sync python -m scripts.render_metrics_page
