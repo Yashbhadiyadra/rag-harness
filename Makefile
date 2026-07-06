@@ -1,4 +1,4 @@
-.PHONY: check lint format typecheck test install ingest serve eval
+.PHONY: check lint format typecheck test install ingest serve eval docker-build docker-run
 
 # `uv run --no-sync` uses the existing .venv without re-resolving deps.
 # Run `make install` once after clone to populate it.
@@ -28,3 +28,14 @@ serve:
 
 eval:
 	uv run --no-sync python -m rag_harness eval
+
+# --- Docker (ADR-0010) --------------------------------------------------
+# chroma_db/ is baked into the image; the target runs `make ingest` first
+# only if the index directory is missing, so repeat builds are fast.
+
+docker-build:
+	@test -d chroma_db || (echo "chroma_db/ missing — running make ingest first" && $(MAKE) ingest)
+	docker build -t rag-harness:local .
+
+docker-run:
+	docker run --rm -p 8080:8080 -e PORT=8080 --env-file .env rag-harness:local
