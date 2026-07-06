@@ -152,3 +152,45 @@ def test_query_respects_top_k() -> None:
     ):
         client.post("/query", json={"question": "Some question?", "top_k": 3})
         mock_retriever.retrieve_async.assert_awaited_once_with("Some question?", top_k=3)
+
+
+def test_rate_limit_config_declares_burst_and_hourly() -> None:
+    """Regression: the public per-IP rate limit must not silently loosen.
+
+    ADR-0010 sizes the limit at 10/hour + 3/minute. Anyone changing the
+    default without also updating this test is prompted to justify it.
+    """
+    from limits import parse_many
+
+    from rag_harness.config import settings
+
+    parsed = list(parse_many(settings.api_rate_limit))
+    parts = {(p.amount, p.GRANULARITY.name) for p in parsed}
+    assert (3, "minute") in parts, f"burst limit missing from {settings.api_rate_limit!r}"
+    assert (10, "hour") in parts, f"hourly limit missing from {settings.api_rate_limit!r}"
+
+
+def test_rate_limit_burst_returns_429() -> None:
+    """4th quick /query from the same IP within a minute → 429.
+
+    Exercises slowapi's per-IP burst limit (3/minute). The autouse fixture
+    resets the limiter before this test so previous tests don't affect the
+    counter.
+    """
+    chunk = _make_chunk("docs/a.md", ["A"])
+    mock_retriever = MagicMock()
+    mock_retriever.retrieve_async = AsyncMock(return_value=[chunk])
+
+    with (
+        patch("rag_harness.api.server._get_retriever", return_value=mock_retriever),
+        patch(
+            "rag_harness.api.server.generate_async",
+            new_callable=AsyncMock,
+            return_value="Answer.",
+        ),
+    ):
+        for i in range(3):
+            r = client.post("/query", json={"question": "test?"})
+            assert r.status_code == 200, f"request {i + 1} unexpectedly rejected: {r.text}"
+        r = client.post("/query", json={"question": "test?"})
+        assert r.status_code == 429, f"4th request should trip burst limit, got {r.status_code}"

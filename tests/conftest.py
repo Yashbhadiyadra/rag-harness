@@ -20,3 +20,16 @@ def _isolate_eval_history(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     fake_history = tmp_path / "test_runs.jsonl"
     monkeypatch.setattr("rag_harness.evaluation.history._HISTORY_FILE", fake_history)
     yield fake_history
+
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limiter() -> None:
+    """Clear the in-memory rate-limiter state between tests.
+
+    Without this, the tightened public-demo limits (10/hour;3/minute per IP,
+    see ADR-0010) carry state across tests and cause spurious 429s in any
+    test file that exercises /query via TestClient.
+    """
+    from rag_harness.api.server import app
+
+    app.state.limiter.reset()

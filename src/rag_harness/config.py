@@ -38,8 +38,10 @@ class Settings(BaseSettings):
     openai_max_retries: int = 2
     openai_timeout_seconds: float = 20.0
 
-    # API request limits (per-IP)
-    api_rate_limit: str = "60/minute"
+    # Composite per-IP rate limit: sustained + burst. slowapi parses the
+    # semicolon-separated form via limits.parse_many. Sized for the public
+    # demo per ADR-0010; loosen via API_RATE_LIMIT for local dev.
+    api_rate_limit: str = "10/hour;3/minute"
     api_max_question_length: int = 2000
 
     # Retrieval
