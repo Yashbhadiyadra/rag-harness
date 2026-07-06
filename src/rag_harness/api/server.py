@@ -4,8 +4,11 @@ import logging
 import time
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from openai import OpenAIError
 from pydantic import BaseModel, Field
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -330,3 +333,18 @@ def metrics() -> Response:
     """Prometheus scrape endpoint — RAG-specific counters and histograms."""
     body, content_type = prometheus_response()
     return Response(content=body, media_type=content_type)
+
+
+# --- Demo UI (ADR-0010 §Demo UI) --------------------------------------
+# Static bundle: HTML at /, css/js under /static/. The explicit /
+# handler avoids mounting StaticFiles at / (which would shadow route
+# path matching). Handlers registered above still resolve first.
+
+_STATIC_DIR = Path(__file__).parent / "static"
+app.mount("/static", StaticFiles(directory=_STATIC_DIR), name="static")
+
+
+@app.get("/", include_in_schema=False)
+def index() -> FileResponse:
+    """Serve the demo UI's single HTML page."""
+    return FileResponse(_STATIC_DIR / "index.html", media_type="text/html")

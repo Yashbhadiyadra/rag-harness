@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RAG harness — K8s docs</title>
+  <meta name="description" content="Reliability-first RAG over pinned Kubernetes documentation. Ask a question, see the trace.">
+  <meta name="robots" content="noindex,nofollow">
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <main class="page">
+    <header class="site-header">
+      <h1>RAG harness</h1>
+      <p class="tagline">Reliability-first retrieval over pinned Kubernetes documentation. Ask a question; see the sources, the trace, and this query&rsquo;s cost.</p>
+    </header>
+
+    <section class="query-panel" aria-label="Ask a question">
+      <form id="query-form" autocomplete="off">
+        <label for="question" class="visually-hidden">Question</label>
+        <textarea
+          id="question"
+          name="question"
+          rows="3"
+          maxlength="2000"
+          required
+          placeholder="e.g. What is a Pod?  How do I configure RBAC?  What's the difference between Deployment and StatefulSet?"
+        ></textarea>
+        <div class="form-controls">
+          <button type="submit" id="submit-btn">Ask</button>
+          <span id="status" class="status" role="status" aria-live="polite"></span>
+        </div>
+      </form>
+    </section>
+
+    <section id="error-banner" class="error-banner" hidden></section>
+
+    <section id="results" class="results" aria-live="polite" hidden>
+      <article class="answer-panel">
+        <h2>Answer</h2>
+        <div id="answer" class="answer"></div>
+      </article>
+
+      <article class="sources-panel">
+        <h2>Sources</h2>
+        <ol id="sources" class="sources"></ol>
+      </article>
+
+      <details class="trace-panel" open>
+        <summary>Per-stage trace</summary>
+        <div id="trace" class="trace"></div>
+      </details>
+
+      <footer class="query-footer" id="query-footer"></footer>
+    </section>
+
+    <details class="about">
+      <summary>About this demo</summary>
+      <div class="about-body">
+        <p>This is a portfolio demo. The service is deliberately capped so a public demo cannot run up a surprise bill:</p>
+        <ul>
+          <li>Per-IP rate limit: 10 requests per hour, 3 per minute burst.</li>
+          <li>Global daily cap: 200 requests per day (resets at 00:00 UTC).</li>
+          <li>Monthly Cloud Billing ceiling: $10.</li>
+        </ul>
+        <p>If the demo has hit the daily cap you&rsquo;ll see a friendly notice; try again after 00:00 UTC. Corpus is a pinned snapshot of the Kubernetes documentation; answers may not reflect the very latest upstream changes.</p>
+      </div>
+    </details>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

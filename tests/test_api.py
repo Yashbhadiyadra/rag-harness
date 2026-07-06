@@ -212,6 +212,34 @@ def test_rate_limit_config_declares_burst_and_hourly() -> None:
     assert (10, "hour") in parts, f"hourly limit missing from {settings.api_rate_limit!r}"
 
 
+def test_demo_ui_index_served_at_root() -> None:
+    """GET / returns the demo UI HTML with the correct content type."""
+    response = client.get("/")
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/html")
+    body = response.text
+    # A couple of stable markers from index.html — enough to catch a
+    # regression where the wrong file is served without pinning the
+    # markup verbatim.
+    assert "RAG harness" in body
+    assert 'id="query-form"' in body
+    assert "/static/styles.css" in body
+    assert "/static/app.js" in body
+
+
+def test_demo_ui_static_assets_reachable() -> None:
+    """CSS and JS under /static/ are served with reasonable content types."""
+    css = client.get("/static/styles.css")
+    assert css.status_code == 200
+    assert "css" in css.headers["content-type"]
+
+    js = client.get("/static/app.js")
+    assert js.status_code == 200
+    # FastAPI/Starlette returns application/javascript or text/javascript
+    # depending on version; both are fine — just assert it's JS-ish.
+    assert "javascript" in js.headers["content-type"]
+
+
 def test_rate_limit_burst_returns_429() -> None:
     """4th quick /query from the same IP within a minute → 429.
 
