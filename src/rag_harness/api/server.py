@@ -31,7 +31,12 @@ from rag_harness.generation.corrective import NO_INFO_MESSAGE, corrective_genera
 from rag_harness.generation.generator import generate_async
 from rag_harness.logging_setup import configure_logging
 from rag_harness.models import Chunk
-from rag_harness.observability.tracing import configure_tracing, traced_span
+from rag_harness.observability.tracing import (
+    TraceSpan,
+    collect_spans,
+    configure_tracing,
+    traced_span,
+)
 from rag_harness.observability.usage import collect_usage
 from rag_harness.retrieval.base import Retriever
 from rag_harness.retrieval.factory import build_retriever
@@ -129,11 +134,20 @@ class Source(BaseModel):
 
 
 class QueryResponse(BaseModel):
-    """Response body returned by POST /query."""
+    """Response body returned by POST /query.
+
+    ``trace``, ``cost_usd``, and ``latency_ms`` are populated per-request
+    so the demo UI (ADR-0010) can render the per-stage breakdown and the
+    this-query cost/latency alongside the answer. API clients that only
+    want the answer + sources can ignore the extra fields.
+    """
 
     question: str
     answer: str
     sources: list[Source]
+    trace: list[TraceSpan] = Field(default_factory=list)
+    cost_usd: float = 0.0
+    latency_ms: float = 0.0
 
 
 @app.post("/query", response_model=QueryResponse)
@@ -147,7 +161,8 @@ async def query(request: Request, body: QueryRequest) -> QueryResponse:
 
     Wrapped in a ``collect_usage()`` block so every LLM call made downstream
     contributes to the Prometheus ``rag_query_tokens_total`` and
-    ``rag_query_cost_usd_total`` counters.
+    ``rag_query_cost_usd_total`` counters, and in a ``collect_spans()`` block
+    so the per-stage trace can be returned on the response for the demo UI.
     """
     if not body.question.strip():
         raise HTTPException(status_code=422, detail="question must not be empty")
@@ -166,60 +181,69 @@ async def query(request: Request, body: QueryRequest) -> QueryResponse:
     start = time.perf_counter()
     chunks: list[Chunk] = []
     answer = ""
-    try:
-        with (
-            traced_span(
+    # Collectors outermost so the outer "query" span itself lands in the list.
+    with collect_spans() as span_list, collect_usage() as usage_list:
+        try:
+            with traced_span(
                 "query",
                 strategy=strategy,
                 corrective=use_corrective,
                 top_k=body.top_k,
-            ),
-            collect_usage() as usage_list,
-        ):
-            if use_corrective:
-                with traced_span("corrective_generate"):
-                    result = await corrective_generate_async(
-                        body.question, retriever, top_k=body.top_k
-                    )
-                    answer = result.answer
-                    chunks = result.chunks_used
-            else:
-                with traced_span("retrieve"):
-                    chunks = await retriever.retrieve_async(body.question, top_k=body.top_k)
-                with traced_span("generate", chunk_count=len(chunks)):
-                    answer = await generate_async(body.question, chunks)
-    except OpenAIError as e:
-        # LLM boundary exhausted its retries. Return the honest refusal
-        # rather than a 5xx — the API contract stays useful and the user
-        # sees the same "not enough information" signal they would from
-        # a corrective-flow refusal. Distinct log event for ops.
-        QUERY_ERRORS_TOTAL.labels(strategy=strategy, error_type=type(e).__name__).inc()
-        logger.warning(
-            "LLM boundary exhausted (%s: %s) — returning refusal for query: %.60s",
-            type(e).__name__,
-            e,
-            body.question,
-        )
-        answer = NO_INFO_MESSAGE
-        chunks = []
-    except Exception as e:
-        QUERY_ERRORS_TOTAL.labels(strategy=strategy, error_type=type(e).__name__).inc()
-        raise
-    finally:
-        latency_seconds = time.perf_counter() - start
-        QUERY_LATENCY_SECONDS.labels(strategy=strategy).observe(latency_seconds)
+            ):
+                if use_corrective:
+                    with traced_span("corrective_generate"):
+                        result = await corrective_generate_async(
+                            body.question, retriever, top_k=body.top_k
+                        )
+                        answer = result.answer
+                        chunks = result.chunks_used
+                else:
+                    with traced_span("retrieve"):
+                        chunks = await retriever.retrieve_async(body.question, top_k=body.top_k)
+                    with traced_span("generate", chunk_count=len(chunks)):
+                        answer = await generate_async(body.question, chunks)
+        except OpenAIError as e:
+            # LLM boundary exhausted its retries. Return the honest refusal
+            # rather than a 5xx — the API contract stays useful and the user
+            # sees the same "not enough information" signal they would from
+            # a corrective-flow refusal. Distinct log event for ops.
+            QUERY_ERRORS_TOTAL.labels(strategy=strategy, error_type=type(e).__name__).inc()
+            logger.warning(
+                "LLM boundary exhausted (%s: %s) — returning refusal for query: %.60s",
+                type(e).__name__,
+                e,
+                body.question,
+            )
+            answer = NO_INFO_MESSAGE
+            chunks = []
+        except Exception as e:
+            QUERY_ERRORS_TOTAL.labels(strategy=strategy, error_type=type(e).__name__).inc()
+            raise
+        finally:
+            latency_seconds = time.perf_counter() - start
+            QUERY_LATENCY_SECONDS.labels(strategy=strategy).observe(latency_seconds)
 
     QUERY_TOTAL.labels(strategy=strategy, corrective=corrective_label).inc()
 
-    # Aggregate usage from every LLM call into the token and cost counters.
+    # Aggregate usage from every LLM call into the token and cost counters,
+    # and sum for the this-query cost returned on the response.
+    cost_usd = 0.0
     for usage in usage_list:
         QUERY_TOKENS.labels(direction="input", model=usage.model).inc(usage.input_tokens)
         QUERY_TOKENS.labels(direction="output", model=usage.model).inc(usage.output_tokens)
         QUERY_COST_USD.inc(usage.estimated_cost_usd)
+        cost_usd += usage.estimated_cost_usd
 
     sources = [Source(source_file=c.source_file, heading_path=c.heading_path) for c in chunks]
     logger.info("query answered — %d sources used, corrective=%s", len(sources), use_corrective)
-    return QueryResponse(question=body.question, answer=answer, sources=sources)
+    return QueryResponse(
+        question=body.question,
+        answer=answer,
+        sources=sources,
+        trace=span_list,
+        cost_usd=cost_usd,
+        latency_ms=latency_seconds * 1000.0,
+    )
 
 
 @app.get("/health")

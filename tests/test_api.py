@@ -95,6 +95,48 @@ def test_query_returns_answer_and_sources() -> None:
     assert body["sources"][0]["heading_path"] == ["Security", "RBAC"]
 
 
+def test_query_response_includes_trace_cost_and_latency() -> None:
+    """/query must return per-stage trace, this-query cost, and latency.
+
+    The demo UI (ADR-0010) renders these alongside the answer so a stranger
+    with the URL can see the reliability story on-page. Fully-mocked test
+    path: no real OpenAI calls → cost_usd stays at 0.0 but the field is
+    present. Trace should include the outer 'query' span plus 'retrieve'
+    and 'generate'.
+    """
+    chunk = _make_chunk("docs/a.md", ["A"])
+    mock_retriever = MagicMock()
+    mock_retriever.retrieve_async = AsyncMock(return_value=[chunk])
+
+    with (
+        patch("rag_harness.api.server._get_retriever", return_value=mock_retriever),
+        patch(
+            "rag_harness.api.server.generate_async",
+            new_callable=AsyncMock,
+            return_value="Answer.",
+        ),
+    ):
+        response = client.post("/query", json={"question": "test?"})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert "trace" in body
+    assert "cost_usd" in body
+    assert "latency_ms" in body
+
+    span_names = [s["name"] for s in body["trace"]]
+    assert "query" in span_names, f"outer 'query' span missing from trace {span_names}"
+    assert "retrieve" in span_names, f"'retrieve' span missing from trace {span_names}"
+    assert "generate" in span_names, f"'generate' span missing from trace {span_names}"
+    # Every span has a non-negative duration
+    assert all(s["duration_ms"] >= 0 for s in body["trace"])
+    # Cost is a float ≥ 0. No real LLM call → likely 0.0.
+    assert isinstance(body["cost_usd"], (int, float))
+    assert body["cost_usd"] >= 0.0
+    # Latency is a positive wall-clock value
+    assert body["latency_ms"] > 0.0
+
+
 def test_query_rejects_empty_question() -> None:
     response = client.post("/query", json={"question": "   "})
     assert response.status_code == 422

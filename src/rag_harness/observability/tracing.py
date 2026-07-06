@@ -11,18 +11,26 @@ Design (per ADR-0009):
 - Instrumented at the RAG stage boundaries (``retrieve``, ``generate``, ``score``)
   in the eval runner and the API server. OpenAI SDK calls made inside each
   stage nest automatically thanks to ``openinference-instrumentation-openai``.
+- ``collect_spans()`` is an in-request span collector that runs independently
+  of Phoenix. It lets the API return the trace on the response payload so the
+  demo UI can render it (ADR-0010) even when Phoenix is not reachable — which
+  is the default on Cloud Run.
 
-Turn it on with ``TRACING_ENABLED=true`` in ``.env`` and run Phoenix locally
-(``docker compose up phoenix``) or self-host it wherever the deploy lives.
+Turn Phoenix export on with ``TRACING_ENABLED=true`` in ``.env`` and run
+Phoenix locally (``docker compose up phoenix``) or self-host it. The
+in-request collector is always available regardless.
 """
 
 import logging
+import time
 from collections.abc import Iterator
 from contextlib import contextmanager
+from contextvars import ContextVar
 from typing import Any
 
 from opentelemetry import trace
 from opentelemetry.trace import Tracer
+from pydantic import BaseModel, Field
 
 from rag_harness.config import settings
 
@@ -32,6 +40,51 @@ _tracer: Tracer | None = None
 _INSTALL_HINT = (
     "Tracing requires the [observability] extra. Install with: pip install -e '.[observability]'"
 )
+
+
+class TraceSpan(BaseModel):
+    """One stage of a query trace.
+
+    Doubles as both the collector's internal type and the API response
+    schema — pydantic serialises it directly on ``QueryResponse.trace``.
+    """
+
+    name: str
+    duration_ms: float
+    attributes: dict[str, Any] = Field(default_factory=dict)
+
+
+_current_spans: ContextVar[list[TraceSpan] | None] = ContextVar("_current_spans", default=None)
+
+
+@contextmanager
+def collect_spans() -> Iterator[list[TraceSpan]]:
+    """Collect every ``traced_span`` that completes inside the block.
+
+    Blocks nest safely — inner blocks get their own accumulator and do not
+    contaminate the outer one. The ContextVar is reset on both success and
+    exception, so a raised exception inside the block does not leak state
+    into subsequent calls.
+    """
+    accumulator: list[TraceSpan] = []
+    token = _current_spans.set(accumulator)
+    try:
+        yield accumulator
+    finally:
+        _current_spans.reset(token)
+
+
+def _record_span(
+    accumulator: list[TraceSpan] | None,
+    name: str,
+    start: float,
+    filtered_attrs: dict[str, Any],
+) -> None:
+    """Append a TraceSpan to the active collector, if any. No-op otherwise."""
+    if accumulator is None:
+        return
+    duration_ms = (time.perf_counter() - start) * 1000.0
+    accumulator.append(TraceSpan(name=name, duration_ms=duration_ms, attributes=filtered_attrs))
 
 
 def configure_tracing() -> None:
@@ -82,17 +135,32 @@ def set_tracer_for_testing(tracer: Tracer | None) -> None:
 
 @contextmanager
 def traced_span(name: str, **attributes: Any) -> Iterator[Any]:
-    """Context manager for a stage span. Silent no-op when tracing is off.
+    """Context manager for a stage span.
 
     Attributes with ``None`` values are skipped so callers can pass optional
     labels unconditionally without polluting spans with null values.
+
+    Independently of the Phoenix tracer, if a ``collect_spans()`` block is
+    active up the call stack the span's name / duration / attributes are
+    appended to its accumulator when the span closes. This runs whether or
+    not ``TRACING_ENABLED`` is set, so the API can return the trace on the
+    response payload for the demo UI.
     """
+    start = time.perf_counter()
+    accumulator = _current_spans.get()
+    filtered_attrs = {k: v for k, v in attributes.items() if v is not None}
+
     if _tracer is None:
-        yield None
+        try:
+            yield None
+        finally:
+            _record_span(accumulator, name, start, filtered_attrs)
         return
+
     with _tracer.start_as_current_span(name) as span:
-        for key, value in attributes.items():
-            if value is None:
-                continue
+        for key, value in filtered_attrs.items():
             span.set_attribute(key, value)
-        yield span
+        try:
+            yield span
+        finally:
+            _record_span(accumulator, name, start, filtered_attrs)
