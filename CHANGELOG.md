@@ -5,6 +5,126 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added (Phase 11 — pre-v1.0 audit + hardening)
+- **Secret + dep-vulnerability scanning in CI.** New parallel
+  ``security`` job in ``ci.yml`` runs on every push and PR:
+  ``gitleaks`` with ``fetch-depth: 0`` scans the full commit history
+  for exposed secrets; ``pip-audit --strict --disable-pip`` scans
+  installed runtime deps for known vulnerabilities. Top-level
+  ``permissions: contents: read`` limits both jobs to the minimum.
+
+## [0.9.0] — 2026-07-06
+
+### Added (Phase 10 — deployment, demo UI, metrics page)
+- **ADR-0010: Cloud Run + scale-to-zero + baked Chroma.** Records the
+  hosting choice (Cloud Run over Fly.io / Render / self-managed VM),
+  persistence strategy (bake the 83 MB ``chroma_db/`` into the image
+  over rebuild-on-boot or mounted storage), the ``max-instances=1 +
+  in-memory counter`` architecture that keeps the daily-cap counter a
+  single writer, and the exact guardrail numbers.
+- **Global daily request cap.** New ``DailyBudget`` class
+  (``src/rag_harness/api/budget.py``) with thread-safe counter and
+  UTC-day rollover. ``DailyCapMiddleware`` consumes one slot per
+  ``POST /query`` and returns HTTP 429 with a
+  ``demo_daily_limit_reached`` body when exhausted. Default cap 200
+  requests/day; configurable via ``DEMO_DAILY_REQUEST_CAP``.
+- **Emergency kill switch.** ``KillSwitchMiddleware`` returns HTTP 503
+  ``demo_disabled`` on ``/query`` when ``DEMO_ENABLED=false``.
+  ``/health``, ``/ready``, ``/metrics`` stay reachable in every state
+  so operators can still probe the service.
+- **Per-stage trace, cost, and latency on the ``/query`` response.**
+  New ``collect_spans()`` ContextVar collector in
+  ``observability/tracing.py`` runs independently of Phoenix and
+  captures every ``traced_span`` closure. ``QueryResponse`` gains
+  ``trace: list[TraceSpan]``, ``cost_usd: float``, and
+  ``latency_ms: float`` — the data the demo UI renders under the
+  answer.
+- **Minimal demo UI at ``/``.** Single static bundle under
+  ``src/rag_harness/api/static/`` — HTML, CSS, and vanilla JS with no
+  build step. Question form, answer + sources with heading-path
+  breadcrumbs, a per-stage trace waterfall (bars sized proportional
+  to max span duration), and a cost/latency footer. Dark mode via
+  ``prefers-color-scheme``. Distinct friendly error banners for
+  ``demo_daily_limit_reached``, ``demo_disabled``, per-IP 429,
+  ``guardrail_rejection``, and ``not_ready``. ``noindex,nofollow`` on
+  the page keeps search bots off the daily cap.
+- **HEAD ``/`` support.** ``@app.api_route("/", methods=["GET","HEAD"])``
+  so uptime monitors (which default to HEAD) do not false-alert.
+- **Static metrics-page generator.**
+  ``scripts/render_metrics_page.py`` reads
+  ``evals/history/runs.jsonl`` and renders a single self-contained
+  ``docs/metrics/index.html`` (no CDN, no JS, no CSS framework):
+  latest-run headline with production-config callout; ablation table
+  with inline SVG sparklines per metric column; quality-vs-cost
+  scatter (one labelled dot per ``(strategy, corrective)`` combo);
+  and an "Impact of corrective RAG" panel citing ADR-0007 that
+  colours positive correctness deltas green and negative ones red.
+- **Cloud Run deploy manifest + runbook.**
+  ``deploy/cloud-run.yaml`` (Knative Service with ADR-0010's config:
+  ``min=0, max=1, concurrency=40, memory=1Gi, cpu=1, timeout=60s``,
+  ``OPENAI_API_KEY`` from Secret Manager, ``/health`` startup + liveness
+  probes). ``deploy/README.md`` walks through the one-time GCP setup:
+  project + APIs, Artifact Registry, Secret Manager, runtime + deploy
+  service accounts, Workload Identity Federation scoped to the repo,
+  ``$10/month`` Cloud Billing budget with 50/90/100% alerts, first
+  manual deploy + probe checklist, and teardown.
+- **Release-tag CD pipeline.** ``.github/workflows/release.yml`` on
+  ``v*.*.*`` tag push: ``make check`` → full 30-case eval gate →
+  WIF-auth to GCP → docker build with OCI provenance labels → push to
+  Artifact Registry → ``sed``-substitute placeholders in the
+  manifest → ``gcloud run services replace`` → verify latest revision
+  reached ``ready`` (Cloud Run's startup probe handles rollback; the
+  workflow fails loud if it did) → smoke-test ``/health`` with retries.
+  Concurrency-serialized; deploys land through a "production" GitHub
+  environment for optional manual approval.
+- **Metrics-page regen workflow.**
+  ``.github/workflows/metrics-page.yml`` triggers on ``Nightly Eval``
+  completion (success) or manual dispatch; regenerates
+  ``docs/metrics/index.html`` and commits with ``[skip ci]`` if
+  changed.
+- **Nightly eval commits history rows.**
+  ``.github/workflows/eval.yml`` gains ``permissions: contents: write``
+  and a final step that commits new rows of
+  ``evals/history/runs.jsonl`` so the metrics-page workflow has fresh
+  data on the next trigger.
+- **Demo documentation.** ``docs/DEMO.md`` is the demo's public
+  reference: live URL (placeholder until first tagged release), a
+  table mapping each UI element to the ADR that motivated it,
+  guardrail rationale with worst-case cost math, cap-tripped state
+  glossary, local-reproduction steps, deploy pointer, and
+  cross-references to every relevant ADR.
+
+### Changed
+- **Public per-IP rate limit tightened.** Default was ``60/minute``
+  (sized for local dev). New default is the composite
+  ``10/hour;3/minute`` (see ADR-0010). Autouse conftest fixture resets
+  the limiter between tests so the tighter limit does not leak state
+  across test files. ``API_RATE_LIMIT`` override still supported for
+  local dev.
+- **Dockerfile: multi-stage bake + Cloud Run polish.** Builder stage
+  installs ``.[eval]`` only (rerank and observability extras omitted
+  to keep the runtime image slim). ``chroma_db/`` is copied into
+  ``/app/chroma_db`` in the runtime stage as a build input
+  (``make docker-build`` runs ``make ingest`` first when missing).
+  ``VOLUME`` declarations dropped. Non-root ``app`` user. CMD switched
+  to shell form with ``exec`` and ``${PORT:-8000}`` so Cloud Run's
+  PORT injection interpolates and SIGTERM reaches uvicorn as PID 1.
+- **``.dockerignore`` no longer excludes ``chroma_db/``.** It is now
+  a build input rather than a runtime-mounted volume.
+- **New Makefile targets.** ``docker-build`` and ``docker-run`` (for
+  local end-to-end verification); ``metrics-page`` (regenerate the
+  metrics page from local eval history).
+- **README public-demo section.** New section between "Why" and
+  "Retrieval strategies" summarising the guardrails and linking to
+  ``docs/DEMO.md``. Rate-limiting bullet in "Production hardening"
+  updated to the new default. Design-decisions list extended with
+  ADR-0010.
+- **Package version bumped to 0.9.0** in ``pyproject.toml`` to match
+  this changelog entry. The first git tag ever (``v0.1.0``) will be
+  cut only after this audit and the first live deploy are both done;
+  ``v1.0.0`` follows after the Stage D statistical rigor work
+  (bootstrap CIs, golden-set expansion, judge calibration).
+
 ## [0.8.0] — 2026-07-05
 
 ### Added (Phase 9 — production hardening)
