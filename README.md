@@ -214,6 +214,8 @@ docker compose up -d
 
 ## Architecture
 
+Data flow (ingest + query):
+
 ```
 ┌─────────────────┐     ┌──────────────────┐     ┌─────────────┐
 │  K8s docs repo  │────▶│      ingest      │────▶│  ChromaDB   │
@@ -237,19 +239,52 @@ docker compose up -d
                             └──────────────┘     └────────────────┘
                                                         │
                                                         ▼
-                                                ┌────────────────┐
-                                                │  gpt-4o-mini   │
-                                                │  (grounded)    │
-                                                └────────────────┘
+                                        ┌────────────────────────────┐
+                                        │       generation           │
+                                        │       gpt-4o-mini          │
+                                        │  + optional corrective     │
+                                        │    critic-and-retry loop   │
+                                        └────────────────────────────┘
                                                         │
                                                         ▼
-                                                ┌────────────────┐
-                                                │   evaluation   │
-                                                │  recall +      │
-                                                │  faithfulness  │
-                                                │  + correctness │
-                                                └────────────────┘
+                                        ┌────────────────────────────┐
+                                        │        evaluation          │
+                                        │   context recall +         │
+                                        │   context precision +      │
+                                        │   faithfulness + correct.  │
+                                        │   + answer relevancy       │
+                                        └────────────────────────────┘
 ```
+
+Request path — every `POST /query` traverses this chain before the
+handler runs. Order is intentional (ADR-0010): cheapest gate first,
+LLM boundary last.
+
+```
+POST /query
+    │
+    ▼
+KillSwitchMiddleware       DEMO_ENABLED=false → 503 demo_disabled
+    │
+    ▼
+DailyCapMiddleware         ≥ 200/day globally → 429 demo_daily_limit_reached
+    │
+    ▼
+SlowAPIMiddleware          10/hour + 3/minute per IP → 429
+    │
+    ▼
+pydantic + input guardrail question length, top_k range, prompt-injection screen
+    │
+    ▼
+retrieval → generation     (wrapped in collect_spans + collect_usage)
+    │
+    ▼
+{ answer, sources, trace, cost_usd, latency_ms }
+```
+
+The response carries the per-stage trace and this-query cost/latency
+so the demo UI at `/` renders them alongside the answer. Full detail
+in [`docs/architecture.md`](docs/architecture.md).
 
 ## Package layout
 
