@@ -42,6 +42,10 @@ class HistoryEntry(BaseModel):
     latency_p50_ms: float
     latency_p95_ms: float
     total_cost_usd: float
+    # Per-case scores for each metric, in case order. Optional so old
+    # history rows written before ADR-0011 still parse; the metrics-page
+    # renderer treats None as "pre-bootstrap era" and labels the row.
+    per_case_scores: dict[str, list[float]] | None = None
 
 
 def _current_git_commit() -> str:
@@ -76,6 +80,21 @@ def record_run(
     path = history_file or _HISTORY_FILE
     path.parent.mkdir(parents=True, exist_ok=True)
 
+    # Extract per-case scores in case order so downstream bootstrap CIs
+    # (ADR-0011) and future paired analyses (Wilcoxon, McNemar) have the
+    # raw data. Keys mirror the underscored EvalResult attributes.
+    per_case_scores: dict[str, list[float]] | None
+    if summary.results:
+        per_case_scores = {
+            "context_recall": [r.context_recall for r in summary.results],
+            "context_precision": [r.context_precision for r in summary.results],
+            "faithfulness": [r.faithfulness for r in summary.results],
+            "correctness": [r.correctness for r in summary.results],
+            "answer_relevancy": [r.answer_relevancy for r in summary.results],
+        }
+    else:
+        per_case_scores = None
+
     entry = HistoryEntry(
         timestamp=datetime.now(UTC).isoformat(timespec="seconds"),
         git_commit=_current_git_commit(),
@@ -91,6 +110,7 @@ def record_run(
         latency_p50_ms=summary.latency_p50_ms,
         latency_p95_ms=summary.latency_p95_ms,
         total_cost_usd=summary.total_cost_usd,
+        per_case_scores=per_case_scores,
     )
 
     with path.open("a") as fh:

@@ -93,6 +93,59 @@ def test_load_history_missing_file_returns_empty(tmp_path: Path) -> None:
     assert load_history(history_file=tmp_path / "does_not_exist.jsonl") == []
 
 
+def test_record_run_captures_per_case_scores(tmp_path: Path) -> None:
+    """The eval history row must carry every per-case metric score in
+    case order so ADR-0011 bootstrap CIs can recompute from raw data.
+    """
+    history_file = tmp_path / "runs.jsonl"
+    entry = record_run(_make_summary(mean_recall=0.42), "dense", False, history_file=history_file)
+
+    assert entry.per_case_scores is not None
+    assert set(entry.per_case_scores.keys()) == {
+        "context_recall",
+        "context_precision",
+        "faithfulness",
+        "correctness",
+        "answer_relevancy",
+    }
+    # Single-case summary → one score per metric, echoing the input
+    assert entry.per_case_scores["context_recall"] == [0.42]
+    assert entry.per_case_scores["context_precision"] == [0.7]
+    assert entry.per_case_scores["faithfulness"] == [0.9]
+    assert entry.per_case_scores["correctness"] == [0.8]
+    assert entry.per_case_scores["answer_relevancy"] == [0.85]
+
+
+def test_load_history_parses_pre_bootstrap_rows_without_scores(tmp_path: Path) -> None:
+    """Rows written before ADR-0011 do not have per_case_scores. They
+    must still load, with the new field defaulting to None so the
+    metrics-page renderer can label them explicitly."""
+    history_file = tmp_path / "runs.jsonl"
+    legacy_row = {
+        "timestamp": "2026-07-04T09:26:45+00:00",
+        "git_commit": "e148311",
+        "strategy": "dense",
+        "corrective": False,
+        "n_cases": 30,
+        "passed": False,
+        "mean_context_recall": 0.77,
+        "mean_context_precision": 0.91,
+        "mean_faithfulness": 0.87,
+        "mean_correctness": 0.74,
+        "mean_answer_relevancy": 0.80,
+        "latency_p50_ms": 2977.0,
+        "latency_p95_ms": 6277.7,
+        "total_cost_usd": 0.0093,
+    }
+    with history_file.open("w") as fh:
+        fh.write(json.dumps(legacy_row) + "\n")
+
+    entries = load_history(history_file=history_file)
+    assert len(entries) == 1
+    assert entries[0].mean_context_recall == 0.77
+    assert entries[0].per_case_scores is None
+
+
 def test_load_history_skips_malformed_lines(tmp_path: Path) -> None:
     history_file = tmp_path / "runs.jsonl"
     # Two valid lines with a corrupted one in the middle
