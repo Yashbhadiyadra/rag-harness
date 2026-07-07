@@ -22,6 +22,9 @@ llm_cache.db
 # Kubernetes docs clone (fetched at ingest time)
 k8s_docs/
 
+# Golden-set candidate review queue (working state, not artefact)
+evals/review-queue/
+
 # Test / coverage
 .pytest_cache/
 .coverage
