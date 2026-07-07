@@ -37,10 +37,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   ``observability/tracing.py`` runs independently of Phoenix and
   captures every ``traced_span`` closure. ``QueryResponse`` gains
   ``trace: list[TraceSpan]``, ``cost_usd: float``, and
-  ``latency_ms: float`` — the data the demo UI renders under the
-  answer.
+  ``latency_ms: float``. This is the data the demo UI renders under
+  the answer.
 - **Minimal demo UI at ``/``.** Single static bundle under
-  ``src/rag_harness/api/static/`` — HTML, CSS, and vanilla JS with no
+  ``src/rag_harness/api/static/``: HTML, CSS, and vanilla JS with no
   build step. Question form, answer + sources with heading-path
   breadcrumbs, a per-stage trace waterfall (bars sized proportional
   to max span duration), and a cost/latency footer. Dark mode via
@@ -149,12 +149,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   ``min_length=1, max_length=2000`` (``API_MAX_QUESTION_LENGTH``);
   ``top_k`` gains ``ge=1, le=50``.
 - **Minimal prompt-injection screening.**
-  ``src/rag_harness/api/guardrails.py`` — regex-based screening for the
+  ``src/rag_harness/api/guardrails.py``: regex-based screening for the
   most common patterns (``ignore previous instructions``, ``you are
   now …``, ``<system>`` tags, etc.). Explicit non-goal: this is a
   hygiene layer, not a full guardrails engine.
 - **Typed exception hierarchy.**
-  ``src/rag_harness/api/errors.py`` — ``RagHarnessError`` root with
+  ``src/rag_harness/api/errors.py``: ``RagHarnessError`` root with
   ``GuardrailRejection``, ``RetrievalError``, ``GenerationError``, and
   ``NotReadyError`` subclasses; each maps to the correct HTTP status
   and a structured JSON body via a single FastAPI exception handler.
@@ -168,8 +168,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   concurrency levels, writes a markdown table to
   ``docs/load-check/<ts>.md``. First run (10/25/50/100 concurrent,
   200 ms injected LLM latency) records 100% success and near-linear
-  throughput up to 100 concurrent — see
-  ``docs/load-check/20260705T050836Z.md``.
+  throughput up to 100 concurrent (see
+  ``docs/load-check/20260705T050836Z.md``).
 
 ### Changed
 - ``retriever.retrieve`` becomes a sync facade over the new
@@ -189,25 +189,25 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `use_corrective` flag (also `--corrective` on the CLI's `eval`
   subcommand). `EvalResult` gains `corrective_category`,
   `corrective_attempts`, `corrective_reformulated_query`.
-- SQLite LLM judge response cache (`observability/llm_cache.py`) —
+- SQLite LLM judge response cache (`observability/llm_cache.py`):
   wraps `faithfulness`, `correctness`, `answer_relevancy`,
   `context_precision`. **Not** wired to `generate()` or the corrective
   critic (deliberate footgun avoidance). Cache hits skip the API and
   record no token usage. Off by default.
-- Ablation runner (`evaluation/ablation.py`) — sweeps every strategy in
+- Ablation runner (`evaluation/ablation.py`): sweeps every strategy in
   `VALID_STRATEGIES` × [baseline, corrective] and emits a single
   comparative markdown table + full CSV. New CLI: `rag-harness ablation
   [--output-dir evals/experiments] [--no-cache]`.
 - **Relevant-but-incorrect** as a first-class output. Cases where
-  `answer_relevancy > 0.7` AND `correctness < 0.5` — confident-sounding
-  hallucination — get their own column in the ablation markdown, their
+  `answer_relevancy > 0.7` AND `correctness < 0.5` (confident-sounding
+  hallucination) get their own column in the ablation markdown, their
   own row in the terminal summary, and a per-case boolean flag in the
   CSV.
 - Append-only eval history at `evals/history/runs.jsonl`. One line per
   `run_eval` invocation and per ablation configuration. Grows with git
   history so quality drift and cost blowups are attributable to
   specific commits.
-- Per-PR reliability gate — `.github/workflows/eval-pr.yml` runs the
+- Per-PR reliability gate: `.github/workflows/eval-pr.yml` runs the
   gate against a 5-case subset on every PR to main. `~$0.02 per PR`.
   Guarded so PRs from forks can't spend the repo's `OPENAI_API_KEY`.
   Full suite still runs nightly.
@@ -226,7 +226,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   (`observability/pricing.py`), immutable `TokenUsage` record, and a
   `collect_usage()` ContextVar collector for opting into per-block token
   and cost tracking without changing existing function signatures.
-- `record_usage()` calls at every OpenAI boundary — chat completions in
+- `record_usage()` calls at every OpenAI boundary: chat completions in
   generator/critic/corrective-reformulation/HyDE, query embeddings in the
   dense retriever, batched chunk embeddings in the ingest embedder.
 - Two new LLM-as-judge metrics: `answer_relevancy` (is the answer
@@ -263,7 +263,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [0.5.0] — 2026-07-02
 
 ### Added
-- **Corrective RAG** — critic-and-retry loop from Yan et al. 2024. The
+- **Corrective RAG**: critic-and-retry loop from Yan et al. 2024. The
   pipeline now judges its own retrieval quality:
   - `RelevanceCritic` scores every retrieved chunk in a single `gpt-4o-mini`
     call using structured JSON output; scores are calibrated on a rubric
@@ -286,27 +286,27 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 - Critic always scores against the ORIGINAL query, not the reformulated
-  one — reformulation is a search tool, relevance judgement stays anchored.
+  one; reformulation is a search tool, relevance judgement stays anchored.
 - Reformulation failure falls back to the original query rather than
   aborting the retry loop.
 
 ## [0.4.0] — 2026-07-02
 
 ### Added
-- **Hybrid retrieval** — `HybridRetriever` combines dense semantic search with
+- **Hybrid retrieval**: `HybridRetriever` combines dense semantic search with
   BM25 sparse search via Reciprocal Rank Fusion (score = Σ 1/(k + rank + 1),
   k=60 per Cormack et al. 2009). Rank-based fusion avoids score normalisation.
-- **BM25 sparse index** — `BM25Store` builds an in-memory `BM25Okapi` index
+- **BM25 sparse index**: `BM25Store` builds an in-memory `BM25Okapi` index
   from all ChromaDB documents at startup; tokeniser deliberately simple to
   preserve K8s identifiers like `PodDisruptionBudget` and `kubectl`.
-- **Cross-encoder reranker** — `RerankingRetriever` wraps any base retriever
+- **Cross-encoder reranker**: `RerankingRetriever` wraps any base retriever
   with a second-stage rerank using `cross-encoder/ms-marco-MiniLM-L-6-v2`.
   Gated behind the optional `[rerank]` extra (`sentence-transformers`,
   ~500MB with PyTorch).
-- **HyDE query transformation** — `HyDERetriever` asks `gpt-4o-mini` to draft
+- **HyDE query transformation**: `HyDERetriever` asks `gpt-4o-mini` to draft
   a hypothetical answer, then uses that as the retrieval query; bridges the
   query-answer vocabulary gap. Falls back to raw query on LLM failure.
-- **Strategy factory** — `build_retriever(strategy)` composes retrievers by
+- **Strategy factory**: `build_retriever(strategy)` composes retrievers by
   name. Strategies: `dense`, `hybrid`, `hybrid-rerank`, `hyde`, `full`.
 - `--strategy` flag on both `rag-harness query` and `rag-harness eval`
   subcommands; also configurable via `RETRIEVAL_STRATEGY` in `.env`.
@@ -330,10 +330,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [0.2.0] — 2026-07-01
 
 ### Added
-- SQLite embedding cache (`EmbeddingCache`) — re-ingesting an unchanged corpus
+- SQLite embedding cache (`EmbeddingCache`): re-ingesting an unchanged corpus
   makes zero OpenAI API calls after the first run; path configurable via
   `EMBEDDING_CACHE_PATH`
-- Eval results export — `python -m rag_harness eval --output results.json` (or
+- Eval results export: `python -m rag_harness eval --output results.json` (or
   `.csv`) saves per-case scores for regression tracking across nightly runs
 - Centralised logging configuration (`logging_setup.py`) with timestamp and
   logger-name format; log level configurable via `LOG_LEVEL` in `.env`

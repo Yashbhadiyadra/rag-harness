@@ -6,7 +6,7 @@
 
 ## Context
 The Kubernetes documentation changes with every release. Reproducible evaluation
-requires a stable corpus — if the docs change between runs, metric changes could
+requires a stable corpus: if the docs change between runs, metric changes could
 be caused by content drift rather than pipeline changes.
 
 ## Decision
@@ -16,7 +16,7 @@ Retain a bounded window of release history as the change stream for Project 2.
 ## Reasons
 - Reproducible: two ingest runs from the same commit produce identical chunks
 - Required by Project 2: stale-embedding detection needs to compare chunk content
-  at commit N against commit N+1 — only possible if commit provenance is recorded
+  at commit N against commit N+1, only possible if commit provenance is recorded
 - Explicit upgrade path: advancing the pinned commit is a deliberate, reviewable act
 
 ## Tradeoffs

@@ -10,10 +10,10 @@ The baseline retriever uses only dense cosine similarity via OpenAI
 `text-embedding-3-small`. This works well for paraphrased or semantically framed
 questions but fails on two patterns common in the Kubernetes docs:
 
-1. **Exact-term queries** — `kubectl apply --dry-run`, `PodDisruptionBudget`,
+1. **Exact-term queries**: `kubectl apply --dry-run`, `PodDisruptionBudget`,
    `NetworkPolicy`. Dense embeddings compress rare identifiers into a shared
    subspace, so keyword-exact matches are diluted.
-2. **Query-answer vocabulary mismatch** — the question ("How do I stop pods
+2. **Query-answer vocabulary mismatch**: the question ("How do I stop pods
    from starting on GPU nodes?") shares few words with the answer ("Add a taint
    with effect NoSchedule..."). Bi-encoder retrieval fails when there is no
    surface overlap.
@@ -39,7 +39,7 @@ lives in [-1, 1] while BM25 scores are unbounded and corpus-dependent.
 
 `BM25Store` builds an in-memory `BM25Okapi` index from all documents in
 ChromaDB at startup. Rebuilding is fast (~2 seconds for 50k chunks), so we do
-not persist the BM25 index to disk — one less file to invalidate.
+not persist the BM25 index to disk; one less file to invalidate.
 
 ### 2. Second stage — cross-encoder reranker
 
@@ -61,7 +61,7 @@ vocabulary and structure land close to real answer documents in embedding
 space, closing the query-answer gap.
 
 If the hypothesis generation fails (network, safety refusal, empty response),
-HyDE falls back to the raw query — a degraded retrieval is better than a
+HyDE falls back to the raw query: a degraded retrieval is better than a
 failed one.
 
 ## Composition
@@ -77,7 +77,7 @@ All retrievers implement the same `Retriever` interface. The factory function
 | `hyde` | `HyDERetriever(DenseRetriever)` |
 | `full` | `HyDERetriever(RerankingRetriever(HybridRetriever))` |
 
-Downstream code — generation, evaluation, API, CLI — never depends on the
+Downstream code (generation, evaluation, API, CLI) never depends on the
 concrete strategy. This preserves the composability principle from ADR-0001.
 
 ## Alternatives considered

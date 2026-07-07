@@ -12,7 +12,7 @@ Options considered: ChromaDB, Qdrant, Pinecone, pgvector.
 Use ChromaDB (local, file-based).
 
 ## Reasons
-- Zero infrastructure — runs in-process, persists to a local directory
+- Zero infrastructure: runs in-process, persists to a local directory
 - Supports metadata filtering, which is required for provenance queries (Project 2)
 - Easy to inspect and debug during development
 - Swappable: retrieval is behind an abstract `Retriever` interface, so replacing
@@ -20,4 +20,4 @@ Use ChromaDB (local, file-based).
 
 ## Tradeoffs
 - Not production-grade for high-concurrency workloads
-- No distributed mode — acceptable for a single-node evaluation harness
+- No distributed mode: acceptable for a single-node evaluation harness

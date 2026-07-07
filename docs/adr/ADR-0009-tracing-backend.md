@@ -30,7 +30,7 @@ project's constraints ("self-hosted keeps cost ~zero"). This ADR picks
 between them.
 
 Both backends accept OpenTelemetry spans; the choice does not lock in the
-instrumentation format. That is a good property — it means the wrong choice
+instrumentation format. That is a good property: it means the wrong choice
 here is recoverable.
 
 ## Options
@@ -38,7 +38,7 @@ here is recoverable.
 ### Option A — Arize Phoenix
 
 - **License:** Apache 2.0
-- **Install:** `pip install arize-phoenix` — pure-Python; launches a local UI
+- **Install:** `pip install arize-phoenix`. Pure-Python; launches a local UI
   from the same process. No separate service required for a demo.
 - **Storage:** SQLite by default (single file); can swap to Postgres for
   multi-instance deploys.
@@ -51,7 +51,7 @@ here is recoverable.
 - **Portfolio-visibility:** less well-known than Langfuse but growing;
   Arize the company sells enterprise observability so Phoenix has healthy
   investment.
-- **Deploy story for Phase 10:** simple — a single container plus a shared
+- **Deploy story for Phase 10:** simple. A single container plus a shared
   volume. Scales-to-zero on Cloud Run cleanly because SQLite is fine for a
   demo.
 - **Local-dev friction:** one command (`phoenix serve`) or one line of code
@@ -69,12 +69,12 @@ here is recoverable.
   the SDK.
 - **UI:** span waterfall, prompt versioning, dataset management, LLM-based
   evaluations built into the UI, session grouping, user tracking.
-- **Portfolio-visibility:** stronger — more common in job postings, more
+- **Portfolio-visibility:** stronger. More common in job postings, more
   frequently referenced in engineering blogs, larger community.
-- **Deploy story for Phase 10:** heavier — a Compose stack with Postgres is
+- **Deploy story for Phase 10:** heavier. A Compose stack with Postgres is
   awkward on Cloud Run. Fly.io handles Postgres more naturally.
   Alternatively, use Langfuse Cloud's free tier and skip self-hosting.
-- **Local-dev friction:** medium — must launch Postgres and the Langfuse
+- **Local-dev friction:** medium. Must launch Postgres and the Langfuse
   server before the app can emit traces. `docker compose up` is one command
   but it's not the zero-config launch that Phoenix offers.
 
@@ -103,7 +103,7 @@ weight and feature depth.
 | **LangSmith** | Commercial, monthly cost. Roadmap explicitly rules out paid backends for this project. |
 | **OpenTelemetry + Jaeger** | Generic tracing; UI is not LLM-aware. No prompt/completion view, no token/cost attribution built in. Reinventing the LLM-specific dashboard is out of scope. |
 | **W&B Weave** | Requires W&B account; free tier exists but couples the demo to a third-party dashboard we don't control. Undesirable for a self-hosted showcase. |
-| **Roll our own** — extend the existing observability layer with JSON-lines file dumps and a hand-rolled HTML viewer | Reinventing a wheel that is already free. Not defensible in an interview. |
+| **Roll our own**: extend the existing observability layer with JSON-lines file dumps and a hand-rolled HTML viewer | Reinventing a wheel that is already free. Not defensible in an interview. |
 
 ## My recommendation (marked for review, not chosen for you)
 
@@ -142,7 +142,7 @@ Langfuse" outweighs one extra moving part.
 Once you pick, the follow-up work is:
 
 - Add either `arize-phoenix` or `langfuse` to core deps.
-- New `src/rag_harness/observability/tracing.py` — a `tracer` singleton and a
+- New `src/rag_harness/observability/tracing.py`: a `tracer` singleton and a
   `@traced(stage: str)` decorator that opens a span, attaches
   `strategy`/`top_k`/`corrective` attributes, and records latency and token
   counts on span end.

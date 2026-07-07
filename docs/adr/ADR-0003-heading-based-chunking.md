@@ -31,7 +31,7 @@ Track the full heading hierarchy above each chunk as `heading_path`
 
 ## Tradeoffs
 - **Oversized sections are dropped, not truncated.** Truncation would corrupt
-  provenance — the chunk would claim to represent a full section but would not.
+  provenance: the chunk would claim to represent a full section but would not.
   Dropping with a warning is honest. Affected sections are typically auto-generated
   reference tables, not narrative prose.
 - **Heading depth capped at `###`.** Deeper headings (`####` etc.) are rare in the
@@ -42,7 +42,7 @@ Track the full heading hierarchy above each chunk as `heading_path`
 
 ## Alternatives considered
 - **Token-count with overlap (256 tokens, 64 overlap)**: discarded because it
-  breaks semantic units and makes provenance ambiguous — a chunk does not belong
+  breaks semantic units and makes provenance ambiguous: a chunk does not belong
   to a single section.
 - **Sentence-level chunking**: too granular; individual sentences rarely carry
   enough context to produce a useful retrieval hit.

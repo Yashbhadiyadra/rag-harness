@@ -28,7 +28,7 @@ a URL. Two constraints dominate every other decision:
 2. **Cold-start latency must stay bearable.** Scale-to-zero is only
    defensible if the first query after an idle period returns in a
    reasonable time. The query path already pays a network round-trip to the
-   OpenAI embeddings API — anything we add on top of that erodes the
+   OpenAI embeddings API. Anything we add on top of that erodes the
    experience.
 
 Three decisions are bundled in this ADR because they are entangled: the
@@ -44,7 +44,7 @@ whether an in-memory global counter is safe.
 | **Cloud Run (chosen)** | Yes | $0 | 2–4 s cold-start once Chroma is baked in | GCP familiarity; native Secret Manager integration; Workload Identity Federation for GitHub Actions; free tier is generous |
 | Fly.io | Yes (via `auto_stop_machines`) | $0 | 3–6 s cold-start | Simpler Docker Compose story if we needed Postgres; less useful here since Phoenix + SQLite is our tracing choice (ADR-0009) |
 | Render | Free tier does not scale to zero, spins down after 15 min then cold starts in ~30 s | $0 free / $7 paid | 30 s+ | Free-tier cold-start is a demo killer |
-| Self-managed VM | No | $5–10 minimum | 0 s (always warm) | Loses the point — pays 24/7 for something used a handful of times per day |
+| Self-managed VM | No | $5–10 minimum | 0 s (always warm) | Loses the point: pays 24/7 for something used a handful of times per day |
 
 Cloud Run wins on operational fit and the GCP integrations we already
 touch elsewhere (Secret Manager, Cloud Billing budgets, Artifact Registry).
@@ -58,7 +58,7 @@ Setting `min-instances=1` avoids the cold-start entirely at the cost of
 ~$5/month for an idle container. For a portfolio demo that will see spiky,
 low-total traffic (recruiters clicking through in bursts, then nothing for
 days), scale-to-zero is the correct default. If cold-start ever becomes
-demoable-in-90-seconds hostile, we revisit this — not before.
+demoable-in-90-seconds hostile, we revisit this; not before.
 
 ## Persistence choice: bake Chroma into the image
 
@@ -70,7 +70,7 @@ is an ADR-level event, not a background job.
 
 | Option | Cold-start added latency | Monthly $ | Complexity | Reproducibility |
 |---|---|---|---|---|
-| **Bake into image (chosen)** | ~2–4 s (Chroma opens 83 MB SQLite + HNSW dir) | $0 (Artifact Registry has generous free tier) | Zero new infra | Image tag == corpus SHA — atomic rollback |
+| **Bake into image (chosen)** | ~2–4 s (Chroma opens 83 MB SQLite + HNSW dir) | $0 (Artifact Registry has generous free tier) | Zero new infra | Image tag == corpus SHA, atomic rollback |
 | Rebuild on boot | **10–30 min** + ~$0.05–0.20 OpenAI embedding spend per cold start | $0, but scale-to-zero becomes hostile | Ingest path must run inside the runtime container | Deterministic if corpus SHA stable, but slow |
 | Mounted storage (Filestore) | 5–15 s FUSE mount + Chroma open | Filestore basic is ~$230/month minimum | New failure mode, IAM plumbing | Same as baked, minus atomic swap |
 | Mounted storage (GCS FUSE via Cloud Run second-gen) | 5–10 s mount + Chroma open | Pennies per month | New failure mode, larger container CPU footprint | Same as baked |
@@ -84,7 +84,7 @@ baking wins that outright.
 Concrete change (in a follow-up commit): CI builds the image with
 `chroma_db/` present. The runtime container reads from `/app/chroma_db/`.
 `VOLUME` declarations in the Dockerfile are dropped. The embedding cache
-(`embedding_cache.db`, 208 MB, dev-only) is **not** copied — production
+(`embedding_cache.db`, 208 MB, dev-only) is **not** copied. Production
 reads from the index, not the cache. The cache is a build-time speedup for
 `make ingest`, nothing more.
 
@@ -94,7 +94,7 @@ If we ran the embedding model locally (e.g. `all-MiniLM-L6-v2`), we'd
 eliminate the OpenAI round-trip in the query path and the cold-start
 argument for baking becomes stronger still. But local embedding would break
 compatibility with the index built by the OpenAI `text-embedding-3-small`
-model — a re-embedding of the whole corpus and a new eval baseline. That is
+model, a re-embedding of the whole corpus and a new eval baseline. That is
 a project-3 concern (ADR-0002 pinning applies to embeddings too), out of
 scope for Phase 10.
 
@@ -105,10 +105,10 @@ Two implementations:
 
 | Option | Cost | Complexity | Correctness under scale |
 |---|---|---|---|
-| **max-instances=1 + in-memory counter (chosen)** | $0 | Zero — a Python object with a lock | Perfect within one process; counter resets on container restart |
+| **max-instances=1 + in-memory counter (chosen)** | $0 | Zero: a Python object with a lock | Perfect within one process; counter resets on container restart |
 | Firestore counter with atomic `Increment(1)` | Free tier covers this scale (~$0/month) | New GCP dependency, IAM for the SA, one extra network hop per request | Correct across N instances; survives restarts |
 
-`max-instances=1` makes the in-memory counter a single writer — no external
+`max-instances=1` makes the in-memory counter a single writer, so no external
 state needed. `concurrency=40` handles realistic bursts; Cloud Run queues
 beyond that and returns 429 automatically. Scale-to-zero is preserved
 because `min-instances=0`.
@@ -138,7 +138,7 @@ surface small.
 |---|---|---|
 | Per-IP rate limit | `10/hour` sustained, `3/minute` burst | 10/hour is more than any real evaluator needs (a recruiter tries ~5 questions). 3/minute burst tolerates double-clicks and follow-up questions. Replaces the previous `60/minute` default which was sized for local development, not a public demo. |
 | Global daily request cap | 200 requests/day across all IPs | At $0.002/query worst case → $0.40/day → $12/month. Sized just above amortized traffic for a portfolio demo. Counter resets at 00:00 UTC. 201st request returns HTTP 429 with a `demo_daily_limit_reached` error body. |
-| Monthly budget ceiling | $10/month | Cloud Billing budget with email alerts at 50% ($5), 90% ($9), 100% ($10). At the daily cap this is a *soft* limit — the hard limit is the daily cap × 30 = $12 worst-case. Alerts give me time to react before overshoot. |
+| Monthly budget ceiling | $10/month | Cloud Billing budget with email alerts at 50% ($5), 90% ($9), 100% ($10). At the daily cap this is a *soft* limit; the hard limit is the daily cap × 30 = $12 worst-case. Alerts give me time to react before overshoot. |
 | Kill switch | `DEMO_ENABLED=false` env var | Flip in Cloud Run console → next request returns 503 `demo_disabled`. Zero-code emergency shutoff. |
 
 ## Cloud Run configuration (target values)

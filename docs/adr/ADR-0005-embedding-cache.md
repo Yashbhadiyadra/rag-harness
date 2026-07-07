@@ -9,13 +9,13 @@
 During development and CI, the corpus is re-ingested frequently. Every ingest
 call sends each chunk's text to the OpenAI Embeddings API, incurring latency
 and cost. The corpus is pinned to an immutable git commit (ADR-0002), so chunk
-texts are stable between runs — the same text always produces the same vector for
+texts are stable between runs: the same text always produces the same vector for
 a given model.
 
 The cache must be:
-- **Model-aware** — changing the embedding model must invalidate old entries.
-- **Persistent** — survive process restarts so a warm cache carries across runs.
-- **Dependency-free** — no new runtime packages; keeps the install simple.
+- **Model-aware**: changing the embedding model must invalidate old entries.
+- **Persistent**: survive process restarts so a warm cache carries across runs.
+- **Dependency-free**: no new runtime packages; keeps the install simple.
 
 ## Decision
 
@@ -38,7 +38,7 @@ function remains pure and fully testable without a database.
 
 ## Consequences
 
-- Re-ingesting an unchanged corpus is free after the first run — zero OpenAI API
+- Re-ingesting an unchanged corpus is free after the first run: zero OpenAI API
   calls for chunks already in the cache.
 - The cache file (`embedding_cache.db`) is git-ignored and lives alongside
   `chroma_db/`. Its path is configurable via `EMBEDDING_CACHE_PATH` in `.env`.

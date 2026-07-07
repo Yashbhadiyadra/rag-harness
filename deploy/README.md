@@ -25,12 +25,12 @@ Set these once at the top of your shell session and reuse them
 throughout. Substitute your own values first.
 
 ```bash
-export PROJECT_ID="rag-harness-demo"       # dedicated project — clean billing
+export PROJECT_ID="rag-harness-demo"       # dedicated project, clean billing
 export REGION="us-central1"                # cheapest region, all services
 export ARTIFACT_REPO="rag-harness"         # Artifact Registry repo name
 export SERVICE_NAME="rag-harness"          # Cloud Run service name
 export RUNTIME_SA="rag-harness-runtime"    # runtime service account (Secret Manager reader)
-export DEPLOY_SA="rag-harness-deployer"    # deploy SA — GitHub Actions impersonates this
+export DEPLOY_SA="rag-harness-deployer"    # deploy SA, GitHub Actions impersonates this
 export WIF_POOL="github"                   # Workload Identity pool
 export WIF_PROVIDER="github-actions"       # WIF provider inside the pool
 export GITHUB_REPO="Yashbhadiyadra/rag-harness"   # owner/repo
@@ -148,7 +148,7 @@ gcloud iam workload-identity-pools create "$WIF_POOL" \
     --display-name="GitHub Actions"
 
 # 2. OIDC provider bound to the pool. `attribute-condition` limits which
-# GitHub repos can obtain tokens — this is the tenant-isolation step.
+# GitHub repos can obtain tokens. This is the tenant-isolation step.
 gcloud iam workload-identity-pools providers create-oidc "$WIF_PROVIDER" \
     --location=global \
     --workload-identity-pool="$WIF_POOL" \
@@ -157,7 +157,7 @@ gcloud iam workload-identity-pools providers create-oidc "$WIF_PROVIDER" \
     --attribute-mapping="google.subject=assertion.sub,attribute.repository=assertion.repository,attribute.ref=assertion.ref" \
     --attribute-condition="assertion.repository == '${GITHUB_REPO}'"
 
-# 3. Deploy service account — this is what GitHub Actions impersonates.
+# 3. Deploy service account: this is what GitHub Actions impersonates.
 gcloud iam service-accounts create "$DEPLOY_SA" \
     --display-name="RAG harness deploy (GitHub Actions)"
 
@@ -215,7 +215,7 @@ gcloud billing budgets create \
 
 Alert delivery goes to the billing account's admin email by default.
 To add other recipients (e.g. a personal address), attach a Pub/Sub
-topic and a Cloud Function — out of scope for this runbook; the
+topic and a Cloud Function, which is out of scope for this runbook; the
 default email is enough for a one-owner demo.
 
 ---
@@ -234,7 +234,7 @@ IMAGE_TAG="${REGION}-docker.pkg.dev/${PROJECT_ID}/${ARTIFACT_REPO}/${SERVICE_NAM
 # Authenticate Docker to Artifact Registry (once per shell).
 gcloud auth configure-docker "${REGION}-docker.pkg.dev"
 
-# Requires local chroma_db/ — see the top-level Makefile.
+# Requires local chroma_db/ (see the top-level Makefile).
 make docker-build
 docker tag rag-harness:local "$IMAGE_TAG"
 docker push "$IMAGE_TAG"
@@ -273,7 +273,7 @@ Expected:
 - `/query` → 200 with an `answer`, at least one `sources` entry, a
   populated `trace`, non-zero `cost_usd` and `latency_ms`.
 
-If any step fails, the runbook is wrong or the setup is wrong — fix
+If any step fails, the runbook is wrong or the setup is wrong. Fix
 before wiring the release workflow.
 
 ---
@@ -288,5 +288,5 @@ gcloud projects delete "$PROJECT_ID"
 
 Deleting the project removes the service, images, secrets, budgets,
 IAM bindings, WIF pool, and service accounts in one shot. The
-project stays in "pending deletion" for 30 days — you can undelete
+project stays in "pending deletion" for 30 days; you can undelete
 during that window if you change your mind.

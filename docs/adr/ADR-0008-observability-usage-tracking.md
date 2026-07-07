@@ -6,15 +6,15 @@
 
 ## Context
 
-Phase 7 introduces per-call token and cost accounting. Every OpenAI API call —
-in the generator, critic, corrective loop, HyDE, retriever query-embed, and
-ingest embedder — needs to contribute a `TokenUsage` record that downstream
+Phase 7 introduces per-call token and cost accounting. Every OpenAI API call
+(in the generator, critic, corrective loop, HyDE, retriever query-embed, and
+ingest embedder) needs to contribute a `TokenUsage` record that downstream
 callers (the eval runner, the API metrics endpoint) can aggregate.
 
 The obvious design is to change every function that touches the OpenAI SDK to
 return `(result, TokenUsage)` or `(result, list[TokenUsage])`. That approach is
 explicit and easy to reason about locally, but it ripples through every caller
-that does not care about usage — the CLI query command, the FastAPI handler,
+that does not care about usage: the CLI query command, the FastAPI handler,
 every test that mocks these functions, and every intermediate function that
 composes them. On this codebase that is roughly 15 call sites and 80 tests.
 
@@ -40,9 +40,9 @@ Instrumented call sites do exactly one thing after their OpenAI call:
 record_usage(TokenUsage.from_openai(model, response))
 ```
 
-Callers that do not care about usage — CLI query, FastAPI handler, existing
-tests — do not open a `collect_usage()` block and see no change in behavior.
-Callers that do care — eval runner, `/metrics` endpoint — open a block, read
+Callers that do not care about usage (CLI query, FastAPI handler, existing
+tests) do not open a `collect_usage()` block and see no change in behavior.
+Callers that do care (eval runner, `/metrics` endpoint) open a block, read
 the list at the end, and aggregate.
 
 ## Alternatives considered
@@ -53,7 +53,7 @@ the list at the end, and aggregate.
 | Return `(result, list[TokenUsage])` (list allows composition) | Same ripple; nested composition still leaks the concern up |
 | Thread a `UsageCollector` object as an explicit parameter | Cleaner than tuple returns but same ripple; requires every intermediate function to forward it |
 | `threading.local` collector | Works, but does not compose with async and does not reset on exception cleanly. `ContextVar` supersedes it in modern Python. |
-| Global module-level list | No isolation — concurrent requests to the API server would contaminate each other |
+| Global module-level list | No isolation: concurrent requests to the API server would contaminate each other |
 | OpenTelemetry span attributes as the sole collector | Reasonable for tracing but requires the tracing backend to be up. We want usage tracking to work before the ADR-0009 tracing decision lands. |
 
 ## Consequences
@@ -63,9 +63,9 @@ the list at the end, and aggregate.
   a `collect_usage()` block.
 - The collector is opt-in: outside a `collect_usage()` block, `record_usage()`
   is a no-op. This means "was this LLM call priced?" depends on whether an
-  ancestor frame opened a collector — an implicit dependency that the reader
+  ancestor frame opened a collector, an implicit dependency that the reader
   has to be aware of. Documented in the module docstring and this ADR.
-- Nested `collect_usage()` blocks produce nested independent collectors — an
+- Nested `collect_usage()` blocks produce nested independent collectors: an
   inner block does not see the outer collector and does not contaminate it on
   exit. This matches OpenTelemetry span-context semantics and is the intuitive
   behaviour for composition.
