@@ -33,6 +33,11 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 
+from rag_harness.evaluation.confidence import (
+    bootstrap_ci,
+    ci_overlaps_zero,
+    paired_diff_ci,
+)
 from rag_harness.evaluation.history import HistoryEntry, load_history
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -47,13 +52,14 @@ _PROD_STRATEGY = "dense"
 _PROD_CORRECTIVE = False
 
 # Every metric column we render in the ablation table. Order matters —
-# it drives table layout and the corrective-delta panel.
-_QUALITY_METRICS: list[tuple[str, str]] = [
-    ("mean_context_recall", "Recall"),
-    ("mean_context_precision", "Precision"),
-    ("mean_faithfulness", "Faithful"),
-    ("mean_correctness", "Correct"),
-    ("mean_answer_relevancy", "Relevancy"),
+# it drives table layout and the corrective-delta panel. The tuple is
+# (HistoryEntry.mean_* field, per_case_scores key, display label).
+_QUALITY_METRICS: list[tuple[str, str, str]] = [
+    ("mean_context_recall", "context_recall", "Recall"),
+    ("mean_context_precision", "context_precision", "Precision"),
+    ("mean_faithfulness", "faithfulness", "Faithful"),
+    ("mean_correctness", "correctness", "Correct"),
+    ("mean_answer_relevancy", "answer_relevancy", "Relevancy"),
 ]
 
 
@@ -280,7 +286,7 @@ def _headline_card(entries: list[HistoryEntry]) -> str:
     )
 
 
-def _ablation_table(entries: list[HistoryEntry]) -> str:
+def _ablation_table(entries: list[HistoryEntry], seed: int | None = None) -> str:
     groups = _group_by_combo(entries)
     if not groups:
         return ""
@@ -291,7 +297,8 @@ def _ablation_table(entries: list[HistoryEntry]) -> str:
     for combo, rows in groups.items():
         latest = rows[-1]
         history_by_field = {
-            field: [getattr(r, field) for r in rows] for field, _label in _QUALITY_METRICS
+            mean_field: [getattr(r, mean_field) for r in rows]
+            for mean_field, _case_field, _label in _QUALITY_METRICS
         }
         rows_data.append((combo, latest, rows, history_by_field))
 
@@ -299,7 +306,7 @@ def _ablation_table(entries: list[HistoryEntry]) -> str:
     rows_data.sort(key=lambda r: r[1].mean_correctness, reverse=True)
 
     headers = ["Strategy", "Corrective"]
-    for _field, label in _QUALITY_METRICS:
+    for _mean_field, _case_field, label in _QUALITY_METRICS:
         headers.append(label)
     headers += ["p50", "p95", "Cost", "Runs"]
 
@@ -317,11 +324,23 @@ def _ablation_table(entries: list[HistoryEntry]) -> str:
             f"<td>{html.escape(strategy)}{prod_badge}</td>",
             f"<td>{'on' if corrective else 'off'}</td>",
         ]
-        for field, _label in _QUALITY_METRICS:
-            val = getattr(latest, field)
-            spark = _sparkline_svg(hist[field])
+        for mean_field, case_field, _label in _QUALITY_METRICS:
+            val = getattr(latest, mean_field)
+            spark = _sparkline_svg(hist[mean_field])
+            case_scores = (
+                latest.per_case_scores.get(case_field) if latest.per_case_scores else None
+            )
+            if case_scores:
+                lo, hi = bootstrap_ci(case_scores, seed=seed)
+                ci_html = f'<span class="ci">[{lo:.2f}–{hi:.2f}]</span>'
+            else:
+                ci_html = (
+                    '<span class="no-ci" title="pre-bootstrap run">(no CI)</span>'
+                )
             cells.append(
-                f'<td class="num-cell"><span class="num">{_fmt_pct(val)}</span>{spark}</td>'
+                f'<td class="num-cell">'
+                f'<span class="num">{_fmt_pct(val)}</span> {ci_html}{spark}'
+                f"</td>"
             )
         cells.append(f'<td class="num">{_fmt_ms(latest.latency_p50_ms)}</td>')
         cells.append(f'<td class="num">{_fmt_ms(latest.latency_p95_ms)}</td>')
@@ -333,8 +352,10 @@ def _ablation_table(entries: list[HistoryEntry]) -> str:
         '<section class="card">'
         "<h2>Ablation table</h2>"
         '<p class="muted">One row per (strategy, corrective) configuration. '
-        "Numbers are the latest run; the inline spark shows historical trend "
-        "for that configuration. Sorted by correctness.</p>"
+        "Numbers are the latest run; brackets are the 95% bootstrap CI over "
+        "per-case scores (see ADR-0011); the inline spark shows historical "
+        "trend for that configuration. Rows labeled (no CI) predate "
+        "ADR-0011 and do not carry per-case data. Sorted by correctness.</p>"
         '<div class="table-wrap"><table class="ablation">'
         f"<thead><tr>{head_html}</tr></thead>"
         f"<tbody>{''.join(body_rows)}</tbody>"
@@ -343,12 +364,18 @@ def _ablation_table(entries: list[HistoryEntry]) -> str:
     )
 
 
-def _corrective_delta_panel(entries: list[HistoryEntry]) -> str:
+def _corrective_delta_panel(entries: list[HistoryEntry], seed: int | None = None) -> str:
     """For each strategy that has both corrective=on and corrective=off, show
     the impact (correctness / cost / latency delta) of the corrective loop.
 
     References ADR-0007 (corrective RAG) — the panel exists specifically to
     make the tradeoff of that ADR visible on the metrics page.
+
+    Since ADR-0011, when both runs have per-case correctness scores the
+    paired-difference CI is computed; if it overlaps zero the delta is
+    reported in plain language as not statistically distinguishable from
+    zero at the current n. Rows without per-case data are labeled
+    "(no CI — pre-bootstrap run)".
     """
     groups = _group_by_combo(entries)
 
@@ -367,23 +394,58 @@ def _corrective_delta_panel(entries: list[HistoryEntry]) -> str:
         d_p50 = on.latency_p50_ms - off.latency_p50_ms
 
         pp = f"{d_correct * 100:+.1f}pp"
-        # Colour the correctness delta by sign — green when corrective
-        # helps, red when it hurts. The panel exists to make this
-        # tradeoff visible, so the colour is doing real work.
-        correct_class = "delta correct-delta" if d_correct >= 0 else "delta regress-delta"
-        # For cost and latency, the sign already tells the story
-        # ("+cost = more expensive"). If the delta rounds below display
-        # precision, drop the sign prefix so we don't produce awkward
-        # strings like "+< $0.001".
         cost = _signed(d_cost, _fmt_cost)
         latency = _signed(d_p50, _fmt_ms)
 
-        items.append(
-            f'<li><span class="strategy-name">{html.escape(strategy)}</span>: '
-            f'<span class="{correct_class}">{html.escape(pp)}</span> correctness · '
-            f'<span class="delta">{html.escape(cost)}</span> cost · '
-            f'<span class="delta">{html.escape(latency)}</span> p50 latency</li>'
-        )
+        # Try to compute a paired-difference CI on correctness. Both sides
+        # need per-case data and matching case counts.
+        on_scores = on.per_case_scores.get("correctness") if on.per_case_scores else None
+        off_scores = off.per_case_scores.get("correctness") if off.per_case_scores else None
+        have_ci = bool(on_scores and off_scores and len(on_scores) == len(off_scores))
+
+        strategy_html = f'<span class="strategy-name">{html.escape(strategy)}</span>'
+        cost_html = f'<span class="delta">{html.escape(cost)}</span> cost'
+        latency_html = f'<span class="delta">{html.escape(latency)}</span> p50 latency'
+
+        if have_ci:
+            assert on_scores is not None and off_scores is not None  # narrow for mypy
+            ci = paired_diff_ci(on_scores, off_scores, seed=seed)
+            n = len(on_scores)
+            if ci_overlaps_zero(ci):
+                # Sign is a coin flip at this n. Say so in plain language.
+                items.append(
+                    f"<li>{strategy_html}: "
+                    f'<span class="delta indeterminate-delta">{html.escape(pp)}</span>'
+                    f' correctness &mdash; <em class="ci-note">this difference is '
+                    f"not statistically distinguishable from zero at n={n}.</em> "
+                    f"{cost_html} &middot; {latency_html}</li>"
+                )
+            else:
+                # Genuine effect. Colour it and show the CI.
+                correct_class = (
+                    "delta correct-delta" if d_correct >= 0 else "delta regress-delta"
+                )
+                lo_pp = f"{ci[0] * 100:+.1f}pp"
+                hi_pp = f"{ci[1] * 100:+.1f}pp"
+                items.append(
+                    f"<li>{strategy_html}: "
+                    f'<span class="{correct_class}">{html.escape(pp)}</span> correctness '
+                    f'<span class="ci">[{html.escape(lo_pp)}, {html.escape(hi_pp)}]</span>'
+                    f" &middot; {cost_html} &middot; {latency_html}</li>"
+                )
+        else:
+            # No per-case data on at least one side. Colour by sign but
+            # label the CI gap explicitly so mixed-history pages read as
+            # data-provenance, not a bug.
+            correct_class = (
+                "delta correct-delta" if d_correct >= 0 else "delta regress-delta"
+            )
+            items.append(
+                f"<li>{strategy_html}: "
+                f'<span class="{correct_class}">{html.escape(pp)}</span>'
+                f' correctness &mdash; <em class="ci-note">(no CI &mdash; '
+                f"pre-bootstrap run).</em> {cost_html} &middot; {latency_html}</li>"
+            )
 
     if not items:
         return ""
@@ -479,6 +541,10 @@ ul.corrective-list li:last-child { border-bottom: none; }
 .delta { color: var(--text-muted); }
 .correct-delta { color: var(--pass); }
 .regress-delta { color: var(--fail); }
+.indeterminate-delta { color: var(--text-muted); font-weight: 500; }
+.ci { color: var(--text-muted); font-size: 0.9em; }
+.no-ci { color: var(--text-muted); font-size: 0.85em; font-style: italic; }
+.ci-note { color: var(--text-muted); font-style: italic; }
 footer.site-footer { color: var(--text-muted); font-size: 0.82rem; margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--border); font-family: var(--font-mono); }
 code { font-family: var(--font-mono); font-size: 0.85em; background: var(--bg-muted); padding: 0.05em 0.35em; border-radius: 3px; }
 """
@@ -488,8 +554,15 @@ def render_page(
     entries: list[HistoryEntry],
     generated_at: datetime,
     source_path: str = "evals/history/runs.jsonl",
+    seed: int | None = None,
 ) -> str:
-    """Return the full HTML for the metrics page."""
+    """Return the full HTML for the metrics page.
+
+    ``seed`` is passed through to the bootstrap-CI computations so tests
+    can pin the output deterministically. Production callers leave it
+    ``None`` — at 1000 iterations the CIs are already stable to two
+    decimals across seeds.
+    """
     ts_str = generated_at.strftime("%Y-%m-%d %H:%M UTC")
 
     if not entries:
@@ -497,9 +570,9 @@ def render_page(
     else:
         body = (
             _headline_card(entries)
-            + _ablation_table(entries)
+            + _ablation_table(entries, seed=seed)
             + _scatter_section(entries)
-            + _corrective_delta_panel(entries)
+            + _corrective_delta_panel(entries, seed=seed)
         )
 
     footer = (
