@@ -174,6 +174,23 @@ def _cmd_ablation(args: argparse.Namespace) -> None:
     print(f"CSV:      {csv_path}")
 
 
+def _cmd_golden(args: argparse.Namespace) -> None:
+    """Dispatch to the appropriate `golden <sub>` handler."""
+    if args.golden_command == "review":
+        # Local import: pulls the reviewer, which pulls the OpenAI SDK etc.
+        # Keep the CLI import fast for non-review commands.
+        from scripts.golden_review import main as review_main
+
+        argv: list[str] = []
+        if args.queue is not None:
+            argv += ["--queue", args.queue]
+        if args.golden_dir is not None:
+            argv += ["--golden-dir", args.golden_dir]
+        argv += ["--only-status", args.only_status]
+        raise SystemExit(review_main(argv))
+    raise ValueError(f"unknown golden subcommand: {args.golden_command!r}")
+
+
 def main() -> None:
     """Parse arguments and dispatch to the appropriate subcommand handler."""
     parser = argparse.ArgumentParser(
@@ -246,7 +263,27 @@ def main() -> None:
         help="Disable the LLM judge cache (default: on for ablation runs).",
     )
 
+    # Golden-set management: currently one action (review). Uses nested
+    # subparsers so future actions (e.g., `golden validate`, `golden stats`)
+    # slot in without renaming existing commands.
+    golden_p = sub.add_parser("golden", help="Manage the eval golden set.")
+    golden_sub = golden_p.add_subparsers(dest="golden_command", required=True)
+    review_p = golden_sub.add_parser(
+        "review",
+        help="Interactively review candidate cases from the expansion queue.",
+    )
+    review_p.add_argument("--queue", type=str, default=None)
+    review_p.add_argument("--golden-dir", type=str, default=None)
+    review_p.add_argument(
+        "--only-status",
+        default="pending",
+        choices=["pending", "flagged", "accepted", "skipped"],
+    )
+
     args = parser.parse_args()
+    if args.command == "golden":
+        _cmd_golden(args)
+        return
     {
         "ingest": _cmd_ingest,
         "query": _cmd_query,
