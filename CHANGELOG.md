@@ -9,9 +9,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Secret + dep-vulnerability scanning in CI.** New parallel
   ``security`` job in ``ci.yml`` runs on every push and PR:
   ``gitleaks`` with ``fetch-depth: 0`` scans the full commit history
-  for exposed secrets; ``pip-audit --strict --disable-pip`` scans
-  installed runtime deps for known vulnerabilities. Top-level
+  for exposed secrets; ``pip-audit`` scans installed runtime deps
+  against PyPI + OSV advisories. Top-level
   ``permissions: contents: read`` limits both jobs to the minimum.
+  Workflow upgrades pip to ``>=26.1`` before auditing to clear the
+  runner's shipped pip 24.x CVEs.
+  One CVE is intentionally ignored with an in-file audit trail:
+  PYSEC-2026-311 (ChromaDB pre-auth code injection via HTTP server
+  and ``trust_remote_code=true``) — not reachable in our embedded
+  PersistentClient usage; revisit when a patched chromadb ships.
+  ``[rerank]`` extras (torch, transformers) are outside the audit
+  scope because they are not installed in CI or in the Cloud Run
+  runtime image (Dockerfile ships ``.[eval]`` only per ADR-0010).
 
 ## [0.9.0] — 2026-07-06
 

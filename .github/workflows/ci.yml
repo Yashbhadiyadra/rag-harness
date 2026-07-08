@@ -65,12 +65,57 @@ jobs:
         run: uv venv .venv --python 3.12
 
       - name: Install runtime deps + pip-audit
-        # Runtime deps only (no [dev]) so the audit reports what's actually
-        # shipped, and pip-audit itself.
+        # Runtime deps only (no [dev], no [rerank], no [observability]) so
+        # the audit reports what the deployed image actually ships.
+        #
+        # Note on scope: the `[rerank]` extra pulls torch + transformers,
+        # which currently carry known CVEs against their pinned versions
+        # (see pyproject.toml — sentence-transformers<4 forces
+        # torch 2.2.2 + numpy<2 for stability). Because CI installs `.`
+        # only (no extras), those packages are not audited here, and the
+        # Cloud Run runtime image does not include them either (see
+        # Dockerfile — the runtime install is `.[eval]` only per ADR-0010).
+        # If we ever ship the reranker in production the audit scope must
+        # expand and those CVEs get triaged.
         run: uv pip install -e "." pip-audit
 
+      - name: Upgrade pip to a patched version
+        # pip 24.x on the GitHub runner has 5 CVEs (PYSEC-2026-196, -1795,
+        # -1796; CVE-2026-3219; CVE-2026-6357), all fixed in pip >= 26.1.
+        # Upgrading here rather than adding --ignore-vuln entries keeps the
+        # audit surface clean for future CVEs.
+        run: uv run --no-sync python -m pip install --upgrade 'pip>=26.1'
+
       - name: pip-audit — dependency vulnerability scan
-        # --strict fails on any known-vulnerable install. pip-audit queries
-        # PyPI + OSV for advisories; a transient outage will false-fail CI,
-        # which is annoying but not dangerous. Manual retry recovers.
-        run: uv run --no-sync pip-audit --strict
+        # Flags explained (each one is a decision, not decoration):
+        #
+        # --skip-editable   The local `rag-harness` package is installed
+        #                   via `-e .` and is not published to PyPI, so
+        #                   pip-audit cannot look it up. We do not want
+        #                   to audit our own code here anyway; the goal
+        #                   is third-party deps.
+        #
+        # --ignore-vuln PYSEC-2026-311  ChromaDB pre-auth code injection
+        #                   (CVE-2026-45829 / GHSA-f4j7-r4q5-qw2c). The
+        #                   exploit path is via the /api/v2/tenants/.../
+        #                   collections HTTP endpoint with
+        #                   trust_remote_code=true and a malicious model
+        #                   repository. We use ChromaDB exclusively in
+        #                   PersistentClient mode (embedded, in-process
+        #                   — see src/rag_harness/retrieval/dense.py and
+        #                   ingest/indexer.py) and never run its HTTP
+        #                   server. trust_remote_code is not set anywhere.
+        #                   No patched release exists on PyPI as of
+        #                   2026-07-08 (latest is 1.5.9, same as
+        #                   last_affected).
+        #                   Advisory: https://osv.dev/vulnerability/PYSEC-2026-311
+        #                   TODO: revisit when chromadb ships a fix, drop
+        #                   the ignore, and consider bumping the version
+        #                   pin in pyproject.toml.
+        #
+        # --strict is intentionally NOT passed. --strict makes pip-audit
+        # exit non-zero on collection failures too, which conflicts with
+        # --skip-editable (the skip is treated as a failure). Findings
+        # already produce a non-zero exit without --strict, so real CVEs
+        # still block the merge.
+        run: uv run --no-sync pip-audit --skip-editable --ignore-vuln PYSEC-2026-311
