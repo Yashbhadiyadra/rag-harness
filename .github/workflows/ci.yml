@@ -70,7 +70,7 @@ jobs:
         run: uv pip install -e "." pip-audit
 
       - name: pip-audit — dependency vulnerability scan
-        # --strict fails on any known-vulnerable install. --disable-pip keeps
-        # the audit off the network path so a transient PyPI outage does not
-        # false-fail CI.
-        run: uv run --no-sync pip-audit --strict --disable-pip
+        # --strict fails on any known-vulnerable install. pip-audit queries
+        # PyPI + OSV for advisories; a transient outage will false-fail CI,
+        # which is annoying but not dangerous. Manual retry recovers.
+        run: uv run --no-sync pip-audit --strict
