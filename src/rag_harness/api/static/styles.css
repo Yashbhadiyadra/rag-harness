@@ -36,6 +36,12 @@
 
 * { box-sizing: border-box; }
 
+/* Ensure the HTML `hidden` attribute wins over ``display: flex`` etc.
+   Without this, .results { display: flex } overrides the browser's
+   default [hidden] { display: none } and the empty-state sections
+   render before the first query returns. */
+[hidden] { display: none !important; }
+
 html, body {
   margin: 0;
   padding: 0;

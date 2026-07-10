@@ -254,6 +254,20 @@ def test_demo_ui_static_assets_reachable() -> None:
     assert "javascript" in js.headers["content-type"]
 
 
+def test_demo_ui_stylesheet_forces_hidden_attribute() -> None:
+    """Regression guard: the CSS must include a rule that gives the HTML
+    `hidden` attribute higher precedence than the layout rules on
+    ``.results`` etc. Without ``[hidden] { display: none !important; }``
+    the results section renders in its empty state before the first
+    query returns (verified against a live server 2026-07-10).
+    """
+    css = client.get("/static/styles.css").text
+    # Normalise whitespace for a robust substring check.
+    normalised = " ".join(css.split())
+    assert "[hidden]" in normalised
+    assert "display: none !important" in normalised
+
+
 def test_rate_limit_burst_returns_429() -> None:
     """4th quick /query from the same IP within a minute → 429.
 
