@@ -39,7 +39,4 @@ htmlcov/
 # Local editor and tooling config
 .vscode/
 .idea/
-.cursor/
-.claude/
-CLAUDE.md
 STATUS_REPORT.md
