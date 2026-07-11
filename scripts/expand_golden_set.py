@@ -48,12 +48,19 @@ logger = logging.getLogger(__name__)
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_QUEUE_PATH = REPO_ROOT / "evals" / "review-queue" / "candidates.jsonl"
 
-# Similarity threshold above which we conclude "the corpus does answer
-# this" and drop the unanswerable candidate. ChromaDB with cosine
-# similarity returns distances in [0, 2]. Converting to similarity via
-# ``1 - distance / 2`` gives values in [0, 1]. 0.75 corresponds to a
-# solid semantic match; below that the top hit is off-topic.
-_UNANSWERABLE_MAX_SIMILARITY = 0.75
+# Similarity threshold above which we auto-drop an unanswerable
+# candidate as clearly answered by the corpus. ChromaDB cosine distances
+# in [0, 2] convert to similarity via ``1 - distance / 2`` in [0, 1].
+#
+# Empirically (ADR-0012 pilot): questions drawn FROM a chunk (genuinely
+# answered) cluster at 0.85+, while topically-related-but-unanswerable
+# questions (e.g. "IAM roles for EKS managed node groups") sit in the
+# 0.75-0.85 band and retrieve real chunks they do not actually answer.
+# A 0.75 gate silently dropped those genuine unanswerables before review.
+# 0.85 auto-drops only clear-answer cases and surfaces the borderline
+# band with its retrieval-evidence trail for the human to adjudicate,
+# which is the classification workflow ADR-0012 was designed around.
+_UNANSWERABLE_MAX_SIMILARITY = 0.85
 
 # Two normalised questions at or above this character-level ratio are
 # treated as near-duplicates; the later candidate is dropped so the

@@ -269,8 +269,8 @@ def test_draft_unanswerable_candidate_dropped_when_corpus_answers() -> None:
             }
         }
     )
-    # Top hit at similarity 0.85 is well above the 0.75 drop threshold.
-    probe = _StubProbe([_hit(0.85), _hit(0.70)])
+    # Top hit at similarity 0.92 is clearly above the 0.85 drop threshold.
+    probe = _StubProbe([_hit(0.92), _hit(0.70)])
     assert draft_unanswerable_candidate(client, probe, candidate_index=0) is None
 
 

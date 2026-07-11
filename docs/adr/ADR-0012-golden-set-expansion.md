@@ -59,8 +59,11 @@ this ADR):
 - For **unanswerable** candidates: prompt the LLM to draft plausible
   K8s questions that the pinned v1.32 corpus does NOT answer, then
   run the drafted question through the actual retriever. Candidates
-  whose top hit exceeds a similarity threshold (0.75) get dropped:
-  those are questions the corpus does answer. Surviving candidates
+  whose top hit exceeds a similarity threshold (0.85; raised from an
+  initial 0.75 after the pilot showed 0.75 silently dropped genuinely
+  unanswerable questions that were merely topically related to real
+  chunks) get dropped: those are questions the corpus does answer.
+  Surviving candidates
   carry `retrieval_evidence` (top-k hits + similarities + an
   LLM-written explanation of why the hits don't answer the question)
   so the reviewer confirms the classification, not just trusts the
