@@ -1,7 +1,7 @@
 """In-memory BM25 index over the ingested corpus.
 
 BM25 is a sparse, keyword-based ranker. It complements dense retrieval by
-catching exact-term queries — commands, flag names, resource types — that
+catching exact-term queries - commands, flag names, resource types - that
 semantic embeddings often miss on a technical corpus like the K8s docs.
 
 The index is built once at retriever startup by loading all documents from
@@ -68,7 +68,7 @@ class BM25Store:
             tokenised_corpus.append(tokenize(doc))
 
         if not tokenised_corpus:
-            raise ValueError("BM25Store: collection is empty — run ingest first.")
+            raise ValueError("BM25Store: collection is empty - run ingest first.")
 
         self._bm25 = BM25Okapi(tokenised_corpus)
         logger.info("BM25Store loaded %d chunks", len(self._chunks))
@@ -76,7 +76,7 @@ class BM25Store:
     def search(self, query: str, top_k: int) -> list[tuple[Chunk, float]]:
         """Return the top_k chunks by BM25 score, best first.
 
-        Score is the raw BM25 value — useful only for relative ranking within
+        Score is the raw BM25 value - useful only for relative ranking within
         this store; do not compare across queries or across stores.
         """
         query_tokens = tokenize(query)

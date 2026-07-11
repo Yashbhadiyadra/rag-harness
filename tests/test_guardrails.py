@@ -30,14 +30,14 @@ def test_screen_detects_common_injection_patterns(text: str) -> None:
         "Explain the difference between a Deployment and a StatefulSet.",
         "kubectl apply --dry-run",
         "How can I ignore stale entries in etcd?",  # 'ignore' but not 'instructions'
-        "What is the system prompt in Kubernetes CoreDNS?",  # NB: this WILL match — see below
+        "What is the system prompt in Kubernetes CoreDNS?",  # NB: this WILL match - see below
     ],
 )
 def test_screen_ignores_normal_k8s_queries(text: str) -> None:
     """Sanity check: legitimate K8s questions must not trigger the screen.
 
     NOTE: the last case ('system prompt') is a known false-positive of the
-    coarse regex. Documented as expected behaviour — a future full
+    coarse regex. Documented as expected behaviour - a future full
     guardrails engine would classify by intent rather than surface pattern.
     """
     result = screen_for_injection(text)

@@ -2,21 +2,21 @@
 
 Wraps the four LLM-as-judge calls (``faithfulness``, ``correctness``,
 ``answer_relevancy``, ``context_precision``). Never wraps ``generate()`` or
-the corrective critic — those affect user-facing behaviour and returning a
+the corrective critic - those affect user-facing behaviour and returning a
 stale generation answer to a live user is a footgun. Judges score existing
 answers against reference material and are called only from the eval path.
 
 **Rationale for caching judge calls specifically.** Two properties combine:
 
 1. Judges are **near-deterministic** at ``temperature=0``. LLM inference is
-   not strictly deterministic — same prompt can produce marginally different
-   outputs across API-side changes — but for scoring purposes the drift is
+   not strictly deterministic - same prompt can produce marginally different
+   outputs across API-side changes - but for scoring purposes the drift is
    small and predictable.
 2. A stale judge score is **negligible-cost** to the operation of the system.
    The score is a signal for the developer, not a live prediction; being one
    evaluator revision behind on a scoring rubric does not hurt an ablation
    comparison as long as every configuration in the same run sees the same
-   cache. Cache lifetime is bounded by ``llm_cache.db`` on disk — delete the
+   cache. Cache lifetime is bounded by ``llm_cache.db`` on disk - delete the
    file to invalidate.
 
 Key schema mirrors the embedding cache (SHA-256 keyed) so cache misses on
@@ -59,7 +59,7 @@ class LLMResponseCache:
         try:
             return str(json.loads(row[0]))
         except (json.JSONDecodeError, TypeError):
-            # Corrupted row — treat as miss rather than crash
+            # Corrupted row - treat as miss rather than crash
             logger.warning("llm cache row for key=%s was corrupted; ignoring", key[:12])
             return None
 

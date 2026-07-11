@@ -36,9 +36,9 @@ def _to_metadata(chunk: Chunk) -> dict[str, str]:
 
 
 def index_chunks(embedded: list[tuple[Chunk, list[float]]]) -> None:
-    """Upsert (chunk, vector) pairs into ChromaDB. Idempotent — safe to re-run."""
+    """Upsert (chunk, vector) pairs into ChromaDB. Idempotent - safe to re-run."""
     if not embedded:
-        logger.warning("index_chunks called with empty list — nothing to index")
+        logger.warning("index_chunks called with empty list - nothing to index")
         return
 
     collection = _get_collection()

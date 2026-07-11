@@ -58,7 +58,7 @@ def test_daily_cap_rejects_over_cap_with_429(_tiny_cap: None) -> None:
 
 
 def test_daily_cap_does_not_count_health_or_ready(_tiny_cap: None) -> None:
-    """/health and /ready must not consume budget slots — they are operator probes."""
+    """/health and /ready must not consume budget slots - they are operator probes."""
     # Consume nothing on /health and /ready
     for _ in range(5):
         client.get("/health")
@@ -68,7 +68,7 @@ def test_daily_cap_does_not_count_health_or_ready(_tiny_cap: None) -> None:
 
 
 def test_daily_cap_does_not_count_metrics(_tiny_cap: None) -> None:
-    """/metrics is a scrape endpoint — it must never consume budget slots."""
+    """/metrics is a scrape endpoint - it must never consume budget slots."""
     for _ in range(5):
         client.get("/metrics")
     assert app.state.daily_budget.remaining() == 2

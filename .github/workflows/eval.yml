@@ -30,7 +30,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: chroma_db/
-          # Cache key is the pinned commit SHA — invalidates automatically when corpus advances
+          # Cache key is the pinned commit SHA - invalidates automatically when corpus advances
           key: chroma-${{ runner.os }}-${{ hashFiles('src/rag_harness/config.py') }}
 
       - name: Ingest K8s docs
@@ -38,7 +38,7 @@ jobs:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
-          echo "Cache miss — running full ingest (this will take a few minutes)"
+          echo "Cache miss - running full ingest (this will take a few minutes)"
           python -m rag_harness ingest
 
       - name: Save ChromaDB cache

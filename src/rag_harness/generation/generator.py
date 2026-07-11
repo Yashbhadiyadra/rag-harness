@@ -40,7 +40,7 @@ _FALLBACK_ANSWER = (
 
 
 async def generate_async(query: str, chunks: list[Chunk]) -> str:
-    """Async implementation — call this directly from async callers."""
+    """Async implementation - call this directly from async callers."""
     if not chunks:
         return _FALLBACK_ANSWER
 
@@ -53,7 +53,7 @@ async def generate_async(query: str, chunks: list[Chunk]) -> str:
             {"role": "system", "content": _SYSTEM_PROMPT},
             {"role": "user", "content": user_message},
         ],
-        temperature=0,  # deterministic output — important for reproducible eval
+        temperature=0,  # deterministic output - important for reproducible eval
     )
     record_usage(TokenUsage.from_openai(settings.generation_model, response))
 
@@ -63,7 +63,7 @@ async def generate_async(query: str, chunks: list[Chunk]) -> str:
 
 
 def generate(query: str, chunks: list[Chunk]) -> str:
-    """Sync facade — runs the async implementation in a fresh event loop.
+    """Sync facade - runs the async implementation in a fresh event loop.
 
     Kept for the transition period only. New callers should ``await
     generate_async`` directly. This wrapper is removed once every caller

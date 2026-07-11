@@ -1,7 +1,7 @@
 """Prometheus metrics for the API server.
 
 Exposes RAG-specific counters, histograms, and gauges via ``GET /metrics``.
-Uses the standard prometheus_client library — labels, histogram buckets, and
+Uses the standard prometheus_client library - labels, histogram buckets, and
 text-format exposition are provided by the library rather than hand-rolled.
 
 Default process/GC metrics are disabled to keep the /metrics output focused on
@@ -20,7 +20,7 @@ from prometheus_client.gc_collector import GCCollector
 from prometheus_client.platform_collector import PlatformCollector
 from prometheus_client.process_collector import ProcessCollector
 
-# Disable the default collectors (process, platform, GC) — we want /metrics
+# Disable the default collectors (process, platform, GC) - we want /metrics
 # focused on RAG behaviour. Unregister any that got auto-registered on import.
 for collector in list(REGISTRY._collector_to_names.keys()):
     if isinstance(collector, ProcessCollector | PlatformCollector | GCCollector):

@@ -1,4 +1,4 @@
-"""Unit tests for the ingest embedder — usage recording, batching semantics."""
+"""Unit tests for the ingest embedder - usage recording, batching semantics."""
 
 from unittest.mock import AsyncMock, MagicMock, patch
 

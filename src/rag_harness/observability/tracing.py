@@ -13,7 +13,7 @@ Design (per ADR-0009):
   stage nest automatically thanks to ``openinference-instrumentation-openai``.
 - ``collect_spans()`` is an in-request span collector that runs independently
   of Phoenix. It lets the API return the trace on the response payload so the
-  demo UI can render it (ADR-0010) even when Phoenix is not reachable — which
+  demo UI can render it (ADR-0010) even when Phoenix is not reachable - which
   is the default on Cloud Run.
 
 Turn Phoenix export on with ``TRACING_ENABLED=true`` in ``.env`` and run
@@ -46,7 +46,7 @@ class TraceSpan(BaseModel):
     """One stage of a query trace.
 
     Doubles as both the collector's internal type and the API response
-    schema — pydantic serialises it directly on ``QueryResponse.trace``.
+    schema - pydantic serialises it directly on ``QueryResponse.trace``.
     """
 
     name: str
@@ -61,7 +61,7 @@ _current_spans: ContextVar[list[TraceSpan] | None] = ContextVar("_current_spans"
 def collect_spans() -> Iterator[list[TraceSpan]]:
     """Collect every ``traced_span`` that completes inside the block.
 
-    Blocks nest safely — inner blocks get their own accumulator and do not
+    Blocks nest safely - inner blocks get their own accumulator and do not
     contaminate the outer one. The ContextVar is reset on both success and
     exception, so a raised exception inside the block does not leak state
     into subsequent calls.
@@ -91,7 +91,7 @@ def configure_tracing() -> None:
     """Initialise the Phoenix tracer if TRACING_ENABLED is set. Idempotent.
 
     Called from the FastAPI lifespan hook and from the CLI entry point. If
-    tracing is disabled this is a cheap no-op — no imports, no network.
+    tracing is disabled this is a cheap no-op - no imports, no network.
     Raises ImportError with an install hint if tracing is enabled but the
     ``[observability]`` extra is not installed.
     """
@@ -100,7 +100,7 @@ def configure_tracing() -> None:
         logger.debug("tracing disabled")
         return
     if _tracer is not None:
-        logger.debug("tracing already configured — skipping re-init")
+        logger.debug("tracing already configured - skipping re-init")
         return
 
     try:
@@ -117,7 +117,7 @@ def configure_tracing() -> None:
     OpenAIInstrumentor().instrument(tracer_provider=tracer_provider)
     _tracer = trace.get_tracer("rag_harness")
     logger.info(
-        "tracing configured — exporting to %s (project=%s)",
+        "tracing configured - exporting to %s (project=%s)",
         settings.tracing_endpoint,
         settings.tracing_service_name,
     )

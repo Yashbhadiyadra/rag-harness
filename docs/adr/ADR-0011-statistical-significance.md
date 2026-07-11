@@ -1,4 +1,4 @@
-# ADR-0011 — Percentile bootstrap CIs on ablation metrics
+# ADR-0011 - Percentile bootstrap CIs on ablation metrics
 
 **Status:** Accepted  
 **Date:** 2026-07-07  
@@ -80,7 +80,7 @@ Old rows in `evals/history/runs.jsonl` do not have per-case scores and
 cannot recover them (the raw case-level output is not archived).
 
 Rather than back-computing a fake CI, the metrics page labels old rows
-`(no CI — pre-bootstrap run)` next to the point estimate. This makes
+`(no CI - pre-bootstrap run)` next to the point estimate. This makes
 mixed rows obvious as data-provenance artefacts rather than looking
 like a rendering bug.
 
@@ -103,13 +103,13 @@ when the CI overlaps zero:
 - Positive, CI excludes zero:
   `dense: +1.8pp correctness [+0.3pp, +3.2pp], cost +$0.0039, latency +1.17s p50`
 - CI overlaps zero:
-  `dense: +1.8pp correctness — this difference is not statistically distinguishable from zero at n=30. cost +$0.0039, latency +1.17s p50`
+  `dense: +1.8pp correctness - this difference is not statistically distinguishable from zero at n=30. cost +$0.0039, latency +1.17s p50`
 
 The second form is the honesty win. It tells the reader, in prose, that
 the number in front of them is a coin flip at the current sample size.
 
 Old runs without per-case scores render as:
-`dense: +1.8pp correctness — (no CI — pre-bootstrap run). cost +$0.0039, latency +1.17s p50`
+`dense: +1.8pp correctness - (no CI - pre-bootstrap run). cost +$0.0039, latency +1.17s p50`
 
 ## Alternatives considered
 

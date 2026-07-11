@@ -68,7 +68,7 @@ def test_correct_category_filters_and_generates() -> None:
     assert result.answer == "Answer."
     assert result.category is Category.CORRECT
     assert result.attempts == 1
-    # c dropped — it was below the incorrect threshold
+    # c dropped - it was below the incorrect threshold
     assert {c.id for c in result.chunks_used} == {"a", "b"}
 
 
@@ -91,7 +91,7 @@ def test_ambiguous_category_generates_with_surviving_chunks() -> None:
         result = corrective_generate("query", retriever, critic=critic, max_retries=0)
 
     assert result.category is Category.AMBIGUOUS
-    # b dropped — 0.2 is below 0.3 incorrect threshold
+    # b dropped - 0.2 is below 0.3 incorrect threshold
     assert [c.id for c in result.chunks_used] == ["a"]
     gen_mock.assert_awaited_once_with("query", [_chunk("a")])
 
@@ -201,7 +201,7 @@ def test_critic_scores_against_original_query_after_reformulation() -> None:
         mock_openai_cls.return_value = _mock_openai_returning("rewritten")
         corrective_generate("original query", retriever, critic=critic, max_retries=1)
 
-    # Both scoring calls use the ORIGINAL query, not the reformulated one —
+    # Both scoring calls use the ORIGINAL query, not the reformulated one -
     # scores must be comparable across attempts.
     for call in critic.score_batch_async.await_args_list:
         assert call[0][0] == "original query"
@@ -221,7 +221,7 @@ def test_reformulation_failure_falls_back_to_original_query() -> None:
         mock_openai_cls.return_value = client
         result = corrective_generate("original", retriever, critic=critic, max_retries=1)
 
-    # Retriever should have been called twice — first with original,
+    # Retriever should have been called twice - first with original,
     # then again with original (fallback because reformulation failed).
     assert retriever.retrieve_async.await_count == 2
     for call in retriever.retrieve_async.await_args_list:
@@ -244,7 +244,7 @@ def test_reformulation_records_usage_inside_collect_block() -> None:
         with collect_usage() as usage_list:
             corrective_generate("q", retriever, critic=critic, max_retries=1)
 
-    # One reformulation call was made — usage recorded once
+    # One reformulation call was made - usage recorded once
     assert len(usage_list) == 1
     assert usage_list[0].input_tokens == 15
     assert usage_list[0].output_tokens == 5

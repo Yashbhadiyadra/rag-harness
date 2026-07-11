@@ -23,8 +23,8 @@ configuration executed against this repo. One JSON line per run:
 ```
 
 Every commit that changes retrieval or generation should be reflected in a
-new line here. Trends over time — quality drift, latency regressions,
-cost blowups — are plottable directly from this file.
+new line here. Trends over time - quality drift, latency regressions,
+cost blowups - are plottable directly from this file.
 
 Never edit an existing line. Prunable later if the file grows unwieldy.
 

@@ -158,7 +158,7 @@ def test_query_rejects_zero_top_k() -> None:
 def test_query_returns_refusal_on_openai_error() -> None:
     """When the LLM boundary raises OpenAIError (exhausted retries), the
     handler must degrade to the honest refusal answer with an empty sources
-    list — NOT a 5xx. Distinct log event for ops."""
+    list - NOT a 5xx. Distinct log event for ops."""
     chunk = _make_chunk("docs/a.md", ["A"])
 
     mock_retriever = MagicMock()
@@ -218,7 +218,7 @@ def test_demo_ui_index_served_at_root() -> None:
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/html")
     body = response.text
-    # A couple of stable markers from index.html — enough to catch a
+    # A couple of stable markers from index.html - enough to catch a
     # regression where the wrong file is served without pinning the
     # markup verbatim.
     assert "RAG harness" in body
@@ -250,7 +250,7 @@ def test_demo_ui_static_assets_reachable() -> None:
     js = client.get("/static/app.js")
     assert js.status_code == 200
     # FastAPI/Starlette returns application/javascript or text/javascript
-    # depending on version; both are fine — just assert it's JS-ish.
+    # depending on version; both are fine - just assert it's JS-ish.
     assert "javascript" in js.headers["content-type"]
 
 

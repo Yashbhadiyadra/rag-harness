@@ -1,4 +1,4 @@
-# ADR-0009 — Tracing backend: Arize Phoenix
+# ADR-0009 - Tracing backend: Arize Phoenix
 
 **Status:** Accepted  
 **Date:** 2026-07-03  
@@ -35,7 +35,7 @@ here is recoverable.
 
 ## Options
 
-### Option A — Arize Phoenix
+### Option A - Arize Phoenix
 
 - **License:** Apache 2.0
 - **Install:** `pip install arize-phoenix`. Pure-Python; launches a local UI
@@ -57,7 +57,7 @@ here is recoverable.
 - **Local-dev friction:** one command (`phoenix serve`) or one line of code
   (`px.launch_app()`). Very low.
 
-### Option B — Langfuse
+### Option B - Langfuse
 
 - **License:** Apache 2.0 (core; some enterprise features are commercial)
 - **Install:** SDK is `pip install langfuse`. Server is a separate Docker

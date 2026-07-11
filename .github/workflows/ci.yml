@@ -46,7 +46,7 @@ jobs:
           # gitleaks scans the full history, not just the current tree.
           fetch-depth: 0
 
-      - name: gitleaks — full-history secret scan
+      - name: gitleaks - full-history secret scan
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -70,11 +70,11 @@ jobs:
         #
         # Note on scope: the `[rerank]` extra pulls torch + transformers,
         # which currently carry known CVEs against their pinned versions
-        # (see pyproject.toml — sentence-transformers<4 forces
+        # (see pyproject.toml - sentence-transformers<4 forces
         # torch 2.2.2 + numpy<2 for stability). Because CI installs `.`
         # only (no extras), those packages are not audited here, and the
         # Cloud Run runtime image does not include them either (see
-        # Dockerfile — the runtime install is `.[eval]` only per ADR-0010).
+        # Dockerfile - the runtime install is `.[eval]` only per ADR-0010).
         # If we ever ship the reranker in production the audit scope must
         # expand and those CVEs get triaged.
         run: uv pip install -e "." pip-audit
@@ -86,7 +86,7 @@ jobs:
         # audit surface clean for future CVEs.
         run: uv run --no-sync python -m pip install --upgrade 'pip>=26.1'
 
-      - name: pip-audit — dependency vulnerability scan
+      - name: pip-audit - dependency vulnerability scan
         # Flags explained (each one is a decision, not decoration):
         #
         # --skip-editable   The local `rag-harness` package is installed
@@ -102,7 +102,7 @@ jobs:
         #                   trust_remote_code=true and a malicious model
         #                   repository. We use ChromaDB exclusively in
         #                   PersistentClient mode (embedded, in-process
-        #                   — see src/rag_harness/retrieval/dense.py and
+        #                   - see src/rag_harness/retrieval/dense.py and
         #                   ingest/indexer.py) and never run its HTTP
         #                   server. trust_remote_code is not set anywhere.
         #                   No patched release exists on PyPI as of

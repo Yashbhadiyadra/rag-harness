@@ -16,7 +16,7 @@ def test_tokenize_splits_on_punctuation() -> None:
 
 
 def test_tokenize_preserves_underscores() -> None:
-    # \w includes underscore — 'foo_bar' stays intact
+    # \w includes underscore - 'foo_bar' stays intact
     assert tokenize("foo_bar baz") == ["foo_bar", "baz"]
 
 
@@ -33,7 +33,7 @@ def test_tokenize_whitespace_only() -> None:
 
 
 def test_tokenize_kubernetes_identifiers() -> None:
-    # Realistic K8s vocabulary — these must survive tokenisation
+    # Realistic K8s vocabulary - these must survive tokenisation
     text = "PodDisruptionBudget protects the ClusterRoleBinding"
     tokens = tokenize(text)
     assert "poddisruptionbudget" in tokens

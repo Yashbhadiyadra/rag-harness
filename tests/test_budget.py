@@ -18,7 +18,7 @@ def test_check_and_increment_over_cap_returns_false() -> None:
     budget = DailyBudget(cap=2)
     assert budget.check_and_increment() is True
     assert budget.check_and_increment() is True
-    # Cap reached — next call rejected, remaining stays at 0
+    # Cap reached - next call rejected, remaining stays at 0
     assert budget.check_and_increment() is False
     assert budget.remaining() == 0
     # Repeated rejections do not corrupt state
@@ -54,7 +54,7 @@ def test_rollover_at_utc_midnight() -> None:
     budget.check_and_increment()
     assert budget.check_and_increment() is False, "cap should be reached at day boundary"
 
-    # Advance past midnight — the next call sees a new UTC date
+    # Advance past midnight - the next call sees a new UTC date
     clock["now"] = clock["now"] + timedelta(minutes=2)
     assert budget.check_and_increment() is True, "counter should roll over at UTC midnight"
     assert budget.remaining() == 1

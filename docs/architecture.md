@@ -3,7 +3,7 @@
 ## Overview
 
 A reliability-first RAG pipeline over the pinned Kubernetes documentation.
-The point is not just to answer questions — it is to **measure** answer
+The point is not just to answer questions - it is to **measure** answer
 quality across each independent failure mode, catch regressions before
 they ship, and expose the same measurement story to the visitor at the
 public demo.
@@ -27,11 +27,11 @@ rendered on a public metrics page.
 ## Data flow (ingest + query)
 
 ```
-K8s docs repo (pinned git commit — ADR-0002)
+K8s docs repo (pinned git commit - ADR-0002)
         │
         ▼
     [ingest]  load markdown → heading-aware chunk (ADR-0003)
-              → OpenAI embeddings (cached in SQLite — ADR-0005)
+              → OpenAI embeddings (cached in SQLite - ADR-0005)
               → upsert into ChromaDB with provenance (ADR-0001)
         │
         ▼
@@ -43,7 +43,7 @@ K8s docs repo (pinned git commit — ADR-0002)
                                │
         ┌──────────────────────┴──────────────────────┐
         ▼                                              ▼
-    [retrieval — ADR-0006]                     [generation — ADR-0007]
+    [retrieval - ADR-0006]                     [generation - ADR-0007]
     Optional HyDE query expansion              Grounded answer via gpt-4o-mini
     Dense / hybrid (dense + BM25 RRF)          Optional corrective loop:
     Optional cross-encoder rerank                critic scores each chunk;
@@ -52,7 +52,7 @@ K8s docs repo (pinned git commit — ADR-0002)
         │                                              │
         └──────────────────────┬──────────────────────┘
                                ▼
-                     [evaluation — ADR-0004]
+                     [evaluation - ADR-0004]
                      context_recall + context_precision
                      + faithfulness + correctness
                      + answer_relevancy
@@ -81,7 +81,7 @@ Input guardrail             regex hygiene for prompt-injection patterns
     ↓
 collect_spans() + collect_usage()   observability collectors opened
     ↓
-Retrieval                   selected strategy — dense / hybrid / hyde / …
+Retrieval                   selected strategy - dense / hybrid / hyde / …
     ↓
 Generation                  gpt-4o-mini (or corrective loop)
     ↓
@@ -117,15 +117,15 @@ see the degradation.
 Three parallel channels feed different consumers:
 
 1. **In-request span collector** (`observability/tracing.collect_spans()`)
-   — a `ContextVar`-based accumulator that captures every `traced_span`
+   - a `ContextVar`-based accumulator that captures every `traced_span`
    closure and is returned on the `QueryResponse.trace` field. Runs
    independently of Phoenix so the demo UI works whether or not a
    tracing backend is reachable.
-2. **OpenTelemetry export to Arize Phoenix** (ADR-0009) — the same
+2. **OpenTelemetry export to Arize Phoenix** (ADR-0009) - the same
    `traced_span` calls emit OTel spans to the Phoenix backend when
    `TRACING_ENABLED=true`. Waterfall UI, prompt/completion side-by-side,
    trace search. Optional in the deployed image.
-3. **Prometheus counters + histograms** (`api/metrics.py`) —
+3. **Prometheus counters + histograms** (`api/metrics.py`) -
    `rag_query_total`, `rag_query_errors_total{error_type}`,
    `rag_query_tokens_total{direction,model}`, `rag_query_cost_usd_total`,
    `rag_query_latency_seconds` histogram. Scraped from `/metrics`.
@@ -136,7 +136,7 @@ Per-call cost accounting uses the same `ContextVar` pattern
 
 ## Evaluation layer
 
-- **Golden set** — hand-verified cases in `evals/golden/`, organised by
+- **Golden set** - hand-verified cases in `evals/golden/`, organised by
   topic. Version-controlled and reviewed like code.
 - **Five metrics** (ADR-0004):
   - Retrieval: `context_recall` (deterministic set intersection),
@@ -146,10 +146,10 @@ Per-call cost accounting uses the same `ContextVar` pattern
 - **Ablation runner** sweeps every `(strategy, corrective)` pair and
   emits a comparative table (`evals/experiments/`); a highlighted
   "relevant but incorrect" column tracks confident hallucination.
-- **Append-only history** — every eval and ablation run appends a
+- **Append-only history** - every eval and ablation run appends a
   `HistoryEntry` to `evals/history/runs.jsonl`. That file feeds the
   static metrics page (`scripts/render_metrics_page.py`).
-- **Reliability gate** — the eval suite fails when any metric drops
+- **Reliability gate** - the eval suite fails when any metric drops
   below its configured threshold. Run on every PR (5-case subset), full
   suite nightly, and on every release tag before deploy.
 
@@ -158,14 +158,14 @@ Per-call cost accounting uses the same `ContextVar` pattern
 Documented in [ADR-0010](adr/ADR-0010-cloud-run-and-persistence.md);
 enforced across three independent gates:
 
-- **Per-IP rate limit** — `slowapi` with composite
+- **Per-IP rate limit** - `slowapi` with composite
   `10/hour;3/minute`. Configurable via `API_RATE_LIMIT`.
-- **Global daily cap** — 200 requests/day across all IPs, enforced by
+- **Global daily cap** - 200 requests/day across all IPs, enforced by
   the in-memory `DailyBudget` under `max-instances=1`. Resets at 00:00
   UTC. Configurable via `DEMO_DAILY_REQUEST_CAP`.
-- **Monthly budget ceiling** — Cloud Billing budget with alerts at
+- **Monthly budget ceiling** - Cloud Billing budget with alerts at
   50%, 90%, and 100% of `$10/month`.
-- **Emergency kill switch** — `DEMO_ENABLED=false` env var → instant
+- **Emergency kill switch** - `DEMO_ENABLED=false` env var → instant
   503 on `/query`; probes stay reachable.
 
 ## Deploy pipeline
@@ -199,13 +199,13 @@ Complete runbook in [`deploy/README.md`](../deploy/README.md).
 This is Project 1 of a three-part reliability portfolio. Later projects
 depend on choices made here:
 
-- **Project 2 (stale-embedding detection)** consumes ingest history —
+- **Project 2 (stale-embedding detection)** consumes ingest history -
   every chunk records `source_file`, `git_commit`, and `doc_version` as
   provenance. Never discard that; it is Project 2's input signal.
 - **Project 3 (agent trajectory evaluator)** reuses the `evaluation`
-  layer — metric interfaces and the `HistoryEntry` schema are kept
+  layer - metric interfaces and the `HistoryEntry` schema are kept
   generic, not hard-wired to single-turn RAG only.
-- **MCP server (stretch)** — the FastAPI surface is deliberately narrow
+- **MCP server (stretch)** - the FastAPI surface is deliberately narrow
   and stable; exposing it as MCP tools (`query_docs`, `run_ablation`) is
   a thin wrapper away.
 

@@ -1,4 +1,4 @@
-"""Corrective RAG — retrieve, critique, route, and optionally retry.
+"""Corrective RAG - retrieve, critique, route, and optionally retry.
 
 Implements the corrective loop from Yan et al. 2024. The passive
 retrieve-then-generate pipeline becomes an active one that judges its own
@@ -8,10 +8,10 @@ retrieval quality:
       → retrieve
       → critic scores every chunk
       → route on the aggregate category:
-          CORRECT    — filter out any chunk below the incorrect threshold,
+          CORRECT    - filter out any chunk below the incorrect threshold,
                        generate the answer using the survivors
-          AMBIGUOUS  — same as Correct but with a smaller surviving set
-          INCORRECT  — reformulate the query, retrieve again (up to
+          AMBIGUOUS  - same as Correct but with a smaller surviving set
+          INCORRECT  - reformulate the query, retrieve again (up to
                        corrective_max_retries), re-critique; on final
                        failure return a "not enough information" refusal
 
@@ -45,7 +45,7 @@ _REFORMULATE_SYSTEM_PROMPT = """\
 You are a search query rewriter. The user asked a question but the first \
 retrieval attempt returned nothing relevant. Rewrite the question so it \
 surfaces different keywords, terminology, or synonyms. Keep the semantic \
-intent unchanged. Output ONLY the rewritten question — no preface, no \
+intent unchanged. Output ONLY the rewritten question - no preface, no \
 explanation, no punctuation beyond a question mark.
 """
 
@@ -88,7 +88,7 @@ async def corrective_generate_async(
     max_retries: int | None = None,
     top_k: int | None = None,
 ) -> CorrectiveResult:
-    """Async implementation — call this directly from async callers.
+    """Async implementation - call this directly from async callers.
 
     Returns a CorrectiveResult carrying the answer, the chunks that made it
     into the final generation, the routing category from the last attempt,
@@ -138,13 +138,13 @@ async def corrective_generate_async(
                 reformulated_query=reformulated,
             )
 
-        # Incorrect — reformulate and retry, unless we've hit the cap
+        # Incorrect - reformulate and retry, unless we've hit the cap
         if attempt < retry_cap:
             reformulated = await _reformulate_query_async(client, model, query)
             current_query = reformulated
             logger.info("reformulated query: %r", reformulated)
 
-    # Exhausted retries with an Incorrect verdict — refuse rather than hallucinate
+    # Exhausted retries with an Incorrect verdict - refuse rather than hallucinate
     return CorrectiveResult(
         answer=NO_INFO_MESSAGE,
         chunks_used=[],
@@ -162,7 +162,7 @@ def corrective_generate(
     max_retries: int | None = None,
     top_k: int | None = None,
 ) -> CorrectiveResult:
-    """Sync facade — runs the async implementation in a fresh event loop.
+    """Sync facade - runs the async implementation in a fresh event loop.
 
     Kept for the transition period only. New callers should ``await
     corrective_generate_async`` directly.

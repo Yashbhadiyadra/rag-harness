@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 async def run_ingest_async(repo_path: Path | None = None) -> None:
-    """Async: full ingest pipeline — load → chunk → embed (concurrent) → index."""
+    """Async: full ingest pipeline - load → chunk → embed (concurrent) → index."""
     logger.info("starting ingest pipeline")
 
     doc_paths, commit_sha = load(repo_path)
@@ -34,9 +34,9 @@ async def run_ingest_async(repo_path: Path | None = None) -> None:
     logger.info("indexing %d embedded chunks", len(embedded))
     index_chunks(embedded)
 
-    logger.info("ingest complete — %d chunks indexed", len(embedded))
+    logger.info("ingest complete - %d chunks indexed", len(embedded))
 
 
 def run_ingest(repo_path: Path | None = None) -> None:
-    """Sync facade — runs the async implementation in a fresh event loop."""
+    """Sync facade - runs the async implementation in a fresh event loop."""
     asyncio.run(run_ingest_async(repo_path))

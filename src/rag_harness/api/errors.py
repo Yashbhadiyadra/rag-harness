@@ -9,7 +9,7 @@ the FastAPI exception handler in ``server.py`` can map it to:
 - a structured log event with matching fields (via ``logger.warning`` with
   ``extra=``) so ops can filter on error type across the log stream
 
-Nothing here catches raw ``Exception`` — that stays 500 Internal Server
+Nothing here catches raw ``Exception`` - that stays 500 Internal Server
 Error and surfaces the traceback in logs so a genuine bug isn't hidden.
 """
 

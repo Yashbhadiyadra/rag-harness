@@ -74,7 +74,7 @@ async def _run_level(
 
 
 def _percentile(values: list[float], pct: int) -> float:
-    """Nearest-rank percentile — matches the eval runner's helper."""
+    """Nearest-rank percentile - matches the eval runner's helper."""
     if not values:
         return 0.0
     sorted_vals = sorted(values)
@@ -154,7 +154,7 @@ def _render_markdown(results: list[dict[str, float]], injected_llm_ms: int) -> s
     """Render the load-check results as a markdown table."""
     ts = datetime.now(timezone.utc).isoformat(timespec="seconds")
     lines = [
-        f"# Load check — {ts}",
+        f"# Load check - {ts}",
         "",
         f"Mocked retriever + LLM ({injected_llm_ms} ms injected per call).",
         "Numbers report the async wiring's overhead, not OpenAI's throughput.",

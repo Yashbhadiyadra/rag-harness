@@ -1,4 +1,4 @@
-# ADR-0008 — Usage tracking via ContextVar collector
+# ADR-0008 - Usage tracking via ContextVar collector
 
 **Status:** Accepted  
 **Date:** 2026-07-03  

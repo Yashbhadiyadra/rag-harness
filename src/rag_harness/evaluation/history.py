@@ -73,7 +73,7 @@ def record_run(
 ) -> HistoryEntry:
     """Append one line to the eval history JSONL and return the entry written.
 
-    Idempotent by convention only — every call appends a new line. Callers
+    Idempotent by convention only - every call appends a new line. Callers
     should invoke exactly once per ``run_eval`` invocation or per ablation
     configuration.
     """
@@ -124,7 +124,7 @@ def load_history(history_file: Path | None = None) -> list[HistoryEntry]:
     """Read every line of the history file and return parsed entries in order.
 
     Missing file returns an empty list. Malformed lines are skipped with a
-    warning rather than aborting — a corrupted line at the tail should not
+    warning rather than aborting - a corrupted line at the tail should not
     hide the intact history above it.
     """
     path = history_file or _HISTORY_FILE

@@ -1,4 +1,4 @@
-# ADR-0001 — Use ChromaDB as the vector store
+# ADR-0001 - Use ChromaDB as the vector store
 
 **Status:** Accepted  
 **Date:** 2026-06-30  

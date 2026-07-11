@@ -34,7 +34,7 @@ eval:
 # only if the index directory is missing, so repeat builds are fast.
 
 docker-build:
-	@test -d chroma_db || (echo "chroma_db/ missing — running make ingest first" && $(MAKE) ingest)
+	@test -d chroma_db || (echo "chroma_db/ missing - running make ingest first" && $(MAKE) ingest)
 	docker build -t rag-harness:local .
 
 docker-run:

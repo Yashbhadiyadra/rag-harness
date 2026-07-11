@@ -1,7 +1,7 @@
 """End-to-end integration tests for the ingest → index → retrieve pipeline.
 
 These tests use a real ChromaDB collection in a temporary directory and a small
-fixture corpus. Only the OpenAI embedding API is mocked — every other component
+fixture corpus. Only the OpenAI embedding API is mocked - every other component
 (chunker, indexer, retriever) runs its real code path.
 
 Run with:

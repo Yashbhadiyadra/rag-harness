@@ -58,7 +58,7 @@
   {
     "id": "workloads-006",
     "question": "What is a ReplicaSet and how does it relate to a Deployment?",
-    "reference_answer": "A ReplicaSet ensures that a specified number of identical Pod replicas are running at any given time. A Deployment owns and manages a ReplicaSet — when you update a Deployment, it creates a new ReplicaSet and gradually shifts traffic to it while scaling down the old one. You should use Deployments rather than ReplicaSets directly, as Deployments provide higher-level update and rollback semantics.",
+    "reference_answer": "A ReplicaSet ensures that a specified number of identical Pod replicas are running at any given time. A Deployment owns and manages a ReplicaSet - when you update a Deployment, it creates a new ReplicaSet and gradually shifts traffic to it while scaling down the old one. You should use Deployments rather than ReplicaSets directly, as Deployments provide higher-level update and rollback semantics.",
     "relevant_doc_ids": [
       "content/en/docs/concepts/workloads/controllers/replicaset.md"
     ]

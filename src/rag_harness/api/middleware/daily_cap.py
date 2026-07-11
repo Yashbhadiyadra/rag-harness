@@ -2,7 +2,7 @@
 
 Consumes one slot from a shared :class:`DailyBudget` on every POST to
 ``/query``. When the day's slots are exhausted, returns HTTP 429 with a
-``demo_daily_limit_reached`` body — the same shape as other structured
+``demo_daily_limit_reached`` body - the same shape as other structured
 errors so the demo UI (and any client) can pattern-match uniformly.
 
 Scoped to ``POST /query`` deliberately: ``/health``, ``/ready``, and
@@ -37,7 +37,7 @@ class DailyCapMiddleware(BaseHTTPMiddleware):
         if request.method == "POST" and request.url.path == "/query":
             if not self._budget.check_and_increment():
                 logger.warning(
-                    "daily request cap reached — returning 429",
+                    "daily request cap reached - returning 429",
                     extra={"error_type": "demo_daily_limit_reached"},
                 )
                 body = {

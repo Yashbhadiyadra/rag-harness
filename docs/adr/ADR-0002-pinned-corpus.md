@@ -1,4 +1,4 @@
-# ADR-0002 — Pin the K8s docs corpus to a specific git commit
+# ADR-0002 - Pin the K8s docs corpus to a specific git commit
 
 **Status:** Accepted  
 **Date:** 2026-06-30  

@@ -1,4 +1,4 @@
-# Cloud Run service manifest — RAG harness public demo.
+# Cloud Run service manifest - RAG harness public demo.
 #
 # Applied via `gcloud run services replace deploy/cloud-run.yaml`.
 # The release workflow (.github/workflows/release.yml) substitutes the
@@ -9,7 +9,7 @@
 #   - max=1 (single-writer property for the in-memory daily-cap counter)
 #   - concurrency=40 (bursts queued in-process, not spread across instances)
 #   - memory=1Gi, cpu=1, timeout=60s
-#   - OPENAI_API_KEY from Secret Manager — never baked into the image.
+#   - OPENAI_API_KEY from Secret Manager - never baked into the image.
 #
 # Region and service-account naming come from deploy/README.md, which
 # documents the one-time GCP setup.
@@ -37,7 +37,7 @@ spec:
         # Slightly faster cold start; free feature.
         run.googleapis.com/startup-cpu-boost: "true"
     spec:
-      # Bursts queued in-process (up to 40) — see ADR-0010.
+      # Bursts queued in-process (up to 40) - see ADR-0010.
       containerConcurrency: 40
       # Wider than settings.openai_timeout_seconds (20s) so a legitimate
       # long generation is not truncated by the request timeout.
@@ -54,7 +54,7 @@ spec:
             - name: PORT
               value: "8080"
             # OPENAI_API_KEY comes from Secret Manager. Rotate by adding
-            # a new version to the secret — the container reads
+            # a new version to the secret - the container reads
             # `latest` at cold start.
             - name: OPENAI_API_KEY
               valueFrom:
@@ -76,7 +76,7 @@ spec:
             timeoutSeconds: 3
             failureThreshold: 6
           # Liveness probe: cheap /health endpoint (no external checks).
-          # /ready is deliberately NOT wired here — a transient Chroma
+          # /ready is deliberately NOT wired here - a transient Chroma
           # blip should not restart the container. See api/server.py.
           livenessProbe:
             httpGet:

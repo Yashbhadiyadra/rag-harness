@@ -1,1 +1,1 @@
-"""rag_harness — reliability-first RAG pipeline over Kubernetes documentation."""
+"""rag_harness - reliability-first RAG pipeline over Kubernetes documentation."""

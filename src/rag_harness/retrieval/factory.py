@@ -1,15 +1,15 @@
-"""Retriever factory — composes retrievers based on a strategy name.
+"""Retriever factory - composes retrievers based on a strategy name.
 
 The strategy names are stable identifiers used in configuration, CLI flags,
 API requests, and evaluation logs. Adding a new strategy means adding a new
-branch here — nothing downstream needs to change.
+branch here - nothing downstream needs to change.
 
 Strategies:
-    dense           — DenseRetriever alone (baseline)
-    hybrid          — HybridRetriever (dense + BM25 fused with RRF)
-    hybrid-rerank   — HybridRetriever wrapped in RerankingRetriever
-    hyde            — HyDERetriever wrapping DenseRetriever
-    full            — HyDE ∘ Hybrid ∘ Rerank (the whole pipeline)
+    dense           - DenseRetriever alone (baseline)
+    hybrid          - HybridRetriever (dense + BM25 fused with RRF)
+    hybrid-rerank   - HybridRetriever wrapped in RerankingRetriever
+    hyde            - HyDERetriever wrapping DenseRetriever
+    full            - HyDE ∘ Hybrid ∘ Rerank (the whole pipeline)
 """
 
 import logging
@@ -52,7 +52,7 @@ def build_retriever(strategy: str) -> Retriever:
     if strategy == "hyde":
         return HyDERetriever(base_retriever=DenseRetriever())
 
-    # "full" — HyDE around Rerank around Hybrid
+    # "full" - HyDE around Rerank around Hybrid
     from rag_harness.retrieval.reranker import RerankingRetriever
 
     return HyDERetriever(base_retriever=RerankingRetriever(base_retriever=HybridRetriever()))

@@ -259,7 +259,7 @@ def test_answer_relevancy_parses_score() -> None:
 
 
 def test_answer_relevancy_empty_answer_returns_zero() -> None:
-    # No LLM call needed for empty answer — short-circuit
+    # No LLM call needed for empty answer - short-circuit
     with patch("rag_harness.evaluation.metrics._client") as mock_client:
         score = answer_relevancy("What is RBAC?", "")
     assert score == 0.0
@@ -592,7 +592,7 @@ def test_run_eval_corrective_refusal_still_scored(tmp_path: Path) -> None:
     assert r.generated_answer == NO_INFO_MESSAGE
     assert r.retrieved_doc_ids == []
     assert r.corrective_category == "incorrect"
-    # A refusal correctly scored low on correctness — that's the intended signal
+    # A refusal correctly scored low on correctness - that's the intended signal
     assert r.correctness == 0.0
 
 
@@ -717,7 +717,7 @@ def test_run_eval_aggregates_operational_metrics(tmp_path: Path) -> None:
     mock_retriever = MagicMock()
     mock_retriever.retrieve_async = AsyncMock(return_value=[_make_chunk("docs/a.md")])
 
-    # Simulate a real call recording usage — the evaluate_case wrapper opens
+    # Simulate a real call recording usage - the evaluate_case wrapper opens
     # its own collect_usage() block, so we need something inside to record.
     # Easiest: patch the metric functions to return numbers but also stub the
     # generation LLM path to inject a usage record via the ContextVar.

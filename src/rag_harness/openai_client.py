@@ -17,7 +17,7 @@ from rag_harness.config import settings
 def build_async_client(api_key: str | None = None) -> AsyncOpenAI:
     """Return an ``AsyncOpenAI`` with the configured retries and timeout.
 
-    Callers typically don't pass *api_key* — it defaults to
+    Callers typically don't pass *api_key* - it defaults to
     ``settings.openai_api_key``. Tests may override.
     """
     return AsyncOpenAI(

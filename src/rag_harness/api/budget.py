@@ -48,7 +48,7 @@ class DailyBudget:
         """Consume one slot atomically.
 
         Returns True if the request is allowed (and the counter is
-        incremented). Returns False if the cap is already reached — the
+        incremented). Returns False if the cap is already reached - the
         counter is not incremented in that case.
         """
         with self._lock:
@@ -70,7 +70,7 @@ class DailyBudget:
         """Clear the counter and re-anchor to the current UTC day.
 
         Used by tests via the conftest autouse fixture. Never call from
-        production code — that would defeat the daily cap.
+        production code - that would defeat the daily cap.
         """
         with self._lock:
             self._count = 0

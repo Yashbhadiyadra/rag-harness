@@ -5,7 +5,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-### Added (Phase 11 — pre-v1.0 audit + hardening)
+### Added (Phase 11 - pre-v1.0 audit + hardening)
 - **Secret + dep-vulnerability scanning in CI.** New parallel
   ``security`` job in ``ci.yml`` runs on every push and PR:
   ``gitleaks`` with ``fetch-depth: 0`` scans the full commit history
@@ -16,15 +16,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   runner's shipped pip 24.x CVEs.
   One CVE is intentionally ignored with an in-file audit trail:
   PYSEC-2026-311 (ChromaDB pre-auth code injection via HTTP server
-  and ``trust_remote_code=true``) — not reachable in our embedded
+  and ``trust_remote_code=true``) - not reachable in our embedded
   PersistentClient usage; revisit when a patched chromadb ships.
   ``[rerank]`` extras (torch, transformers) are outside the audit
   scope because they are not installed in CI or in the Cloud Run
   runtime image (Dockerfile ships ``.[eval]`` only per ADR-0010).
 
-## [0.9.0] — 2026-07-06
+## [0.9.0] - 2026-07-06
 
-### Added (Phase 10 — deployment, demo UI, metrics page)
+### Added (Phase 10 - deployment, demo UI, metrics page)
 - **ADR-0010: Cloud Run + scale-to-zero + baked Chroma.** Records the
   hosting choice (Cloud Run over Fly.io / Render / self-managed VM),
   persistence strategy (bake the 83 MB ``chroma_db/`` into the image
@@ -134,9 +134,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   ``v1.0.0`` follows after the Stage D statistical rigor work
   (bootstrap CIs, golden-set expansion, judge calibration).
 
-## [0.8.0] — 2026-07-05
+## [0.8.0] - 2026-07-05
 
-### Added (Phase 9 — production hardening)
+### Added (Phase 9 - production hardening)
 - **Async request path end-to-end.** Every I/O-bound function now uses
   ``AsyncOpenAI`` and ``await``; the FastAPI /query handler is
   ``async def``. Retrieval, generation, corrective, HyDE, critic, and
@@ -191,9 +191,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - ``NO_INFO_MESSAGE`` is now the graceful-degradation path for both
   the corrective refusal and any post-retry LLM failure.
 
-## [0.7.0] — 2026-07-04
+## [0.7.0] - 2026-07-04
 
-### Added (Phase 8 — evaluation completeness + ablation study)
+### Added (Phase 8 - evaluation completeness + ablation study)
 - Corrective RAG wired into `run_eval` behind a keyword-only
   `use_corrective` flag (also `--corrective` on the CLI's `eval`
   subcommand). `EvalResult` gains `corrective_category`,
@@ -228,7 +228,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `run_eval` grows keyword-only `strategy_label`, `record_history`, and
   `case_filter` parameters. Default behaviour unchanged.
 
-## [0.6.0] — 2026-07-03
+## [0.6.0] - 2026-07-03
 
 ### Added
 - Observability foundation (Phase 7): model rates pricing table
@@ -269,7 +269,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - ADR-0009: Phoenix vs Langfuse comparison; **Phoenix chosen** on
   operational fit, Cloud Run alignment, and reversibility.
 
-## [0.5.0] — 2026-07-02
+## [0.5.0] - 2026-07-02
 
 ### Added
 - **Corrective RAG**: critic-and-retry loop from Yan et al. 2024. The
@@ -299,7 +299,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Reformulation failure falls back to the original query rather than
   aborting the retry loop.
 
-## [0.4.0] — 2026-07-02
+## [0.4.0] - 2026-07-02
 
 ### Added
 - **Hybrid retrieval**: `HybridRetriever` combines dense semantic search with
@@ -327,7 +327,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - API server no longer hard-codes `DenseRetriever`; uses `build_retriever`
   with the configured strategy
 
-## [0.3.0] — 2026-07-01
+## [0.3.0] - 2026-07-01
 
 ### Added
 - 30 hand-written golden evaluation cases across five K8s topic areas:
@@ -336,7 +336,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   and mocked OpenAI; excluded from per-PR CI, run with `pytest -m integration`
 - `pytest.mark.integration` marker registered in `pyproject.toml`
 
-## [0.2.0] — 2026-07-01
+## [0.2.0] - 2026-07-01
 
 ### Added
 - SQLite embedding cache (`EmbeddingCache`): re-ingesting an unchanged corpus
@@ -355,14 +355,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Changed
 - Module-level and class-level docstrings added across all packages
 
-## [0.1.0] — 2026-06-30
+## [0.1.0] - 2026-06-30
 
 ### Added
 - Phase 1 discipline: pinned K8s corpus to `snapshot-initial-v1.32`
   (SHA `bbb60b97`), two new ADRs, full CHANGELOG backfill, docstrings
   on all public functions
 
-## [0.1.0] — 2026-06-30
+## [0.1.0] - 2026-06-30
 
 ### Added
 - FastAPI server (`POST /query`, `GET /health`) and CLI (`ingest`, `query`, `eval`

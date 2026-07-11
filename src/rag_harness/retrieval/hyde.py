@@ -1,4 +1,4 @@
-"""HyDE — Hypothetical Document Embeddings (Gao et al. 2022).
+"""HyDE - Hypothetical Document Embeddings (Gao et al. 2022).
 
 Standard dense retrieval embeds the raw query and searches for chunks with
 similar embeddings. This is fragile when the query and answer use different
@@ -9,7 +9,7 @@ to the node...").
 HyDE bridges the gap by asking an LLM to first *write* a hypothetical answer,
 then embeds the hypothetical answer instead of the raw question. Even when
 the LLM hallucinates specific facts, the generated text shares vocabulary,
-structure, and topical signal with real answer documents — so its embedding
+structure, and topical signal with real answer documents - so its embedding
 lands in the right neighbourhood.
 
 Key property: HyDE requires no training or fine-tuning. It composes with any
@@ -30,7 +30,7 @@ _HYDE_SYSTEM_PROMPT = (
     "You are a technical writer. Given a question about Kubernetes, write a "
     "short passage (3-5 sentences) that would appear in the official docs as "
     "the answer. Be specific and use accurate terminology. Do not preface, "
-    "explain, or apologise — output only the passage."
+    "explain, or apologise - output only the passage."
 )
 
 
@@ -65,7 +65,7 @@ class HyDERetriever(Retriever):
         """Generate a hypothesis, then retrieve using that as the query.
 
         If the LLM returns an empty hypothesis (network hiccup, safety refusal,
-        etc.) we fall back to the raw query — better a degraded retrieval than
+        etc.) we fall back to the raw query - better a degraded retrieval than
         a failed one.
         """
         try:

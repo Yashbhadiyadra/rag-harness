@@ -2,7 +2,7 @@
 
 Uses opentelemetry-sdk's InMemorySpanExporter (dev dep) so tests never touch
 a real Phoenix instance. The Phoenix + OpenAI-instrumentor packages are
-exercised only in configure_tracing() and are lazy-imported — those code
+exercised only in configure_tracing() and are lazy-imported - those code
 paths are tested with mocked import failures.
 """
 
@@ -52,7 +52,7 @@ def test_traced_span_is_noop_when_tracer_not_configured() -> None:
 
 def test_traced_span_swallows_attributes_when_tracer_off() -> None:
     set_tracer_for_testing(None)
-    # No assertions needed — just verifying no exception is raised
+    # No assertions needed - just verifying no exception is raised
     with traced_span("stage", key1="v1", key2=42, key3=None):
         pass
 
@@ -118,7 +118,7 @@ def test_configure_tracing_is_noop_when_disabled() -> None:
     set_tracer_for_testing(None)
     with patch("rag_harness.observability.tracing.settings.tracing_enabled", False):
         configure_tracing()
-    # _tracer stays None — no phoenix import attempted
+    # _tracer stays None - no phoenix import attempted
     assert tracing._tracer is None
 
 
@@ -139,7 +139,7 @@ def test_configure_tracing_is_idempotent(in_memory_tracer: InMemorySpanExporter)
         # If it tried to import phoenix, the test env doesn't have it wired to
         # register(...) and it would fail. Idempotency is the guard.
         configure_tracing()
-    # Tracer unchanged — still the in-memory one from the fixture
+    # Tracer unchanged - still the in-memory one from the fixture
     assert tracing._tracer is not None
 
 
@@ -173,7 +173,7 @@ def test_traced_span_is_composable_with_collect_usage(
 
 
 def test_collect_spans_records_completed_spans_when_tracer_off() -> None:
-    """Collector must work without the Phoenix tracer — that is its purpose.
+    """Collector must work without the Phoenix tracer - that is its purpose.
 
     The API returns the trace on the response even when TRACING_ENABLED is
     unset (the Cloud Run default), so the collector cannot depend on the

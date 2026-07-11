@@ -6,7 +6,7 @@
 #
 # One-time setup: run deploy/README.md through step 5. Then set the
 # following GitHub Actions REPO VARIABLES (Settings → Secrets and
-# variables → Actions → Variables tab). These are values, not secrets —
+# variables → Actions → Variables tab). These are values, not secrets -
 # knowing them does not grant impersonation because the WIF
 # attribute-condition scopes to this repository.
 #
@@ -29,7 +29,7 @@ on:
       - "v*.*.*"
   workflow_dispatch:  # allow manual dispatch for dry runs / re-releases
 
-# Serialize releases — never deploy two revisions concurrently.
+# Serialize releases - never deploy two revisions concurrently.
 concurrency:
   group: release
   cancel-in-progress: false
@@ -149,7 +149,7 @@ jobs:
         run: uv pip install -e ".[eval]"
 
       # Reuse the eval-gate's Chroma cache. Same key → same cache
-      # entry. On the rare miss we re-ingest — costs ~$0.05-0.20 once.
+      # entry. On the rare miss we re-ingest - costs ~$0.05-0.20 once.
       - name: Restore ChromaDB cache
         id: chroma-cache
         uses: actions/cache/restore@v4
@@ -215,7 +215,7 @@ jobs:
         # gcloud run services replace returns success even if the new
         # revision fails its startup probe. Compare latestCreated to
         # latestReady; if they diverge, Cloud Run kept traffic on the
-        # previous revision — which is the automatic rollback we want,
+        # previous revision - which is the automatic rollback we want,
         # but this workflow still fails so the release is marked
         # failed and the tag doesn't silently claim success.
         run: |

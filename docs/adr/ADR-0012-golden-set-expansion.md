@@ -1,4 +1,4 @@
-# ADR-0012 — Golden-set expansion to n≈100 with unanswerable and version-sensitive categories
+# ADR-0012 - Golden-set expansion to n≈100 with unanswerable and version-sensitive categories
 
 **Status:** Accepted  
 **Date:** 2026-07-07  
@@ -49,7 +49,7 @@ assisted then hand-reviewed:
 
 ### Two-stage pipeline
 
-**Stage 1 — candidate generation** (`scripts/expand_golden_set.py`,
+**Stage 1 - candidate generation** (`scripts/expand_golden_set.py`,
 this ADR):
 
 - Sample chunks from the ingested ChromaDB collection.
@@ -74,7 +74,7 @@ this ADR):
 Output is a JSONL review queue at `evals/review-queue/candidates.jsonl`.
 This file is not tracked in git (working state, not artefact).
 
-**Stage 2 — human review** (`python -m rag_harness golden review`,
+**Stage 2 - human review** (`python -m rag_harness golden review`,
 D-a-2):
 
 The reviewer walks the queue one candidate at a time. For each:
@@ -92,7 +92,7 @@ The reviewer walks the queue one candidate at a time. For each:
   `unanswerable-001`) and lands in the appropriate
   `evals/golden/<category>.json`.
 
-The queue is idempotent — quitting mid-review saves state and resuming
+The queue is idempotent - quitting mid-review saves state and resuming
 skips already-decided rows.
 
 ### Provenance
@@ -135,7 +135,7 @@ a human vs. drafted by an LLM and then approved.
   significant at n=30 may or may not survive the tighter CIs; some new
   deltas will emerge as significant.
 - The public metrics page will show real bootstrap CIs (ADR-0011)
-  instead of the current `(no CI — pre-bootstrap run)` labels once the
+  instead of the current `(no CI - pre-bootstrap run)` labels once the
   first ablation on the expanded set lands.
 - Unanswerable cases will surface any silent regression in the refusal
   path. The `answer_relevancy × correctness` divergence check
@@ -144,7 +144,7 @@ a human vs. drafted by an LLM and then approved.
   that is "correct in K8s v1.34" but not in v1.32 must score low, and
   the pinned reference answer makes that unambiguous.
 - One-time cost: ~$0.20 in OpenAI drafting + ~2–3 hours of Owner
-  review time. Recurring cost is zero — the expanded golden set is
+  review time. Recurring cost is zero - the expanded golden set is
   static.
 
 ## Implementation shape (informational)

@@ -105,7 +105,7 @@ def test_llm_score_skips_api_on_cache_hit(tmp_path: Path) -> None:
     ):
         score = metrics._llm_score("sys prompt", "user msg")
 
-    # Cache hit — got the 0.42 from the DB, NOT the API's 0.99
+    # Cache hit - got the 0.42 from the DB, NOT the API's 0.99
     assert score == 0.42
     mock_client.chat.completions.create.assert_not_called()
 
@@ -158,7 +158,7 @@ def test_llm_score_bypasses_cache_when_disabled(tmp_path: Path) -> None:
 
 
 def test_llm_score_cache_hit_records_no_token_usage(tmp_path: Path) -> None:
-    """Cache hits must not record TokenUsage — no tokens were consumed."""
+    """Cache hits must not record TokenUsage - no tokens were consumed."""
     from rag_harness.evaluation import metrics
     from rag_harness.observability.usage import collect_usage
 

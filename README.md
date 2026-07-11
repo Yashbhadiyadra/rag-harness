@@ -359,7 +359,7 @@ Key environment variables (see `.env.example` for the full list):
 
 | Variable | Purpose | Default |
 |---|---|---|
-| `OPENAI_API_KEY` | Required for embeddings and generation | — |
+| `OPENAI_API_KEY` | Required for embeddings and generation | - |
 | `EMBEDDING_MODEL` | OpenAI embedding model | `text-embedding-3-small` |
 | `GENERATION_MODEL` | OpenAI chat model | `gpt-4o-mini` |
 | `RETRIEVAL_STRATEGY` | Retrieval strategy (see table above) | `dense` |

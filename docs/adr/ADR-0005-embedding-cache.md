@@ -1,4 +1,4 @@
-# ADR-0005 — SQLite embedding cache
+# ADR-0005 - SQLite embedding cache
 
 **Status:** Accepted  
 **Date:** 2026-07-01  

@@ -67,7 +67,7 @@ async def embed_chunks_async(
     results: list[tuple[Chunk, list[float]]] = []
     to_embed: list[Chunk] = []
 
-    # Cache lookup pass (sync — cache is a local SQLite DB)
+    # Cache lookup pass (sync - cache is a local SQLite DB)
     for chunk in chunks:
         if cache is not None:
             key = EmbeddingCache.make_key(settings.embedding_model, chunk.text)
@@ -99,7 +99,7 @@ def embed_chunks(
     chunks: list[Chunk],
     cache: EmbeddingCache | None = None,
 ) -> list[tuple[Chunk, list[float]]]:
-    """Sync facade — runs the async implementation in a fresh event loop.
+    """Sync facade - runs the async implementation in a fresh event loop.
 
     If *cache* is provided, vectors already present in the cache are returned
     without an API call. Only the remaining chunks are sent to OpenAI, and

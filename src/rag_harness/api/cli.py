@@ -91,7 +91,7 @@ def _cmd_eval(args: argparse.Namespace) -> None:
     print()
 
     if args.corrective:
-        # Corrective telemetry — how the critic-and-retry loop actually behaved
+        # Corrective telemetry - how the critic-and-retry loop actually behaved
         cat_counts: dict[str, int] = {}
         retries = 0
         refusals = 0
@@ -140,7 +140,7 @@ def _cmd_ablation(args: argparse.Namespace) -> None:
         run_ablation,
     )
 
-    # Ablation defaults to opting in to the LLM judge cache — the whole point
+    # Ablation defaults to opting in to the LLM judge cache - the whole point
     # is to compare 10 configurations against the same golden set cheaply.
     if not args.no_cache:
         settings.llm_cache_enabled = True

@@ -102,7 +102,7 @@ async def evaluate_case(
     cost_usd = sum(u.estimated_cost_usd for u in usage_list)
 
     logger.debug(
-        "case %s — recall=%.2f prec=%.2f faith=%.2f correct=%.2f rel=%.2f "
+        "case %s - recall=%.2f prec=%.2f faith=%.2f correct=%.2f rel=%.2f "
         "latency=%.0fms cost=$%.4f corrective=%s",
         case.id,
         recall,
@@ -164,7 +164,7 @@ async def run_eval(
     """Evaluate all golden cases and return a summary with pass/fail gate.
 
     When *use_corrective* is True, every case routes through the corrective
-    critic-and-retry loop. Baseline metrics stay comparable — the same set of
+    critic-and-retry loop. Baseline metrics stay comparable - the same set of
     quality judges score whatever the corrective path produced.
 
     Appends one line to ``evals/history/runs.jsonl`` unless *record_history*
@@ -183,7 +183,7 @@ async def run_eval(
     if not cases:
         raise ValueError(f"No golden cases found in {golden_dir or _GOLDEN_DIR}")
 
-    # Sequential cases (not asyncio.gather) — golden set order matters for
+    # Sequential cases (not asyncio.gather) - golden set order matters for
     # reproducibility and the LLM cache benefits from deterministic ordering.
     results = []
     for case in cases:
@@ -221,7 +221,7 @@ async def run_eval(
     )
 
     logger.info(
-        "eval complete — recall=%.2f precision=%.2f faith=%.2f correct=%.2f rel=%.2f "
+        "eval complete - recall=%.2f precision=%.2f faith=%.2f correct=%.2f rel=%.2f "
         "p50=%.0fms p95=%.0fms cost=$%.4f passed=%s",
         mean_recall,
         mean_precision,

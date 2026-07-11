@@ -50,7 +50,7 @@ def test_metrics_body_is_parseable_prometheus_format() -> None:
 def test_metrics_excludes_default_process_and_platform_families() -> None:
     body, _ = prometheus_response()
     text = body.decode("utf-8")
-    # Default prometheus_client collectors would emit these — we disabled them
+    # Default prometheus_client collectors would emit these - we disabled them
     assert "process_cpu_seconds_total" not in text
     assert "python_gc_" not in text
     assert "python_info" not in text

@@ -28,7 +28,7 @@ def ensure_repo(repo_path: Path) -> Repo:
         return Repo(repo_path)
 
     if repo_path.exists():
-        logger.info("repo exists but at wrong commit — fetching and checking out")
+        logger.info("repo exists but at wrong commit - fetching and checking out")
         repo = Repo(repo_path)
         repo.remotes.origin.fetch()
     else:
@@ -61,7 +61,7 @@ def load(repo_path: Path | None = None) -> tuple[list[Path], str]:
     """Top-level entry point: ensure repo is ready, return (doc_paths, resolved_commit_sha).
 
     Returns the resolved commit SHA so callers can attach it to every Chunk
-    as provenance — even when k8s_git_commit is a branch name like 'main'.
+    as provenance - even when k8s_git_commit is a branch name like 'main'.
     """
     target = repo_path or Path(settings.chroma_db_path).parent / "k8s_docs"
     repo = ensure_repo(target)

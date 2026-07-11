@@ -57,7 +57,7 @@ def test_heading_path_hierarchy(tmp_md: Path) -> None:
     assert chunks[1].heading_path == ["Security", "RBAC"]
     # chunk 2: ### Role Binding (under Security > RBAC)
     assert chunks[2].heading_path == ["Security", "RBAC", "Role Binding"]
-    # chunk 3: ## Network Policies (sibling of RBAC — path resets to level 2)
+    # chunk 3: ## Network Policies (sibling of RBAC - path resets to level 2)
     assert chunks[3].heading_path == ["Security", "Network Policies"]
 
 

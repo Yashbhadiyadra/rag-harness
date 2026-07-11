@@ -1,4 +1,4 @@
-# ADR-0004 — Use LLM-as-judge for faithfulness and correctness metrics
+# ADR-0004 - Use LLM-as-judge for faithfulness and correctness metrics
 
 **Status:** Accepted  
 **Date:** 2026-06-30  
@@ -61,7 +61,7 @@ enforced by keeping the nightly eval workflow separate from the per-PR CI workfl
 
 ## Amendments
 
-**2026-07-03 — Phase 7 additions.** `answer_relevancy` and `context_precision`
+**2026-07-03 - Phase 7 additions.** `answer_relevancy` and `context_precision`
 added to the metric suite. Cost impact: two additional `gpt-4o-mini` calls per
 case, ~$0.02 per full-suite run at 30 cases. Neither metric enters the reliability
 gate this phase; thresholds require baseline numbers from Phase 8's ablation

@@ -63,7 +63,7 @@ app = FastAPI(
 )
 
 # Rate limiting: per-IP by default. See settings.api_rate_limit
-# (default 10/hour;3/minute for the public demo — ADR-0010) and .env.example.
+# (default 10/hour;3/minute for the public demo - ADR-0010) and .env.example.
 # In a single-instance demo the in-memory limiter is fine; swap to a Redis
 # backend later without code changes if we horizontally scale.
 limiter = Limiter(key_func=get_remote_address, default_limits=[settings.api_rate_limit])
@@ -207,12 +207,12 @@ async def query(request: Request, body: QueryRequest) -> QueryResponse:
                         answer = await generate_async(body.question, chunks)
         except OpenAIError as e:
             # LLM boundary exhausted its retries. Return the honest refusal
-            # rather than a 5xx — the API contract stays useful and the user
+            # rather than a 5xx - the API contract stays useful and the user
             # sees the same "not enough information" signal they would from
             # a corrective-flow refusal. Distinct log event for ops.
             QUERY_ERRORS_TOTAL.labels(strategy=strategy, error_type=type(e).__name__).inc()
             logger.warning(
-                "LLM boundary exhausted (%s: %s) — returning refusal for query: %.60s",
+                "LLM boundary exhausted (%s: %s) - returning refusal for query: %.60s",
                 type(e).__name__,
                 e,
                 body.question,
@@ -238,7 +238,7 @@ async def query(request: Request, body: QueryRequest) -> QueryResponse:
         cost_usd += usage.estimated_cost_usd
 
     sources = [Source(source_file=c.source_file, heading_path=c.heading_path) for c in chunks]
-    logger.info("query answered — %d sources used, corrective=%s", len(sources), use_corrective)
+    logger.info("query answered - %d sources used, corrective=%s", len(sources), use_corrective)
     return QueryResponse(
         question=body.question,
         answer=answer,
@@ -251,7 +251,7 @@ async def query(request: Request, body: QueryRequest) -> QueryResponse:
 
 @app.get("/health")
 def health() -> dict[str, str]:
-    """Liveness probe — returns 200 as long as the process is alive.
+    """Liveness probe - returns 200 as long as the process is alive.
 
     Deliberately trivial: no external checks. Kubernetes-style liveness
     probes should not fail on transient dependency issues (that would
@@ -262,7 +262,7 @@ def health() -> dict[str, str]:
 
 @app.get("/ready")
 def ready() -> Response:
-    """Readiness probe — 200 only when every dependency is reachable.
+    """Readiness probe - 200 only when every dependency is reachable.
 
     Checks:
       * ChromaDB heartbeat (round-trip to the persistent store).
@@ -272,7 +272,7 @@ def ready() -> Response:
 
     Returns 200 with per-check status on success; 503 with a not_ready
     body listing failed checks on any failure. Failed checks do not
-    short-circuit — the whole set runs so an operator can see the
+    short-circuit - the whole set runs so an operator can see the
     complete picture in one probe response.
     """
     import json
@@ -298,7 +298,7 @@ def ready() -> Response:
         checks["openai_api_key"] = "missing"
         failures.append("openai_api_key")
 
-    # Cross-encoder — only required when the configured strategy uses it
+    # Cross-encoder - only required when the configured strategy uses it
     if settings.retrieval_strategy in ("hybrid-rerank", "full"):
         try:
             from sentence_transformers import CrossEncoder  # noqa: F401
@@ -330,7 +330,7 @@ def ready() -> Response:
 
 @app.get("/metrics")
 def metrics() -> Response:
-    """Prometheus scrape endpoint — RAG-specific counters and histograms."""
+    """Prometheus scrape endpoint - RAG-specific counters and histograms."""
     body, content_type = prometheus_response()
     return Response(content=body, media_type=content_type)
 

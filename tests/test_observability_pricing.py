@@ -26,7 +26,7 @@ def test_price_fractional_tokens() -> None:
 
 
 def test_price_unknown_model_returns_zero() -> None:
-    # Unknown model must not raise — observability layer degrades gracefully
+    # Unknown model must not raise - observability layer degrades gracefully
     assert price("some-model-that-does-not-exist", 1_000_000, 1_000_000) == 0.0
 
 

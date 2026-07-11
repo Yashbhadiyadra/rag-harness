@@ -1,6 +1,6 @@
 """Cross-encoder reranking on top of any base retriever.
 
-Rationale — the standard two-stage IR pattern:
+Rationale - the standard two-stage IR pattern:
     1. First stage retrieves broadly (top-50) with a cheap ranker (dense, BM25,
        or hybrid). Recall matters here; precision does not.
     2. Second stage rescores each candidate with a cross-encoder that reads
@@ -9,10 +9,10 @@ Rationale — the standard two-stage IR pattern:
 
 Cross-encoders read the query and the document jointly, so they can catch
 fine-grained relevance signals that bi-encoders (like the OpenAI embedding
-model) miss. The tradeoff is O(top_k) forward passes per query — a few dozen
+model) miss. The tradeoff is O(top_k) forward passes per query - a few dozen
 milliseconds on CPU with a small model.
 
-Default model — `cross-encoder/ms-marco-MiniLM-L-6-v2` — is the standard
+Default model - `cross-encoder/ms-marco-MiniLM-L-6-v2` - is the standard
 production choice: trained on MS MARCO passage ranking, 6-layer MiniLM,
 runs on CPU at ~80-120ms for 20 candidates, licence-clean.
 """

@@ -22,7 +22,7 @@ def test_kill_switch_off_query_returns_503() -> None:
 
 
 def test_kill_switch_off_health_still_ok() -> None:
-    """Kill switch must not silence /health — operators need liveness."""
+    """Kill switch must not silence /health - operators need liveness."""
     with patch("rag_harness.api.middleware.kill_switch.settings.demo_enabled", False):
         response = client.get("/health")
     assert response.status_code == 200
@@ -30,10 +30,10 @@ def test_kill_switch_off_health_still_ok() -> None:
 
 
 def test_kill_switch_off_ready_still_reachable() -> None:
-    """Kill switch must not silence /ready — operators need dependency status."""
+    """Kill switch must not silence /ready - operators need dependency status."""
     with patch("rag_harness.api.middleware.kill_switch.settings.demo_enabled", False):
         response = client.get("/ready")
-    # /ready may be 200 or 503 depending on the test env; either is fine —
+    # /ready may be 200 or 503 depending on the test env; either is fine -
     # the point is the kill switch didn't hijack the response.
     assert response.status_code in (200, 503)
     body = response.json()
@@ -44,7 +44,7 @@ def test_kill_switch_off_ready_still_reachable() -> None:
 
 
 def test_kill_switch_off_metrics_still_reachable() -> None:
-    """Kill switch must not silence /metrics — Prometheus needs to scrape."""
+    """Kill switch must not silence /metrics - Prometheus needs to scrape."""
     with patch("rag_harness.api.middleware.kill_switch.settings.demo_enabled", False):
         response = client.get("/metrics")
     assert response.status_code == 200

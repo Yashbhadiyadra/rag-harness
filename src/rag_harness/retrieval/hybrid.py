@@ -63,7 +63,7 @@ class HybridRetriever(Retriever):
 
         candidate_multiplier controls how many candidates each backing ranker
         returns before fusion. Fusing top-15 dense + top-15 BM25 to produce a
-        stable top-5 is the standard pattern — the extra candidates ensure the
+        stable top-5 is the standard pattern - the extra candidates ensure the
         best documents survive the fusion even if only one ranker ranks them
         highly.
         """

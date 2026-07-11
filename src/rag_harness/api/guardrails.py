@@ -1,6 +1,6 @@
 """Minimal prompt-injection screening at the /query boundary.
 
-Scope — deliberately narrow. This module is NOT a full guardrails engine.
+Scope - deliberately narrow. This module is NOT a full guardrails engine.
 It is a boundary check that catches the most common, low-effort injection
 patterns. Sophisticated adversarial inputs will still get through; this
 is a hygiene layer, not an authorization boundary.

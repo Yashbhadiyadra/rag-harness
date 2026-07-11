@@ -26,7 +26,7 @@ def _resolve_rates(model: str) -> tuple[float, float]:
 def price(model: str, input_tokens: int, output_tokens: int) -> float:
     """Estimated USD cost of a single API call.
 
-    Returns 0.0 for unknown models rather than raising — an unpriced call should
+    Returns 0.0 for unknown models rather than raising - an unpriced call should
     not break the observability layer.
     """
     input_rate, output_rate = _resolve_rates(model)

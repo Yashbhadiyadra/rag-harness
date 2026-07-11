@@ -6,7 +6,7 @@ __pycache__/
 *.egg-info/
 dist/
 build/
-# chroma_db/ is intentionally NOT ignored — it is baked into the runtime
+# chroma_db/ is intentionally NOT ignored - it is baked into the runtime
 # image per ADR-0010. `make ingest` (or the CI ingest step) produces it
 # before `docker build`.
 k8s_docs/

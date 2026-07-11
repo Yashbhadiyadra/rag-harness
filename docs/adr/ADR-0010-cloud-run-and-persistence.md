@@ -1,4 +1,4 @@
-# ADR-0010 — Cloud Run + scale-to-zero + baked Chroma index
+# ADR-0010 - Cloud Run + scale-to-zero + baked Chroma index
 
 **Status:** Accepted  
 **Date:** 2026-07-05  
@@ -52,7 +52,7 @@ Fly.io was a viable second choice; the tiebreaker was the tracing backend
 decision in ADR-0009 (Phoenix + SQLite) which removed Fly's Postgres
 advantage.
 
-### Rejected alternative — never scale to zero
+### Rejected alternative - never scale to zero
 
 Setting `min-instances=1` avoids the cold-start entirely at the cost of
 ~$5/month for an idle container. For a portfolio demo that will see spiky,
@@ -88,7 +88,7 @@ Concrete change (in a follow-up commit): CI builds the image with
 reads from the index, not the cache. The cache is a build-time speedup for
 `make ingest`, nothing more.
 
-### Rejected alternative — sentence-transformers for local embedding
+### Rejected alternative - sentence-transformers for local embedding
 
 If we ran the embedding model locally (e.g. `all-MiniLM-L6-v2`), we'd
 eliminate the OpenAI round-trip in the query path and the cold-start

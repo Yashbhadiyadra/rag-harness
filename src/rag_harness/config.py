@@ -11,11 +11,11 @@ class Settings(BaseSettings):
     # OpenAI
     openai_api_key: str
 
-    # Models — default to cheap options; change only after flagging cost tradeoff
+    # Models - default to cheap options; change only after flagging cost tradeoff
     embedding_model: str = "text-embedding-3-small"
     generation_model: str = "gpt-4o-mini"
 
-    # Corpus — pinned to an immutable tag for reproducible ingest (see ADR-0002)
+    # Corpus - pinned to an immutable tag for reproducible ingest (see ADR-0002)
     # Tag: snapshot-initial-v1.32  SHA: bbb60b97e9bade8f5bd9cf3c4543243c55a4c0ca
     k8s_repo_url: str = "https://github.com/kubernetes/website.git"
     k8s_git_commit: str = "bbb60b97e9bade8f5bd9cf3c4543243c55a4c0ca"
@@ -26,12 +26,12 @@ class Settings(BaseSettings):
     chroma_collection: str = "rag_harness"
     embedding_cache_path: str = "./embedding_cache.db"
 
-    # Ingest concurrency — bound parallel embedding-API calls to avoid rate
+    # Ingest concurrency - bound parallel embedding-API calls to avoid rate
     # limits and preserve back-pressure. 4 is a reasonable default for
     # text-embedding-3-small at 512-input batches.
     ingest_embed_concurrency: int = 4
 
-    # OpenAI SDK resilience — the SDK does exponential backoff + jitter
+    # OpenAI SDK resilience - the SDK does exponential backoff + jitter
     # automatically. Two retries × ~20s timeout gives roughly a 40s worst-case
     # per call before we degrade to the honest refusal path. Tighter than
     # the SDK default (2 retries × 600s) but sensible for an interactive demo.
@@ -45,7 +45,7 @@ class Settings(BaseSettings):
     api_max_question_length: int = 2000
 
     # Public-demo cost guardrails (ADR-0010). The daily cap is enforced
-    # in-process — Cloud Run max-instances=1 keeps the counter single-writer.
+    # in-process - Cloud Run max-instances=1 keeps the counter single-writer.
     # DEMO_ENABLED=false is the emergency kill switch: /query returns 503 with
     # a demo_disabled body while health/ready/metrics stay reachable.
     demo_enabled: bool = True
@@ -61,13 +61,13 @@ class Settings(BaseSettings):
     rerank_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
     rerank_candidate_multiplier: int = 4  # retrieve top_k*4 candidates before reranking
 
-    # Corrective RAG — critic-and-retry loop (higher quality, higher cost)
+    # Corrective RAG - critic-and-retry loop (higher quality, higher cost)
     corrective_rag_enabled: bool = False
     critic_correct_threshold: float = 0.7  # any chunk above this = Correct
     critic_incorrect_threshold: float = 0.3  # top chunk below this = Incorrect
     corrective_max_retries: int = 1  # extra retrieval attempts after query reformulation
 
-    # Observability — override the built-in pricing table without editing source.
+    # Observability - override the built-in pricing table without editing source.
     # Values are (input_rate_per_million, output_rate_per_million) in USD.
     model_rates_overrides: dict[str, tuple[float, float]] = {}
 
@@ -76,18 +76,18 @@ class Settings(BaseSettings):
     tracing_endpoint: str = "http://localhost:6006/v1/traces"
     tracing_service_name: str = "rag-harness"
 
-    # LLM judge response cache — see observability/llm_cache.py docstring.
+    # LLM judge response cache - see observability/llm_cache.py docstring.
     # Judges are near-deterministic at temperature=0 AND a stale judge score
     # is negligible-cost, so caching is safe for eval and ablation reruns.
-    # Never caches generate() or the corrective critic — those are user-facing.
+    # Never caches generate() or the corrective critic - those are user-facing.
     llm_cache_enabled: bool = False
     llm_cache_path: str = "./llm_cache.db"
 
-    # Ablation study — "relevant-but-incorrect" divergence category
+    # Ablation study - "relevant-but-incorrect" divergence category
     rbi_relevancy_min: float = 0.7  # answer_relevancy above this AND ...
     rbi_correctness_max: float = 0.5  # correctness below this = highlighted failure
 
-    # Per-PR eval gate — small hand-picked subset that runs on every PR to main.
+    # Per-PR eval gate - small hand-picked subset that runs on every PR to main.
     # Cheap (~$0.02/PR) but enforces the reliability gate against real LLM calls.
     # Full suite runs nightly on the eval workflow.
     eval_pr_subset_ids: list[str] = [
@@ -101,7 +101,7 @@ class Settings(BaseSettings):
     # Logging
     log_level: str = "INFO"
 
-    # Evaluation thresholds — dropping below any triggers a build failure.
+    # Evaluation thresholds - dropping below any triggers a build failure.
     # Calibrated from the 2026-07-04 ablation study
     # (evals/experiments/ablation_20260704T092511+0000_e148311.md).
     # Values sit below both HyDE-baseline and full-baseline observations with

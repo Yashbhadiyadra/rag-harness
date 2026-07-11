@@ -1,4 +1,4 @@
-# Stage 1 — build: install runtime deps into an isolated prefix.
+# Stage 1 - build: install runtime deps into an isolated prefix.
 FROM python:3.12-slim AS builder
 
 WORKDIR /build
@@ -8,18 +8,18 @@ COPY src/ src/
 
 # `[eval]` is included so /query can be judged post-hoc if evaluation
 # ever needs to target the deployed instance. The [rerank] and
-# [observability] extras are deliberately omitted — the deployed service
+# [observability] extras are deliberately omitted - the deployed service
 # uses the default 'dense' strategy and does not ship Phoenix alongside
 # (see ADR-0009 / ADR-0010). Skipping them keeps the runtime image slim
 # (avoids ~500 MB of PyTorch and ~200 MB of Phoenix).
 RUN pip install --no-cache-dir --prefix=/install ".[eval]"
 
 
-# Stage 2 — runtime: slim image with the Chroma index baked in.
+# Stage 2 - runtime: slim image with the Chroma index baked in.
 #
 # chroma_db/ is a BUILD INPUT. Produce it with `make ingest` before
 # building this image, or `make docker-build` which does both. The image
-# build fails fast if chroma_db/ is missing — that is the correct
+# build fails fast if chroma_db/ is missing - that is the correct
 # failure mode; a runtime image without the index is broken. See
 # ADR-0010 for the bake-into-image rationale.
 FROM python:3.12-slim

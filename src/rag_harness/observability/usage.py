@@ -4,7 +4,7 @@ Design decision: usage collection is cross-cutting, so it uses `ContextVar`
 rather than threading `(result, TokenUsage)` tuples through every function
 signature. Any code path can opt in with a `with collect_usage() as usage:`
 block; instrumented call sites call `record_usage(...)` inside the block.
-Calls made outside a `collect_usage()` block are silent no-ops — the
+Calls made outside a `collect_usage()` block are silent no-ops - the
 collector is opt-in, not always-on. See ADR-0008 for the full rationale.
 """
 
@@ -32,7 +32,7 @@ class TokenUsage:
 
         Handles chat completions (`prompt_tokens` + `completion_tokens`) and
         embeddings (`prompt_tokens` only, no completion). Missing usage fields
-        default to 0 rather than raising — the observability layer must degrade
+        default to 0 rather than raising - the observability layer must degrade
         gracefully when a provider omits the field.
         """
         usage = getattr(response, "usage", None)
@@ -53,7 +53,7 @@ _current_usage: ContextVar[list[TokenUsage] | None] = ContextVar("_current_usage
 def collect_usage() -> Iterator[list[TokenUsage]]:
     """Collect every `record_usage(...)` call made inside the block into a list.
 
-    Blocks nest safely — inner blocks get their own accumulator and do not
+    Blocks nest safely - inner blocks get their own accumulator and do not
     contaminate the outer one. The ContextVar is reset on both success and
     exception, so a raised exception inside the block does not leak state
     into subsequent calls.
@@ -69,7 +69,7 @@ def collect_usage() -> Iterator[list[TokenUsage]]:
 def record_usage(usage: TokenUsage) -> None:
     """Append *usage* to the current `collect_usage()` accumulator, if one exists.
 
-    Outside a `collect_usage()` block this is a no-op — instrumented code does
+    Outside a `collect_usage()` block this is a no-op - instrumented code does
     not need to know whether anyone is listening.
     """
     accumulator = _current_usage.get()

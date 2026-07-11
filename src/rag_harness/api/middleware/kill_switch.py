@@ -1,4 +1,4 @@
-"""Kill-switch middleware — return 503 for /query when the demo is off.
+"""Kill-switch middleware - return 503 for /query when the demo is off.
 
 Set ``DEMO_ENABLED=false`` in the Cloud Run environment (or a local
 ``.env``) to shut off the demo instantly without redeploying. Health,
@@ -28,7 +28,7 @@ class KillSwitchMiddleware(BaseHTTPMiddleware):
     ) -> Response:
         if request.url.path == "/query" and not settings.demo_enabled:
             logger.warning(
-                "kill switch engaged — /query returning 503",
+                "kill switch engaged - /query returning 503",
                 extra={"error_type": "demo_disabled"},
             )
             body = {

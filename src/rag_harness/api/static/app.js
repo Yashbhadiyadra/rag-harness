@@ -1,6 +1,6 @@
 // Vanilla JS demo client. Talks to POST /query and renders the answer,
 // sources, per-stage trace waterfall, and this-query cost/latency.
-// No framework, no build step — see ADR-0010 §Demo UI.
+// No framework, no build step - see ADR-0010 §Demo UI.
 
 (() => {
   const form = document.getElementById("query-form");
@@ -44,7 +44,7 @@
         kind: "error",
         title: "Network error",
         message:
-          "Could not reach the demo. The service may be scaling up from zero — try again in a few seconds.",
+          "Could not reach the demo. The service may be scaling up from zero - try again in a few seconds.",
       });
     } finally {
       setBusy(false);
@@ -93,7 +93,7 @@
         kind: "error",
         title: "Service not ready",
         message:
-          "A dependency is unavailable right now. The daily eval run may be regenerating the index — try again shortly.",
+          "A dependency is unavailable right now. The daily eval run may be regenerating the index - try again shortly.",
       });
     } else {
       showError({
@@ -173,8 +173,8 @@
   function renderFooter(body) {
     footerEl.innerHTML = "";
     const parts = [
-      ["Cost", body.cost_usd != null ? formatCost(body.cost_usd) : "—"],
-      ["Latency", body.latency_ms != null ? formatMs(body.latency_ms) : "—"],
+      ["Cost", body.cost_usd != null ? formatCost(body.cost_usd) : "-"],
+      ["Latency", body.latency_ms != null ? formatMs(body.latency_ms) : "-"],
       ["Spans", String((body.trace || []).length)],
     ];
     for (const [label, value] of parts) {

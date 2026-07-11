@@ -29,7 +29,7 @@ def _token_count(text: str) -> int:
 
 
 def _update_heading_path(current: list[str], level: int, heading: str) -> list[str]:
-    # Truncate path to parent level then append — keeps hierarchy consistent.
+    # Truncate path to parent level then append - keeps hierarchy consistent.
     # e.g. current=["Security", "RBAC"], level=2, heading="Roles" → ["Security", "Roles"]
     return current[: level - 1] + [heading]
 

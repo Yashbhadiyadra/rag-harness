@@ -1,4 +1,4 @@
-# ADR-0006 — Hybrid retrieval, cross-encoder reranking, and HyDE
+# ADR-0006 - Hybrid retrieval, cross-encoder reranking, and HyDE
 
 **Status:** Accepted  
 **Date:** 2026-07-02  
@@ -24,7 +24,7 @@ rerank), and optionally a query transformation (HyDE).
 
 ## Decision
 
-### 1. First stage — hybrid retrieval with Reciprocal Rank Fusion
+### 1. First stage - hybrid retrieval with Reciprocal Rank Fusion
 
 Combine dense retrieval with BM25 sparse retrieval and fuse the two ranked
 lists using **Reciprocal Rank Fusion** (Cormack et al. 2009):
@@ -41,7 +41,7 @@ lives in [-1, 1] while BM25 scores are unbounded and corpus-dependent.
 ChromaDB at startup. Rebuilding is fast (~2 seconds for 50k chunks), so we do
 not persist the BM25 index to disk; one less file to invalidate.
 
-### 2. Second stage — cross-encoder reranker
+### 2. Second stage - cross-encoder reranker
 
 Wrap the first stage in `RerankingRetriever` using
 `cross-encoder/ms-marco-MiniLM-L-6-v2`. The base retriever fetches
@@ -52,7 +52,7 @@ Cross-encoders capture fine-grained relevance signal that bi-encoders miss
 because they attend across the query and document together, rather than
 compressing each into a single vector independently.
 
-### 3. Query transformation — HyDE
+### 3. Query transformation - HyDE
 
 `HyDERetriever` wraps any base retriever. Before retrieval it asks
 `gpt-4o-mini` to draft a hypothetical answer passage; that passage is then

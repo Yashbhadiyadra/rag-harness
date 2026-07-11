@@ -1,4 +1,4 @@
-"""Ablation runner — golden set × strategy × corrective-mode → comparative table.
+"""Ablation runner - golden set × strategy × corrective-mode → comparative table.
 
 Runs the golden eval suite across every retrieval strategy in
 ``VALID_STRATEGIES`` × {baseline, corrective} = 10 configurations by default.
@@ -12,7 +12,7 @@ Emits three artifacts per run:
 
 The **relevant-but-incorrect** category is a first-class output, not a
 footnote. A case scoring high on ``answer_relevancy`` but low on
-``correctness`` is a confident-sounding hallucination — the answer addresses
+``correctness`` is a confident-sounding hallucination - the answer addresses
 the question but gets the facts wrong. That failure mode is more dangerous
 than an off-topic answer and gets its own column in the markdown, its own
 line in the summary, and a per-case flag in the CSV.
@@ -72,7 +72,7 @@ def is_relevant_but_incorrect(
     """Return True if *result* is the highlighted 'relevant but incorrect' failure.
 
     Definition: ``answer_relevancy > relevancy_min`` AND
-    ``correctness < correctness_max`` — a confident, on-topic answer that gets
+    ``correctness < correctness_max`` - a confident, on-topic answer that gets
     the facts wrong. Thresholds default to settings values.
     """
     rmin = relevancy_min if relevancy_min is not None else settings.rbi_relevancy_min
@@ -93,7 +93,7 @@ async def run_ablation(
     """Run the eval suite across every requested configuration.
 
     Defaults: every strategy in ``VALID_STRATEGIES`` × [False, True]. One
-    configuration that raises does not abort the whole run — the exception
+    configuration that raises does not abort the whole run - the exception
     is logged and the remaining configurations proceed. Configurations that
     succeed are returned in strategy-then-corrective order.
     """

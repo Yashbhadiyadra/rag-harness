@@ -1,4 +1,4 @@
-# ADR-0007 — Corrective RAG: critic-and-retry loop
+# ADR-0007 - Corrective RAG: critic-and-retry loop
 
 **Status:** Accepted  
 **Date:** 2026-07-02  
@@ -115,7 +115,7 @@ Gated behind `CORRECTIVE_RAG_ENABLED=false` by default. Users opt in.
 
 ## Amendments
 
-**2026-07-04 — Latency observation from the Phase 8 ablation.** Stacking the
+**2026-07-04 - Latency observation from the Phase 8 ablation.** Stacking the
 corrective loop on top of the most expensive retrieval strategy (`full` =
 HyDE + Rerank + Hybrid) roughly **doubles the p50 latency**: `full` baseline
 p50 is 10.5s per case; `full` + corrective p50 is 18.8s per case (p95 grows

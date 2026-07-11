@@ -1,4 +1,4 @@
-# Deploy runbook — Cloud Run (public demo)
+# Deploy runbook - Cloud Run (public demo)
 
 One-time GCP setup for the RAG harness public demo. You (the owner)
 run these commands manually the first time; after that the release
@@ -39,7 +39,7 @@ export BILLING_ACCOUNT_ID="ABCDEF-012345-ABCDEF"  # from `gcloud billing account
 
 ---
 
-## Step 1 — Create the project and enable APIs
+## Step 1 - Create the project and enable APIs
 
 **State change:** creates a new GCP project and links it to your
 billing account.
@@ -66,7 +66,7 @@ gcloud services list --enabled --filter="name:(run OR artifactregistry OR secret
 
 ---
 
-## Step 2 — Artifact Registry repo
+## Step 2 - Artifact Registry repo
 
 **State change:** creates a Docker-format repo to hold the runtime
 image.
@@ -86,7 +86,7 @@ ${REGION}-docker.pkg.dev/${PROJECT_ID}/${ARTIFACT_REPO}/${SERVICE_NAME}:<tag>
 
 ---
 
-## Step 3 — Store the OpenAI key in Secret Manager
+## Step 3 - Store the OpenAI key in Secret Manager
 
 **State change:** creates a secret and adds the first version.
 
@@ -106,7 +106,7 @@ gcloud secrets versions add openai-api-key --data-file=-
 
 ---
 
-## Step 4 — Runtime service account
+## Step 4 - Runtime service account
 
 **State change:** creates the SA the Cloud Run container runs as, and
 grants it the minimum roles: read the OpenAI secret, pull images.
@@ -131,7 +131,7 @@ gcloud artifacts repositories add-iam-policy-binding "$ARTIFACT_REPO" \
 
 ---
 
-## Step 5 — Workload Identity Federation for GitHub Actions
+## Step 5 - Workload Identity Federation for GitHub Actions
 
 **Why:** so the release workflow can push images and deploy without
 storing a long-lived service-account JSON key in GitHub Secrets.
@@ -193,7 +193,7 @@ values via `google-github-actions/auth@v2`.
 
 ---
 
-## Step 6 — Cloud Billing budget with alerts
+## Step 6 - Cloud Billing budget with alerts
 
 **State change:** creates a $10/month budget with email alerts at
 50%, 90%, and 100%.
@@ -220,7 +220,7 @@ default email is enough for a one-owner demo.
 
 ---
 
-## Step 7 — First manual deploy (sanity check)
+## Step 7 - First manual deploy (sanity check)
 
 The first deploy is done by hand so you can verify each piece works
 before the release workflow starts doing it on every tag. This step

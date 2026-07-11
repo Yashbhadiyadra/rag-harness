@@ -208,7 +208,7 @@ def format_candidate(candidate: GoldenCaseCandidate, position: int, total: int) 
     if candidate.retrieval_evidence is not None:
         lines.extend(
             [
-                "  ┌─ RETRIEVAL EVIDENCE — verify: is this truly not in the corpus? ─",
+                "  ┌─ RETRIEVAL EVIDENCE - verify: is this truly not in the corpus? ─",
                 _format_evidence(candidate.retrieval_evidence),
                 "  └" + "─" * 74,
                 "",
@@ -216,7 +216,7 @@ def format_candidate(candidate: GoldenCaseCandidate, position: int, total: int) 
         )
     elif candidate.source_chunk_text is not None:
         lines.append(
-            "  ┌─ SOURCE CHUNK — ground truth. Verify draft answer AGAINST THIS. ─"
+            "  ┌─ SOURCE CHUNK - ground truth. Verify draft answer AGAINST THIS. ─"
         )
         source_file = candidate.source_chunk_file or "(unknown source)"
         lines.append(f"  │  Source: {source_file}")
@@ -231,7 +231,7 @@ def format_candidate(candidate: GoldenCaseCandidate, position: int, total: int) 
 
     lines.extend(
         [
-            "  ┌─ DRAFT REFERENCE ANSWER — LLM suggestion. VERIFY, do not trust. ─",
+            "  ┌─ DRAFT REFERENCE ANSWER - LLM suggestion. VERIFY, do not trust. ─",
             _wrap_paragraph(candidate.suggested_reference_answer, indent="  │  "),
             "  └" + "─" * 74,
             "",
@@ -256,7 +256,7 @@ def format_candidate(candidate: GoldenCaseCandidate, position: int, total: int) 
 
 @dataclass
 class ReviewSummary:
-    """Return value from ``run_review`` — useful for tests and for
+    """Return value from ``run_review`` - useful for tests and for
     the CLI to print a session summary."""
 
     accepted: int = 0
@@ -308,7 +308,7 @@ def run_review(
 
     for i, candidate in enumerate(to_review, start=1):
         # Bulk-skip in a prior iteration may have already resolved this
-        # candidate — do not re-present it.
+        # candidate - do not re-present it.
         if candidate.status != only_status:
             continue
 
@@ -354,9 +354,9 @@ def run_review(
                 # Save now so a crash before the next iteration doesn't lose progress
                 save_queue(candidates, queue_path)
                 continue
-            # Confirmation declined — treat the current candidate as if we
+            # Confirmation declined - treat the current candidate as if we
             # showed it fresh and let the reviewer pick a real action.
-            prompter.display("  (bulk skip declined — presenting this candidate again)")
+            prompter.display("  (bulk skip declined - presenting this candidate again)")
             action = prompter.prompt_action("[y/e/n/f/q]").strip()
             # Fall-through: rerun the single-candidate branch below for the new action
             if action == "y":

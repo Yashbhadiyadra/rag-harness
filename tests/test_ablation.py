@@ -1,6 +1,6 @@
 """Unit tests for the ablation runner and its markdown/CSV renderers.
 
-All LLM calls and retrievers are mocked — nothing here hits the network.
+All LLM calls and retrievers are mocked - nothing here hits the network.
 """
 
 import asyncio
@@ -78,7 +78,7 @@ def test_rbi_high_relevancy_high_correctness_is_not_flagged() -> None:
 
 
 def test_rbi_low_relevancy_low_correctness_is_not_flagged() -> None:
-    # Off-topic AND wrong is a different failure — not the RBI category
+    # Off-topic AND wrong is a different failure - not the RBI category
     r = _make_result("c1", relevancy=0.1, correctness=0.0)
     assert is_relevant_but_incorrect(r) is False
 

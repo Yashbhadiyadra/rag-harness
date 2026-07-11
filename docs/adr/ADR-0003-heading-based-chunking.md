@@ -1,4 +1,4 @@
-# ADR-0003 — Chunk markdown on heading boundaries, not token count
+# ADR-0003 - Chunk markdown on heading boundaries, not token count
 
 **Status:** Accepted  
 **Date:** 2026-06-30  

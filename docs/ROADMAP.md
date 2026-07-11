@@ -1,4 +1,4 @@
-# Production Roadmap — RAG Reliability Harness v1.0
+# Production Roadmap - RAG Reliability Harness v1.0
 
 > Status: Phases 1–10 shipped. Ingest, five retrieval strategies (dense, hybrid,
 > hybrid-rerank, hyde, full), grounded + corrective generation, five-metric eval
@@ -41,7 +41,7 @@ That trio (*touch it, see the evidence, read the engineering*) is the showcase.
 
 ---
 
-## Phase 7 — Measure everything (observability core) · shipped
+## Phase 7 - Measure everything (observability core) · shipped
 
 The current gap: quality metrics exist, operational metrics don't. A production system
 knows its latency, tokens, and cost per query.
@@ -59,7 +59,7 @@ knows its latency, tokens, and cost per query.
 
 **Exit criterion:** a single eval run prints quality + latency + cost in one table.
 
-## Phase 8 — Prove it (evaluation completeness) · shipped
+## Phase 8 - Prove it (evaluation completeness) · shipped
 
 The current gap: five strategies and a corrective loop exist; none has published evidence.
 
@@ -86,7 +86,7 @@ The current gap: five strategies and a corrective loop exist; none has published
 degrades faithfulness demonstrably fails CI, and the "relevant but incorrect"
 failure count is reported per configuration.
 
-## Phase 9 — Harden it (production resilience) · shipped
+## Phase 9 - Harden it (production resilience) · shipped
 
 The current gap: happy-path service. Production means "what happens when things break."
 
@@ -107,7 +107,7 @@ The current gap: happy-path service. Production means "what happens when things 
 **Exit criterion:** kill the vector store or the LLM key mid-demo and the service
 answers gracefully instead of 500ing.
 
-## Phase 10 — Ship it (deployment) · shipped
+## Phase 10 - Ship it (deployment) · shipped
 
 - Multi-stage Dockerfile (slim runtime image); image build in CI.
 - Deploy API to a low-cost managed runtime (Cloud Run or Fly.io; decision ADR; Cloud
@@ -126,7 +126,7 @@ answers gracefully instead of 500ing.
 **Exit criterion:** a stranger with the URL can ask a question, see the trace, and
 browse the evidence, with zero setup.
 
-## Phase 11 — Showcase it (product layer)
+## Phase 11 - Showcase it (product layer)
 
 - README rewritten as an ops-grade document: architecture diagram, live links, metrics
   screenshots, "how the eval gate works," runbook notes, ablation table front and
@@ -139,7 +139,7 @@ browse the evidence, with zero setup.
 **Exit criterion:** someone who has never met the author understands, within two
 minutes, what this is, why it's hard, and that it's real.
 
-## Phase 12 — Extend (bridges, strictly after v1.0)
+## Phase 12 - Extend (bridges, strictly after v1.0)
 
 - **Stale-embedding hooks → Project 2:** the provenance fields + embedding cache are
   the input signal; begin the standalone library.

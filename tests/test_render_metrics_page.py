@@ -64,13 +64,13 @@ def synthetic_history() -> list[HistoryEntry]:
     Newest last (chronological order matches history file order).
     """
     return [
-        # dense, corrective off — two runs, small improvement over time
+        # dense, corrective off - two runs, small improvement over time
         _entry("dense", False, 0.72, 0.0006, ts_offset_days=3),
         _entry("dense", False, 0.75, 0.0007, ts_offset_days=0),
-        # dense, corrective on — better correctness, higher cost/latency
+        # dense, corrective on - better correctness, higher cost/latency
         _entry("dense", True, 0.80, 0.0015, ts_offset_days=3, p50_ms=3200.0),
         _entry("dense", True, 0.83, 0.0016, ts_offset_days=0, p50_ms=3300.0),
-        # hybrid-rerank, corrective off — best latest correctness
+        # hybrid-rerank, corrective off - best latest correctness
         _entry("hybrid-rerank", False, 0.86, 0.0008, ts_offset_days=3),
         _entry("hybrid-rerank", False, 0.88, 0.0009, ts_offset_days=0),
     ]
@@ -82,7 +82,7 @@ def synthetic_history() -> list[HistoryEntry]:
 def test_render_page_handles_empty_history() -> None:
     html_str = render_page([], _FIXED_NOW)
     assert "No runs yet" in html_str
-    # No table or scatter rendered — assert those sections don't leak
+    # No table or scatter rendered - assert those sections don't leak
     assert "Ablation table" not in html_str
     assert "Quality vs cost" not in html_str
     # Timestamp and run count still land in the footer
@@ -94,15 +94,15 @@ def test_render_page_handles_empty_history() -> None:
 
 
 def test_render_page_is_self_contained(synthetic_history: list[HistoryEntry]) -> None:
-    """No external asset references — no CDN, no remote fonts, no remote scripts.
+    """No external asset references - no CDN, no remote fonts, no remote scripts.
 
     The metrics page must be renderable offline. This is what makes it
-    honest — nothing in the report is deferred to a service we don't
+    honest - nothing in the report is deferred to a service we don't
     control.
     """
     html_str = render_page(synthetic_history, _FIXED_NOW)
 
-    # Look for any src="http..." or href="http..." — external assets.
+    # Look for any src="http..." or href="http..." - external assets.
     external_ref = re.search(r'(src|href)="https?://', html_str)
     assert external_ref is None, f"external asset found: {external_ref.group()}"
 
@@ -254,7 +254,7 @@ def test_corrective_delta_omits_sign_for_sub_precision_cost() -> None:
 def test_corrective_delta_panel_skips_strategies_missing_one_side(
     synthetic_history: list[HistoryEntry],
 ) -> None:
-    """hybrid-rerank has only corrective=off — it must not appear in the delta panel."""
+    """hybrid-rerank has only corrective=off - it must not appear in the delta panel."""
     html_str = render_page(synthetic_history, _FIXED_NOW)
     # find the corrective-list block and assert hybrid-rerank isn't inside it
     match = re.search(r'<ul class="corrective-list">(.*?)</ul>', html_str, flags=re.DOTALL)
@@ -429,5 +429,5 @@ def test_main_writes_output_file(tmp_path: Path) -> None:
     assert rc == 0
     assert out.exists()
     body = out.read_text(encoding="utf-8")
-    assert "RAG harness — evaluation metrics" in body
+    assert "RAG harness - evaluation metrics" in body
     assert "1 eval run" in body  # singular

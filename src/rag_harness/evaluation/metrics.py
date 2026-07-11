@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 _client = build_async_client()
 
-# Cache handle is lazy — opened on first use only when llm_cache_enabled=true.
+# Cache handle is lazy - opened on first use only when llm_cache_enabled=true.
 _cache: LLMResponseCache | None = None
 
 
@@ -54,7 +54,7 @@ Respond with ONLY a decimal number, nothing else. Example: 0.75
 
 _ANSWER_RELEVANCY_PROMPT = """\
 You are an evaluation judge. Given a question and an answer, decide whether the \
-answer is on-topic and directly addresses the question — regardless of whether \
+answer is on-topic and directly addresses the question - regardless of whether \
 the answer is factually correct.
 
 This measures topicality only, not accuracy. An answer can be highly relevant \
@@ -114,11 +114,11 @@ async def _llm_score_async(system_prompt: str, user_message: str) -> float:
 
 
 def _llm_score(system_prompt: str, user_message: str) -> float:
-    """Sync facade — runs the async implementation in a fresh event loop.
+    """Sync facade - runs the async implementation in a fresh event loop.
 
     When the LLM cache is enabled (see ``settings.llm_cache_enabled``), the
     ``(model, system_prompt, user_message)`` triple is looked up first. Cache
-    hits skip the API call entirely — no TokenUsage is recorded because no
+    hits skip the API call entirely - no TokenUsage is recorded because no
     tokens were consumed. On a miss, the raw response is stored so subsequent
     identical calls are free.
     """
@@ -130,14 +130,14 @@ def _parse_score(raw: str) -> float:
     try:
         return max(0.0, min(1.0, float(raw)))
     except ValueError:
-        logger.warning("LLM judge returned non-numeric score: %r — defaulting to 0.0", raw)
+        logger.warning("LLM judge returned non-numeric score: %r - defaulting to 0.0", raw)
         return 0.0
 
 
 def context_recall(retrieved_chunks: list[Chunk], relevant_doc_ids: list[str]) -> float:
     """Fraction of relevant doc IDs that appear in the retrieved chunks.
 
-    This is a deterministic metric — no LLM call needed. It measures whether
+    This is a deterministic metric - no LLM call needed. It measures whether
     the retrieval stage fetched the right source files.
     """
     if not relevant_doc_ids:
@@ -148,19 +148,19 @@ def context_recall(retrieved_chunks: list[Chunk], relevant_doc_ids: list[str]) -
 
 
 async def faithfulness_async(question: str, answer: str, retrieved_chunks: list[Chunk]) -> float:
-    """Async version — score whether answer claims are grounded in the context."""
+    """Async version - score whether answer claims are grounded in the context."""
     context = "\n\n".join(c.text for c in retrieved_chunks)
     user_message = f"Question: {question}\n\nContext:\n{context}\n\nAnswer: {answer}"
     return await _llm_score_async(_FAITHFULNESS_PROMPT, user_message)
 
 
 def faithfulness(question: str, answer: str, retrieved_chunks: list[Chunk]) -> float:
-    """Sync facade — score whether answer claims are grounded in the retrieved context."""
+    """Sync facade - score whether answer claims are grounded in the retrieved context."""
     return asyncio.run(faithfulness_async(question, answer, retrieved_chunks))
 
 
 async def correctness_async(question: str, answer: str, reference_answer: str) -> float:
-    """Async version — score how correct the generated answer is."""
+    """Async version - score how correct the generated answer is."""
     user_message = (
         f"Question: {question}\n\n"
         f"Reference answer: {reference_answer}\n\n"
@@ -170,12 +170,12 @@ async def correctness_async(question: str, answer: str, reference_answer: str) -
 
 
 def correctness(question: str, answer: str, reference_answer: str) -> float:
-    """Sync facade — score how correct the generated answer is relative to the reference."""
+    """Sync facade - score how correct the generated answer is relative to the reference."""
     return asyncio.run(correctness_async(question, answer, reference_answer))
 
 
 async def answer_relevancy_async(question: str, answer: str) -> float:
-    """Async version — score whether the answer is on-topic for the question."""
+    """Async version - score whether the answer is on-topic for the question."""
     if not answer.strip():
         return 0.0
     user_message = f"Question: {question}\n\nAnswer: {answer}"
@@ -183,10 +183,10 @@ async def answer_relevancy_async(question: str, answer: str) -> float:
 
 
 def answer_relevancy(question: str, answer: str) -> float:
-    """Sync facade — score whether the answer is on-topic for the question.
+    """Sync facade - score whether the answer is on-topic for the question.
 
     Complements ``correctness``: an answer can score high on relevancy and low on
-    correctness — that combination is confident-sounding hallucination and is
+    correctness - that combination is confident-sounding hallucination and is
     highlighted as its own failure category in Phase 8's ablation output.
     """
     return asyncio.run(answer_relevancy_async(question, answer))
@@ -195,7 +195,7 @@ def answer_relevancy(question: str, answer: str) -> float:
 async def context_precision_async(
     question: str, retrieved_chunks: list[Chunk], reference_answer: str
 ) -> float:
-    """Async version — score the fraction of retrieved chunks supporting the reference."""
+    """Async version - score the fraction of retrieved chunks supporting the reference."""
     if not retrieved_chunks:
         return 0.0
     passages = "\n\n".join(f"[{i + 1}] {c.text}" for i, c in enumerate(retrieved_chunks))
@@ -208,7 +208,7 @@ async def context_precision_async(
 
 
 def context_precision(question: str, retrieved_chunks: list[Chunk], reference_answer: str) -> float:
-    """Sync facade — score the fraction of retrieved chunks that materially support the reference.
+    """Sync facade - score the fraction of retrieved chunks that materially support the reference.
 
     Complements ``context_recall``: recall answers "did we get all the right
     chunks?", precision answers "of what we retrieved, how much was useful?".

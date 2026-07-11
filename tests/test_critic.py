@@ -135,7 +135,7 @@ def test_categorise_at_exact_correct_threshold_is_correct() -> None:
 
 
 def test_categorise_at_exact_incorrect_threshold_is_ambiguous() -> None:
-    # 0.3 is the boundary — anything ≥ 0.3 and < 0.7 is Ambiguous
+    # 0.3 is the boundary - anything ≥ 0.3 and < 0.7 is Ambiguous
     with patch("rag_harness.generation.critic.build_async_client"):
         critic = RelevanceCritic(correct_threshold=0.7, incorrect_threshold=0.3)
         assert critic.categorise([0.3]) is Category.AMBIGUOUS
