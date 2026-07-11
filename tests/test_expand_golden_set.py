@@ -16,6 +16,8 @@ from scripts.expand_golden_set import (
     ChunkSample,
     GoldenCaseCandidate,
     RetrievalHit,
+    _balanced_topic_chunks,
+    _is_degenerate_answer,
     draft_topic_candidate,
     draft_unanswerable_candidate,
     draft_version_sensitive_candidate,
@@ -101,7 +103,43 @@ def _hit(similarity: float, source_file: str = "content/en/docs/foo.md") -> Retr
     )
 
 
+# --- _is_degenerate_answer -------------------------------------------
+
+
+def test_is_degenerate_answer_flags_fence_and_rule_only() -> None:
+    # The exact failure observed in the pilot: the draft collapsed to a
+    # code-fence marker plus a horizontal rule, no real content.
+    assert _is_degenerate_answer("```shell\n---") is True
+    assert _is_degenerate_answer("```shell ---") is True
+    assert _is_degenerate_answer("```\n```") is True
+    assert _is_degenerate_answer("---") is True
+    assert _is_degenerate_answer("") is True
+    assert _is_degenerate_answer("   \n  ") is True
+
+
+def test_is_degenerate_answer_keeps_real_answers() -> None:
+    # Short but substantive answers must survive.
+    assert _is_degenerate_answer("v1") is False
+    assert _is_degenerate_answer("tcpEstablishedTimeout: 0s") is False
+    # A genuine code-block answer keeps its content after the fence strip.
+    assert _is_degenerate_answer("```yaml\napiVersion: v1\n```") is False
+
+
 # --- draft_topic_candidate -------------------------------------------
+
+
+def test_draft_topic_candidate_rejects_degenerate_answer() -> None:
+    """A draft whose reference answer is only a code fence / rule would
+    poison the eval if accepted. The generator must drop it."""
+    client = _FakeChatClient(
+        {
+            "drafts evaluation questions": {
+                "question": "What command rolls back a DaemonSet?",
+                "reference_answer": "```shell\n---",
+            }
+        }
+    )
+    assert draft_topic_candidate(_chunk(), client, candidate_index=0) is None
 
 
 def test_draft_topic_candidate_success() -> None:
@@ -263,6 +301,41 @@ def test_draft_version_sensitive_candidate_success() -> None:
     assert "apps/v1beta1 and v1beta2 API versions were removed in v1.16" in cand.source_chunk_text
 
 
+def test_draft_version_sensitive_candidate_rejects_degenerate_answer() -> None:
+    client = _FakeChatClient(
+        {
+            "answer differs across K8s versions": {
+                "question": "Which apiVersion should I use?",
+                "reference_answer": "```\n```",
+                "why_version_sensitive": "n/a",
+            }
+        }
+    )
+    assert draft_version_sensitive_candidate(_chunk(), client, candidate_index=0) is None
+
+
+# --- _balanced_topic_chunks ------------------------------------------
+
+
+def test_balanced_topic_chunks_spreads_across_topics() -> None:
+    """A pool dominated by one topic must not yield an all-one-topic
+    selection; thin topics get represented."""
+    pool = (
+        [_chunk(source_file="content/en/docs/tasks/administer-cluster/x.md") for _ in range(10)]
+        + [_chunk(source_file="content/en/docs/reference/access-authn-authz/rbac.md")]
+        + [_chunk(source_file="content/en/docs/concepts/storage/volumes.md")]
+    )
+    picked = _balanced_topic_chunks(pool, n=3, seed=0)
+    from scripts.expand_golden_set import _topic_of
+
+    topics = {_topic_of(c.source_file) for c in picked}
+    assert len(picked) == 3
+    # rbac and storage each have exactly one chunk; round-robin must reach
+    # them before taking a third cluster chunk.
+    assert "rbac" in topics
+    assert "storage" in topics
+
+
 # --- generate_candidates orchestration -------------------------------
 
 
@@ -306,6 +379,36 @@ def test_generate_candidates_composes_all_three_categories() -> None:
     assert "topic-workloads" in categories
     assert "unanswerable" in categories
     assert "version-sensitive" in categories
+
+
+def test_generate_candidates_dedupes_near_duplicate_questions() -> None:
+    """Two chunks that yield the same drafted question must collapse to a
+    single candidate so the reviewer does not see the twin."""
+    client = _FakeChatClient(
+        {
+            "drafts evaluation questions": {
+                "question": "What are the new features in Kubernetes v1.33 for EKS integration?",
+                "reference_answer": "A real answer with content.",
+            },
+        }
+    )
+    sampler = _StubSampler(
+        chunks=[
+            _chunk(text="a", source_file="content/en/docs/workloads/a.md"),
+            _chunk(text="b", source_file="content/en/docs/workloads/b.md"),
+        ]
+    )
+    probe = _StubProbe([_hit(0.4)])
+
+    candidates = generate_candidates(
+        client=client,
+        sampler=sampler,
+        probe=probe,
+        n_topic=2,  # both chunks draft the identical question
+        n_unanswerable=0,
+        n_version_sensitive=0,
+    )
+    assert len(candidates) == 1
 
 
 def test_generate_candidates_skips_dropped_unanswerables() -> None:

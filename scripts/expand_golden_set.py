@@ -4,16 +4,16 @@
 Reads the ingested ChromaDB collection, samples chunks, and prompts
 ``gpt-4o-mini`` to draft candidates in three categories:
 
-- **topic** — grows the existing per-topic files. Each chunk yields one
+- **topic**: grows the existing per-topic files. Each chunk yields one
   question that chunk directly answers, with a draft reference answer
   written from the chunk content only.
-- **unanswerable** — deliberately drafts K8s-adjacent questions that the
+- **unanswerable**: deliberately drafts K8s-adjacent questions that the
   pinned corpus does NOT answer, then runs them through the actual
   retriever. Candidates whose top hit is too similar to the drafted
   question get dropped: those are questions the corpus DOES answer.
   Surviving candidates carry ``retrieval_evidence`` so the human
   reviewer can confirm the classification, not trust the classifier.
-- **version-sensitive** — chunks that mention specific API versions or
+- **version-sensitive**: chunks that mention specific API versions or
   version-dependent behavior yield questions whose correct answer differs
   across K8s versions. The suggested reference is derived from the chunk
   and the reviewer verifies it against the chunk (not the LLM's draft),
@@ -35,6 +35,8 @@ import logging
 import random
 import re
 import sys
+from collections import defaultdict
+from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -52,6 +54,17 @@ DEFAULT_QUEUE_PATH = REPO_ROOT / "evals" / "review-queue" / "candidates.jsonl"
 # ``1 - distance / 2`` gives values in [0, 1]. 0.75 corresponds to a
 # solid semantic match; below that the top hit is off-topic.
 _UNANSWERABLE_MAX_SIMILARITY = 0.75
+
+# Two normalised questions at or above this character-level ratio are
+# treated as near-duplicates; the later candidate is dropped so the
+# reviewer never sees the twin.
+_DUPLICATE_QUESTION_RATIO = 0.85
+
+# How many chunks to draw into the pool before balancing topic
+# candidates across categories. A wide pool lets round-robin selection
+# reach thin categories (e.g. rbac) instead of over-sampling whatever
+# topic dominates the corpus.
+_TOPIC_OVERSAMPLE = 6
 
 
 # --- Data types ------------------------------------------------------
@@ -205,6 +218,27 @@ _VERSION_PATTERN = re.compile(
 )
 
 
+# --- Draft validation -------------------------------------------------
+
+# Markdown code-fence lines (```lang / ```), stripped before deciding
+# whether a drafted answer has any real content.
+_FENCE_LINE_RE = re.compile(r"^\s*```.*$", re.MULTILINE)
+
+
+def _is_degenerate_answer(answer: str) -> bool:
+    """True when a drafted reference answer has no substantive content.
+
+    LLM drafts occasionally collapse to just a Markdown code-fence marker
+    plus a horizontal rule (observed in the ADR-0012 pilot: an answer of
+    ``` ```shell\\n--- ```). Accepting such a case would poison the eval,
+    so we strip fence lines and require at least one alphanumeric
+    character to remain. Genuine code-block answers keep their content
+    (``apiVersion: v1``) and survive.
+    """
+    stripped = _FENCE_LINE_RE.sub("", answer)
+    return not any(ch.isalnum() for ch in stripped)
+
+
 # --- Category generators ---------------------------------------------
 
 
@@ -229,6 +263,10 @@ def draft_topic_candidate(
         answer = str(raw["reference_answer"]).strip()
     except (KeyError, TypeError, ValueError) as e:
         logger.warning("topic draft parse failed for chunk %s: %s", chunk.chunk_id, e)
+        return None
+
+    if not question or _is_degenerate_answer(answer):
+        logger.info("dropping topic draft with empty/degenerate content for chunk %s", chunk.chunk_id)
         return None
 
     return GoldenCaseCandidate(
@@ -332,6 +370,13 @@ def draft_version_sensitive_candidate(
         )
         return None
 
+    if not question or _is_degenerate_answer(answer):
+        logger.info(
+            "dropping version-sensitive draft with empty/degenerate content for chunk %s",
+            chunk.chunk_id,
+        )
+        return None
+
     return GoldenCaseCandidate(
         id=f"cand-versionsensitive-{candidate_index:04d}",
         category="version-sensitive",
@@ -372,6 +417,63 @@ def _topic_of(source_file: str) -> str:
         if needle in lower:
             return topic
     return "cluster"
+
+
+def _balanced_topic_chunks(
+    pool: list[ChunkSample], n: int, seed: int
+) -> list[ChunkSample]:
+    """Pick *n* chunks from *pool* spread evenly across topics.
+
+    Global random sampling over-represents whatever topic dominates the
+    corpus (in the pilot, 13 of 20 topic drafts came from cluster docs
+    while rbac got none). Bucketing by :func:`_topic_of` and selecting
+    round-robin across topics gives thin categories a fair share.
+    """
+    buckets: dict[str, list[ChunkSample]] = defaultdict(list)
+    for chunk in pool:
+        buckets[_topic_of(chunk.source_file)].append(chunk)
+
+    rng = random.Random(seed)
+    order = sorted(buckets)
+    for topic in order:
+        rng.shuffle(buckets[topic])
+
+    picked: list[ChunkSample] = []
+    i = 0
+    while len(picked) < n and any(buckets[topic] for topic in order):
+        topic = order[i % len(order)]
+        if buckets[topic]:
+            picked.append(buckets[topic].pop())
+        i += 1
+    return picked
+
+
+def _normalize_question(question: str) -> str:
+    """Lowercase and collapse to alphanumeric words for duplicate matching."""
+    return re.sub(r"[^a-z0-9]+", " ", question.lower()).strip()
+
+
+def _dedupe_candidates(candidates: CandidateList) -> CandidateList:
+    """Drop near-duplicate questions, keeping the first occurrence.
+
+    LLM drafting produces paraphrase pairs (the pilot yielded two nearly
+    identical "v1.33 features for EKS integration" unanswerables). A
+    character-level ratio at or above ``_DUPLICATE_QUESTION_RATIO`` marks
+    the later candidate as a twin and removes it from the review queue.
+    """
+    kept: CandidateList = []
+    kept_norms: list[str] = []
+    for cand in candidates:
+        norm = _normalize_question(cand.candidate_question)
+        if any(
+            SequenceMatcher(None, norm, prior).ratio() >= _DUPLICATE_QUESTION_RATIO
+            for prior in kept_norms
+        ):
+            logger.info("dropping near-duplicate candidate: %.80s", cand.candidate_question)
+            continue
+        kept.append(cand)
+        kept_norms.append(norm)
+    return kept
 
 
 def write_queue(candidates: CandidateList, path: Path) -> None:
@@ -521,9 +623,11 @@ def generate_candidates(
     """
     candidates: CandidateList = []
 
-    # Topic candidates
+    # Topic candidates: draw a wide pool, then balance across topics so
+    # thin categories are represented rather than the corpus-dominant one.
     if n_topic > 0:
-        chunks = sampler.sample(n_topic, seed=seed)
+        pool = sampler.sample(n_topic * _TOPIC_OVERSAMPLE, seed=seed)
+        chunks = _balanced_topic_chunks(pool, n_topic, seed=seed)
         for i, chunk in enumerate(chunks):
             cand = draft_topic_candidate(chunk, client, candidate_index=i)
             if cand is not None:
@@ -545,7 +649,7 @@ def generate_candidates(
         if cand is not None:
             candidates.append(cand)
 
-    return candidates
+    return _dedupe_candidates(candidates)
 
 
 def main(argv: list[str] | None = None) -> int:
