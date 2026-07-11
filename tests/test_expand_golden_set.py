@@ -228,6 +228,35 @@ def test_draft_unanswerable_candidate_success_below_threshold() -> None:
     assert "hyper-mesh feature" in cand.retrieval_evidence.reason
 
 
+def test_unanswerable_angle_rotates_by_index() -> None:
+    """Consecutive unanswerable drafts must target different out-of-corpus
+    angles so the batch spreads away from the corpus (and from each other)
+    instead of all defaulting to 'new features in vX' phrasing."""
+    from scripts.expand_golden_set import _UNANSWERABLE_ANGLES
+
+    assert len(_UNANSWERABLE_ANGLES) >= 3
+    client = _FakeChatClient(
+        {
+            "draft plausible-sounding": {
+                "question": "some out-of-corpus question?",
+                "reference_answer": "(refusal)",
+                "why_out_of_corpus": "n/a",
+            },
+            "explain retrieval evidence": {"reason": "off-topic"},
+        }
+    )
+    probe = _StubProbe([_hit(0.3)])
+    draft_unanswerable_candidate(client, probe, candidate_index=0)
+    draft_unanswerable_candidate(client, probe, candidate_index=1)
+
+    draft_user_prompts = [u for (s, u) in client.calls if "draft plausible-sounding" in s]
+    assert len(draft_user_prompts) == 2
+    # Different angle text in each user prompt.
+    assert draft_user_prompts[0] != draft_user_prompts[1]
+    assert _UNANSWERABLE_ANGLES[0] in draft_user_prompts[0]
+    assert _UNANSWERABLE_ANGLES[1] in draft_user_prompts[1]
+
+
 def test_draft_unanswerable_candidate_dropped_when_corpus_answers() -> None:
     """When a hit has similarity above threshold, the drafted question
     IS answered by the corpus. Dropping the candidate saves review time."""

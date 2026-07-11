@@ -166,19 +166,36 @@ _TOPIC_USER_TEMPLATE = (
 )
 
 _UNANSWERABLE_SYSTEM = (
-    "You draft plausible-sounding Kubernetes questions that the current "
-    "pinned K8s v1.32 documentation does NOT answer. Focus on: features "
-    "introduced after v1.32, cloud-provider-specific integrations (EKS/GKE/"
-    "AKS specifics), obscure third-party operators, or features removed "
-    "before v1.32. Do not draft questions that clearly overlap core K8s "
-    "documentation (Pods, Services, Deployments, RBAC, etc.). Draft the "
-    "reference answer as an honest refusal in the style of a RAG system."
+    "You draft plausible-sounding Kubernetes questions that the pinned "
+    "K8s v1.32 documentation does NOT answer. The user prompt gives you a "
+    "specific out-of-corpus angle to target. Do not draft questions that "
+    "overlap core K8s documentation (Pods, Services, Deployments, RBAC, "
+    "storage, scheduling). Draft the reference answer as an honest refusal "
+    "in the style of a RAG system."
 )
 
-_UNANSWERABLE_USER = (
-    "Draft ONE plausible question that a Kubernetes user might ask and "
-    "that the pinned v1.32 documentation does NOT answer.\n\n"
-    'Return strict JSON: {"question": "...", "reference_answer": "I do not have enough information in the provided context to answer this question.", "why_out_of_corpus": "..."}. '
+# Distinct out-of-corpus angles, rotated per candidate so the batch
+# spreads across the semantic space instead of clustering on "new
+# features in vX" phrasing (which sits close to real corpus chunks and
+# gets dropped by the similarity gate). Each entry is injected verbatim
+# into the draft prompt; the reviewer still confirms via retrieval
+# evidence.
+_UNANSWERABLE_ANGLES = [
+    "a cloud-provider-specific operational detail (AWS EKS / GCP GKE / Azure AKS console, billing, IAM, or managed-node-group specifics) that vanilla Kubernetes documentation does not cover",
+    "a third-party ecosystem tool not documented in core Kubernetes (Helm chart internals, Istio, Argo CD, cert-manager, or Prometheus Operator specifics)",
+    "a plausible-sounding but non-existent Kubernetes API resource, spec field, or kubectl subcommand",
+    "vendor-specific hardware or networking behaviour (a particular CNI plugin's proprietary options, or a storage vendor's CSI extension) that is not in core documentation",
+    "a feature removed before v1.32 (for example PodSecurityPolicy runtime behaviour, or a long-deprecated API version) that is no longer described in the pinned docs",
+    "an operational answer that depends on information outside the documentation, such as version-upgrade release dates, SLA numbers, or pricing",
+]
+
+_UNANSWERABLE_USER_TEMPLATE = (
+    "Draft ONE concrete, specific question that a Kubernetes user might ask "
+    "and that the pinned v1.32 documentation does NOT answer. Target this "
+    "angle so the question is genuinely outside the corpus:\n{angle}\n\n"
+    "Avoid vague 'what are the new features in version X' phrasing; that "
+    "tends to overlap real docs. Be specific to the angle above.\n\n"
+    'Return strict JSON: {{"question": "...", "reference_answer": "I do not have enough information in the provided context to answer this question.", "why_out_of_corpus": "..."}}. '
     "No prose outside the JSON."
 )
 
@@ -290,10 +307,11 @@ def draft_unanswerable_candidate(
     attach retrieval evidence. Returns None when the drafted question is
     actually answered by the corpus (top hit above the similarity
     threshold) or when either LLM call fails to parse."""
+    angle = _UNANSWERABLE_ANGLES[candidate_index % len(_UNANSWERABLE_ANGLES)]
     try:
         drafted = client.chat_completion_json(
             system=_UNANSWERABLE_SYSTEM,
-            user=_UNANSWERABLE_USER,
+            user=_UNANSWERABLE_USER_TEMPLATE.format(angle=angle),
         )
         question = str(drafted["question"]).strip()
         answer = str(drafted["reference_answer"]).strip()
