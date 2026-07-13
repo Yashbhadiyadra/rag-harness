@@ -1,0 +1,198 @@
+{
+  "judge_model": "gpt-4o-mini",
+  "commit": "a72b175",
+  "timestamp": "20260713T215351+0000",
+  "n_cases": 30,
+  "prompt_hashes": {
+    "correctness": "0efa46ebdf04",
+    "answer_relevancy": "8609cb412420"
+  },
+  "probes": [
+    {
+      "probe": "ceiling",
+      "metric": "correctness",
+      "base_mean": 1.0,
+      "base_pass_rate": 1.0,
+      "shifts": [
+        {
+          "perturbation": "code_fence",
+          "n": 30,
+          "mean_abs_shift": 0.0,
+          "max_abs_shift": 0.0,
+          "flip_rate": 0.0,
+          "signed_mean_shift": 0.0
+        },
+        {
+          "perturbation": "bullets",
+          "n": 30,
+          "mean_abs_shift": 0.0,
+          "max_abs_shift": 0.0,
+          "flip_rate": 0.0,
+          "signed_mean_shift": 0.0
+        },
+        {
+          "perturbation": "whitespace",
+          "n": 30,
+          "mean_abs_shift": 0.0,
+          "max_abs_shift": 0.0,
+          "flip_rate": 0.0,
+          "signed_mean_shift": 0.0
+        },
+        {
+          "perturbation": "bold_lead",
+          "n": 30,
+          "mean_abs_shift": 0.0,
+          "max_abs_shift": 0.0,
+          "flip_rate": 0.0,
+          "signed_mean_shift": 0.0
+        }
+      ]
+    },
+    {
+      "probe": "ceiling",
+      "metric": "answer_relevancy",
+      "base_mean": 1.0,
+      "base_pass_rate": 1.0,
+      "shifts": [
+        {
+          "perturbation": "code_fence",
+          "n": 30,
+          "mean_abs_shift": 0.0,
+          "max_abs_shift": 0.0,
+          "flip_rate": 0.0,
+          "signed_mean_shift": 0.0
+        },
+        {
+          "perturbation": "bullets",
+          "n": 30,
+          "mean_abs_shift": 0.0,
+          "max_abs_shift": 0.0,
+          "flip_rate": 0.0,
+          "signed_mean_shift": 0.0
+        },
+        {
+          "perturbation": "whitespace",
+          "n": 30,
+          "mean_abs_shift": 0.0,
+          "max_abs_shift": 0.0,
+          "flip_rate": 0.0,
+          "signed_mean_shift": 0.0
+        },
+        {
+          "perturbation": "bold_lead",
+          "n": 30,
+          "mean_abs_shift": 0.0,
+          "max_abs_shift": 0.0,
+          "flip_rate": 0.0,
+          "signed_mean_shift": 0.0
+        }
+      ]
+    },
+    {
+      "probe": "boundary",
+      "metric": "correctness",
+      "base_mean": 0.74,
+      "base_pass_rate": 0.3,
+      "shifts": [
+        {
+          "perturbation": "code_fence",
+          "n": 30,
+          "mean_abs_shift": 0.041666666666666664,
+          "max_abs_shift": 0.25,
+          "flip_rate": 0.1,
+          "signed_mean_shift": -0.028333333333333335
+        },
+        {
+          "perturbation": "bullets",
+          "n": 30,
+          "mean_abs_shift": 0.03666666666666667,
+          "max_abs_shift": 0.25,
+          "flip_rate": 0.1,
+          "signed_mean_shift": -0.030000000000000006
+        },
+        {
+          "perturbation": "whitespace",
+          "n": 30,
+          "mean_abs_shift": 0.06666666666666667,
+          "max_abs_shift": 0.3,
+          "flip_rate": 0.1,
+          "signed_mean_shift": -0.05333333333333334
+        },
+        {
+          "perturbation": "bold_lead",
+          "n": 30,
+          "mean_abs_shift": 0.035,
+          "max_abs_shift": 0.25,
+          "flip_rate": 0.13333333333333333,
+          "signed_mean_shift": -0.0050000000000000044
+        },
+        {
+          "perturbation": "verbose_pad",
+          "n": 30,
+          "mean_abs_shift": 0.18000000000000002,
+          "max_abs_shift": 0.30000000000000004,
+          "flip_rate": 0.23333333333333334,
+          "signed_mean_shift": -0.18000000000000002
+        }
+      ]
+    },
+    {
+      "probe": "discrimination",
+      "metric": "correctness",
+      "base_mean": 0.02666666666666667,
+      "base_pass_rate": 0.0,
+      "shifts": [
+        {
+          "perturbation": "code_fence",
+          "n": 30,
+          "mean_abs_shift": 0.01,
+          "max_abs_shift": 0.2,
+          "flip_rate": 0.0,
+          "signed_mean_shift": -0.01
+        },
+        {
+          "perturbation": "bullets",
+          "n": 30,
+          "mean_abs_shift": 0.02666666666666667,
+          "max_abs_shift": 0.3,
+          "flip_rate": 0.0,
+          "signed_mean_shift": -0.013333333333333332
+        },
+        {
+          "perturbation": "whitespace",
+          "n": 30,
+          "mean_abs_shift": 0.01,
+          "max_abs_shift": 0.2,
+          "flip_rate": 0.0,
+          "signed_mean_shift": -0.01
+        },
+        {
+          "perturbation": "bold_lead",
+          "n": 30,
+          "mean_abs_shift": 0.02,
+          "max_abs_shift": 0.3,
+          "flip_rate": 0.0,
+          "signed_mean_shift": -0.02
+        },
+        {
+          "perturbation": "verbose_pad",
+          "n": 30,
+          "mean_abs_shift": 0.013333333333333332,
+          "max_abs_shift": 0.2,
+          "flip_rate": 0.0,
+          "signed_mean_shift": -0.013333333333333332
+        }
+      ]
+    }
+  ],
+  "stability": [
+    {
+      "metric": "correctness",
+      "repeats": 5,
+      "n_cases": 30,
+      "mean_variance": 0.0010933333333333335,
+      "max_within_case_range": 0.25,
+      "n_unstable_cases": 5
+    }
+  ]
+}

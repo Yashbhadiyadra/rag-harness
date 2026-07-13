@@ -169,3 +169,24 @@ gamed by padding. It also sharpens the boundary caution - verbose_pad
 is the single largest perturbation (0.180 mean shift vs 0.03-0.07 for
 formatting), so answer length near the threshold moves scores far more
 than cosmetic formatting does.
+
+## Fifth measurement (2026-07-13): test-retest stability
+
+`--retest 5` judges the boundary answers five times each with the
+cache off; any spread is the judge disagreeing with itself. At
+temperature 0 the naive expectation is zero variance. Result
+(gpt-4o-mini, 30 cases): mean variance **0.0011**, but **5 of 30
+cases were unstable**, one with a within-case range of **0.250**.
+
+Temperature 0 does not guarantee reproducibility - API-level
+nondeterminism gives the same judge, same prompt, same answer
+different scores about one time in six near the gate. Most cases
+(25/30) are rock-stable, but the unstable minority carries a range as
+large as the format and length effects combined. This is a third,
+independent noise source stacked on formatting (~0.07) and length
+(0.18): a single judge score near the threshold should never be read
+as exact. The operational consequence is unchanged and reinforced -
+gate decisions live or die by the ADR-0011 bootstrap CIs, and the
+eval layer should judge with the cache on (pinning one score per
+input) so this nondeterminism does not leak into run-to-run
+comparisons.
