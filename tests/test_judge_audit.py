@@ -21,6 +21,7 @@ from rag_harness.evaluation.judge_audit import (
     render_markdown,
     run_audit,
     score_shift_stats,
+    stability_stats,
     truncate_half,
     verbose_pad,
     write_report,
@@ -136,6 +137,75 @@ def test_score_shift_stats_rejects_mismatched_lengths() -> None:
         score_shift_stats([1.0], [1.0, 0.5], threshold=0.5, perturbation="x")
     with pytest.raises(ValueError):
         score_shift_stats([], [], threshold=0.5, perturbation="x")
+
+
+# --- Test-retest stability -----------------------------------------------
+
+
+def test_stability_stats_perfectly_stable() -> None:
+    # every case scored identically across repeats -> zero variance
+    stats = stability_stats([[0.7, 0.7, 0.7], [0.9, 0.9, 0.9]], "correctness", 3)
+    assert stats.mean_variance == 0.0
+    assert stats.max_within_case_range == 0.0
+    assert stats.n_unstable_cases == 0
+    assert stats.n_cases == 2
+
+
+def test_stability_stats_flags_inconsistent_case() -> None:
+    stats = stability_stats([[0.7, 0.7], [0.6, 0.9]], "correctness", 2)
+    assert stats.max_within_case_range == pytest.approx(0.3)
+    assert stats.n_unstable_cases == 1
+    assert stats.mean_variance > 0.0
+
+
+def test_stability_stats_rejects_bad_input() -> None:
+    with pytest.raises(ValueError):
+        stability_stats([[0.7]], "correctness", 1)  # repeats < 2
+    with pytest.raises(ValueError):
+        stability_stats([[0.7, 0.7], [0.8]], "correctness", 2)  # ragged
+    with pytest.raises(ValueError):
+        stability_stats([], "correctness", 2)  # empty
+
+
+@pytest.mark.asyncio
+async def test_run_audit_retest_adds_stability_and_disables_cache() -> None:
+    from rag_harness.config import settings
+
+    cases = [
+        GoldenCase(id="t-1", question="q1", reference_answer=_ANSWER, relevant_doc_ids=[]),
+    ]
+    settings.llm_cache_enabled = True  # must be restored by run_stability
+    seen_cache_flags: list[bool] = []
+
+    async def fake_score(metric: str, case: GoldenCase, answer: str) -> float:
+        seen_cache_flags.append(settings.llm_cache_enabled)
+        return 0.7
+
+    with patch("rag_harness.evaluation.judge_audit._score_case", side_effect=fake_score):
+        report = await run_audit(cases=cases, probes=("boundary",), retest=3)
+
+    assert len(report.stability) == 1
+    st = report.stability[0]
+    assert st.repeats == 3 and st.n_cases == 1
+    assert st.mean_variance == 0.0  # constant fake score
+    # the retest scoring must have run with the cache OFF...
+    assert any(flag is False for flag in seen_cache_flags)
+    # ...and the original setting restored afterward
+    assert settings.llm_cache_enabled is True
+
+
+@pytest.mark.asyncio
+async def test_run_audit_no_retest_by_default() -> None:
+    cases = [
+        GoldenCase(id="t-1", question="q1", reference_answer=_ANSWER, relevant_doc_ids=[]),
+    ]
+
+    async def fake_score(metric: str, case: GoldenCase, answer: str) -> float:
+        return 0.7
+
+    with patch("rag_harness.evaluation.judge_audit._score_case", side_effect=fake_score):
+        report = await run_audit(cases=cases, probes=("boundary",))
+    assert report.stability == []
 
 
 # --- Cohen's kappa -------------------------------------------------------

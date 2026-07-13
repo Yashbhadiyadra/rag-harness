@@ -20,6 +20,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
+from statistics import pvariance
 
 from rag_harness.config import settings
 from rag_harness.evaluation.metrics import (
@@ -225,6 +226,45 @@ class ProbeResult:
 
 
 @dataclass
+class StabilityResult:
+    """Test-retest stability for one metric over repeated judging.
+
+    The judge scores the SAME answers ``repeats`` times with the cache
+    off. At temperature 0 a stable judge returns identical scores every
+    time (variance 0); any spread is nondeterminism in the judge itself,
+    which bounds how much a single score can be trusted independent of
+    formatting or content (arXiv:2606.19544 test-retest reliability).
+    """
+
+    metric: str
+    repeats: int
+    n_cases: int
+    mean_variance: float  # mean over cases of the per-case score variance
+    max_within_case_range: float  # largest (max - min) for any single case
+    n_unstable_cases: int  # cases the judge scored inconsistently across repeats
+
+
+def stability_stats(
+    scores_per_case: list[list[float]], metric: str, repeats: int
+) -> StabilityResult:
+    """Summarise judge self-consistency across repeated scorings."""
+    if repeats < 2:
+        raise ValueError("stability needs at least 2 repeats")
+    if not scores_per_case or any(len(s) != repeats for s in scores_per_case):
+        raise ValueError("each case must have exactly `repeats` scores")
+    variances = [pvariance(s) for s in scores_per_case]
+    ranges = [max(s) - min(s) for s in scores_per_case]
+    return StabilityResult(
+        metric=metric,
+        repeats=repeats,
+        n_cases=len(scores_per_case),
+        mean_variance=sum(variances) / len(variances),
+        max_within_case_range=max(ranges),
+        n_unstable_cases=sum(1 for r in ranges if r > 0),
+    )
+
+
+@dataclass
 class AuditReport:
     """Full result of one judge-reliability audit run."""
 
@@ -234,6 +274,7 @@ class AuditReport:
     n_cases: int
     prompt_hashes: dict[str, str]
     probes: list[ProbeResult] = field(default_factory=list)
+    stability: list[StabilityResult] = field(default_factory=list)
 
 
 async def _score_case(metric: str, case: GoldenCase, answer: str) -> float:
@@ -282,9 +323,35 @@ _PROBES: dict[str, tuple[Callable[[list[GoldenCase]], list[str]], tuple[str, ...
 }
 
 
+async def run_stability(
+    cases: list[GoldenCase],
+    metric: str = "correctness",
+    repeats: int = 5,
+) -> StabilityResult:
+    """Score the boundary answers ``repeats`` times with the cache OFF.
+
+    The cache must be disabled or every repeat returns the same stored
+    value and variance is trivially 0. Boundary answers are used because
+    near-gate scores are where any judge nondeterminism actually changes
+    verdicts; ceiling answers saturate and would hide it.
+    """
+    answers = _truncated_references(cases)
+    prev_cache = settings.llm_cache_enabled
+    settings.llm_cache_enabled = False
+    try:
+        scores_per_case = [
+            [await _score_case(metric, c, a) for _ in range(repeats)]
+            for c, a in zip(cases, answers, strict=True)
+        ]
+    finally:
+        settings.llm_cache_enabled = prev_cache
+    return stability_stats(scores_per_case, metric, repeats)
+
+
 async def run_audit(
     cases: list[GoldenCase] | None = None,
     probes: tuple[str, ...] = ("ceiling", "boundary", "discrimination"),
+    retest: int = 0,
 ) -> AuditReport:
     """Run the judge audit over the golden set.
 
@@ -292,7 +359,9 @@ async def run_audit(
     cross-paired wrong), judge them, then judge each format-perturbed
     variant. Perturbations are meaning-preserving, so shifts are pure
     format sensitivity; the discrimination probe additionally reports
-    whether formatting can rescue a wrong answer past the gate.
+    whether formatting can rescue a wrong answer past the gate. When
+    ``retest`` >= 2, a test-retest stability pass runs on the boundary
+    answers with the cache off.
     """
     if cases is None:
         cases = load_golden_cases()
@@ -345,6 +414,15 @@ async def run_audit(
                     result.shifts[-1].flip_rate * 100,
                 )
             report.probes.append(result)
+
+    if retest >= 2:
+        report.stability.append(await run_stability(cases, "correctness", retest))
+        logger.info(
+            "audit stability/correctness: mean variance %.4f, max range %.3f, %d unstable",
+            report.stability[-1].mean_variance,
+            report.stability[-1].max_within_case_range,
+            report.stability[-1].n_unstable_cases,
+        )
     return report
 
 
@@ -391,6 +469,24 @@ def render_markdown(report: AuditReport) -> str:
                 f"| {s.signed_mean_shift:+.3f} | {s.max_abs_shift:.3f} | {s.flip_rate:.0%} |"
             )
         lines.append("")
+    if report.stability:
+        lines.append("## test-retest stability")
+        lines.append("")
+        lines.append(
+            "Same answers judged N times with the cache off; variance is judge "
+            "nondeterminism alone. At temperature 0, 0 is expected."
+        )
+        lines.append("")
+        lines.append(
+            "| Metric | Repeats | Mean variance | Max within-case range | Unstable cases |"
+        )
+        lines.append("|---|---|---|---|---|")
+        for st in report.stability:
+            lines.append(
+                f"| {st.metric} | {st.repeats} | {st.mean_variance:.4f} "
+                f"| {st.max_within_case_range:.3f} | {st.n_unstable_cases}/{st.n_cases} |"
+            )
+        lines.append("")
     return "\n".join(lines)
 
 
@@ -417,6 +513,7 @@ def write_report(report: AuditReport, out_dir: Path | None = None) -> Path:
             }
             for r in report.probes
         ],
+        "stability": [vars(st) for st in report.stability],
     }
     (out_dir / f"{stem}.json").write_text(json.dumps(payload, indent=2))
     return md_path
@@ -425,6 +522,7 @@ def write_report(report: AuditReport, out_dir: Path | None = None) -> Path:
 def run_audit_sync(
     cases: list[GoldenCase] | None = None,
     probes: tuple[str, ...] = ("ceiling", "boundary", "discrimination"),
+    retest: int = 0,
 ) -> AuditReport:
     """Sync facade for the CLI."""
-    return asyncio.run(run_audit(cases=cases, probes=probes))
+    return asyncio.run(run_audit(cases=cases, probes=probes, retest=retest))

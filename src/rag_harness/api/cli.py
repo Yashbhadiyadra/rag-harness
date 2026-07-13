@@ -146,7 +146,7 @@ def _cmd_judge_audit(args: argparse.Namespace) -> None:
     if args.judge_model:
         settings.generation_model = args.judge_model
 
-    report = run_audit_sync()
+    report = run_audit_sync(retest=args.retest)
     md_path = write_report(report, out_dir=Path(args.output_dir))
 
     print("\nJudge reliability audit (ADR-0014)")
@@ -164,6 +164,12 @@ def _cmd_judge_audit(args: argparse.Namespace) -> None:
                 f"  signed {s.signed_mean_shift:+.3f}"
                 f"  max {s.max_abs_shift:.3f}  flips {s.flip_rate:.0%}"
             )
+    for st in report.stability:
+        print(
+            f"\n  test-retest · {st.metric} (x{st.repeats}) - mean variance "
+            f"{st.mean_variance:.4f}, max range {st.max_within_case_range:.3f}, "
+            f"{st.n_unstable_cases}/{st.n_cases} unstable"
+        )
     print(f"\nReport written to {md_path}")
 
 
@@ -321,6 +327,17 @@ def main() -> None:
         help=(
             "Audit a candidate judge model instead of GENERATION_MODEL "
             "(judge selection matrix, ADR-0014). E.g. gpt-4o."
+        ),
+    )
+    judge_audit_p.add_argument(
+        "--retest",
+        type=int,
+        default=0,
+        metavar="N",
+        help=(
+            "Run a test-retest stability pass: judge the boundary answers N "
+            "times with the cache off and report score variance. N>=2. "
+            "Default 0 (skip). Costs N uncached judge calls per case."
         ),
     )
 
