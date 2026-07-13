@@ -36,6 +36,12 @@ jobs:
         run: uv pip install -e "."
 
       - name: Regenerate metrics page
+        # The render only reads evals/history/runs.jsonl - it makes no LLM
+        # calls. Settings still requires OPENAI_API_KEY at import (the
+        # service's fail-fast property), so satisfy it with a placeholder
+        # rather than exposing the real secret to a job that never needs it.
+        env:
+          OPENAI_API_KEY: unused-render-only
         run: uv run --no-sync python -m scripts.render_metrics_page
 
       - name: Commit if changed
