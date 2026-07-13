@@ -139,14 +139,65 @@ browse the evidence, with zero setup.
 **Exit criterion:** someone who has never met the author understands, within two
 minutes, what this is, why it's hard, and that it's real.
 
-## Phase 12 - Extend (bridges, strictly after v1.0)
+## Phase 12 - Extend (strictly after v1.0; sequenced by the 2026-07 strategy research)
+
+Positioning: **the reliability lab for retrieval systems.** Three verified
+findings drive the order of work: LLM judges are unvalidated instruments
+(raw agreement overstates kappa by 34-41pp; no judge is uniformly reliable
+under perturbation - arXiv:2606.19544, arXiv:2603.05399), safety/security
+evaluation is the least-covered area in RAG research (arXiv:2504.14891),
+and hyperscaler eval tooling only grades its own stack - neutral,
+cross-stack evaluation is structurally unoccupied.
+
+### v1.1 - Security hardening (shipped 2026-07-13)
+
+Security headers middleware, redoc removal, ADR-0013 baseline, README
+security posture. Retrieved-chunk prompt hardening deliberately deferred
+to v1.3 so it lands with the measurement that justifies it.
+
+### v1.2 - Judge reliability audit (the wedge)
+
+- Format-invariance audit: meaning-preserving perturbations of golden
+  reference answers; score shifts = pure judge format sensitivity (ADR-0014).
+- Judge provenance: model id + prompt hashes + commit in every report.
+- Cohen's kappa vs human review labels - raw percent agreement is banned.
+- Judge selection matrix: reliability x cost across candidate judge models.
+- Capstone: public judge-reliability report on the metrics page - the
+  citable artifact no incumbent tool publishes.
+
+### v1.3 - Security evaluation
+
+- Poisoned-corpus ablation: adversarial chunks injected into an index
+  copy; measures whether gates + corrective loop catch manipulation
+  ("poison resistance" with CIs). OWASP LLM01/LLM04/LLM08 mapped.
+- Retrieved-chunk prompt hardening lands here, with its measurement.
+- Abstention/negative-rejection promoted to headline README metric.
+
+### v2.0 - Platform reach (only after the above are measured)
+
+- **BYO-corpus ingestion:** K8s docs become the flagship corpus, not the
+  only one; pinned-SHA provenance generalizes.
+- **OpenTelemetry GenAI semantic conventions** for the tracing layer.
+- **Closed-loop eval:** low-confidence production traces feed the
+  review queue as golden-set candidates.
+- **MCP server (after the security eval, never before):** expose
+  `query_docs`, `get_eval_report`, `run_ablation` as MCP tools with the
+  CSA security baseline (OAuth 2.1 + PKCE, tool-level scopes,
+  default-deny) - given the 2026 MCP CVE record, shipping it secure IS
+  the differentiator.
+
+### Bridges to later projects (unchanged)
 
 - **Stale-embedding hooks → Project 2:** the provenance fields + embedding cache are
   the input signal; begin the standalone library.
 - **Agent-eval reuse → Project 3:** evaluation layer generalizes to trajectory scoring.
-- **MCP server (stretch, high-signal):** expose the harness as MCP tools
-  (`query_docs`, `get_eval_report`, `run_ablation`) so agents can consume it; connects
-  the project to the agent-interop standard and demonstrates MCP skill hands-on.
+
+### Explicitly rejected (researched, decided against)
+
+GraphRAG integration (token cost, underdelivery), hosted dashboards
+(commoditized by Langfuse/Phoenix), generic metric breadth (the
+false-confidence trap), agent-simulation environments (funded
+incumbents' lane).
 
 ---
 
