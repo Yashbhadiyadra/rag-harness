@@ -80,6 +80,9 @@ class ShiftStats:
     mean_abs_shift: float
     max_abs_shift: float
     flip_rate: float  # fraction of cases whose gate verdict flipped
+    # Signed mean of (perturbed - base): direction matters for verbosity
+    # bias, where a POSITIVE value means the perturbation inflated scores.
+    signed_mean_shift: float = 0.0
 
 
 def score_shift_stats(
@@ -92,10 +95,14 @@ def score_shift_stats(
 
     ``threshold`` is the reliability-gate cut for this metric; a "flip" is
     a case whose pass/fail verdict changes purely because of formatting.
+    ``signed_mean_shift`` preserves direction (perturbed minus base): for
+    a verbosity padder, a positive value is the bias - filler raised the
+    score without adding correct content.
     """
     if len(base) != len(perturbed) or not base:
         raise ValueError("base and perturbed must be equal-length, non-empty lists")
     deltas = [abs(b - p) for b, p in zip(base, perturbed, strict=True)]
+    signed = [p - b for b, p in zip(base, perturbed, strict=True)]
     flips = sum(
         1 for b, p in zip(base, perturbed, strict=True) if (b >= threshold) != (p >= threshold)
     )
@@ -105,6 +112,7 @@ def score_shift_stats(
         mean_abs_shift=sum(deltas) / len(deltas),
         max_abs_shift=max(deltas),
         flip_rate=flips / len(base),
+        signed_mean_shift=sum(signed) / len(signed),
     )
 
 
@@ -164,6 +172,26 @@ def truncate_half(text: str) -> str:
     keep = max(1, len(sentences) // 2)
     kept = ". ".join(sentences[:keep])
     return kept if kept.endswith(".") else kept + "."
+
+
+_VERBOSE_FILLER = (
+    " It is worth noting that this is an important topic in this domain, and there are "
+    "many considerations involved. Broadly speaking, the details matter and depend on "
+    "the specific context and configuration in question. In general, careful attention "
+    "to the surrounding factors is advisable when working through this area."
+)
+
+
+def verbose_pad(text: str) -> str:
+    """Append fluent, content-free filler - the verbosity-bias probe (JRH).
+
+    The padding adds length and hedging register but zero correct
+    information, so a well-behaved correctness judge should not raise its
+    score. If it does (positive signed shift), the judge is length-biased:
+    it rewards verbosity over substance, the classic LLM-judge failure the
+    literature (arXiv:2603.05399) warns about.
+    """
+    return text.rstrip() + _VERBOSE_FILLER
 
 
 def cross_pair_answers(cases: list[GoldenCase]) -> list[str]:
@@ -293,7 +321,13 @@ async def run_audit(
                 base_mean=sum(base_scores) / len(base_scores),
                 base_pass_rate=sum(1 for s in base_scores if s >= threshold) / len(base_scores),
             )
-            for name, perturb in PERTURBATIONS.items():
+            # Verbosity padding runs only where scores have headroom to
+            # inflate: the ceiling already sits at 1.0, so a positive shift
+            # there is impossible and the probe would be uninformative.
+            perturbations = dict(PERTURBATIONS)
+            if probe in ("boundary", "discrimination"):
+                perturbations["verbose_pad"] = verbose_pad
+            for name, perturb in perturbations.items():
                 perturbed_scores = [
                     await _score_case(metric, c, perturb(a))
                     for c, a in zip(cases, base_answers, strict=True)
@@ -302,11 +336,12 @@ async def run_audit(
                     score_shift_stats(base_scores, perturbed_scores, threshold, name)
                 )
                 logger.info(
-                    "audit %s/%s/%s: mean shift %.3f, flips %.0f%%",
+                    "audit %s/%s/%s: mean shift %.3f (signed %+.3f), flips %.0f%%",
                     probe,
                     metric,
                     name,
                     result.shifts[-1].mean_abs_shift,
+                    result.shifts[-1].signed_mean_shift,
                     result.shifts[-1].flip_rate * 100,
                 )
             report.probes.append(result)
@@ -332,7 +367,10 @@ def render_markdown(report: AuditReport) -> str:
         "format-induced verdict flips are possible. **discrimination**",
         "judges another case's reference - fluent, on-domain, wrong; its",
         "base pass rate is the judge's false-accept rate and should be ~0%.",
-        "Perturbations are meaning-preserving; shifts are format sensitivity.",
+        "Format perturbations are meaning-preserving (shift = format",
+        "sensitivity). **verbose_pad** appends content-free filler: a",
+        "positive signed shift is verbosity bias - length rewarded over",
+        "substance.",
         "",
     ]
     for result in report.probes:
@@ -343,12 +381,14 @@ def render_markdown(report: AuditReport) -> str:
             f"base pass rate at gate: **{result.base_pass_rate:.0%}**"
         )
         lines.append("")
-        lines.append("| Perturbation | n | Mean abs shift | Max abs shift | Flip rate |")
-        lines.append("|---|---|---|---|---|")
+        lines.append(
+            "| Perturbation | n | Mean abs shift | Signed shift | Max abs shift | Flip rate |"
+        )
+        lines.append("|---|---|---|---|---|---|")
         for s in result.shifts:
             lines.append(
                 f"| {s.perturbation} | {s.n} | {s.mean_abs_shift:.3f} "
-                f"| {s.max_abs_shift:.3f} | {s.flip_rate:.0%} |"
+                f"| {s.signed_mean_shift:+.3f} | {s.max_abs_shift:.3f} | {s.flip_rate:.0%} |"
             )
         lines.append("")
     return "\n".join(lines)

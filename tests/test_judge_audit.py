@@ -22,6 +22,7 @@ from rag_harness.evaluation.judge_audit import (
     run_audit,
     score_shift_stats,
     truncate_half,
+    verbose_pad,
     write_report,
 )
 from rag_harness.models import GoldenCase
@@ -91,6 +92,18 @@ def test_cross_pair_answers_needs_two_cases() -> None:
         cross_pair_answers(only)
 
 
+def test_verbose_pad_extends_without_removing_content() -> None:
+    padded = verbose_pad(_ANSWER)
+    assert padded.startswith(_ANSWER.rstrip()[:20])
+    assert len(padded) > len(_ANSWER)
+    for word in ("Pods", "containers"):
+        assert word in padded
+
+
+def test_verbose_pad_is_deterministic() -> None:
+    assert verbose_pad(_ANSWER) == verbose_pad(_ANSWER)
+
+
 # --- Shift statistics ----------------------------------------------------
 
 
@@ -101,6 +114,15 @@ def test_score_shift_stats_basic() -> None:
     assert stats.max_abs_shift == pytest.approx(0.4)
     # only the third case crosses 0.7: 0.8 -> 0.4
     assert stats.flip_rate == pytest.approx(1 / 3)
+    # signed shift keeps direction: (0.9-1.0)+(0.9-0.9)+(0.4-0.8) = -0.5, /3
+    assert stats.signed_mean_shift == pytest.approx(-0.5 / 3)
+
+
+def test_score_shift_stats_signed_positive_is_inflation() -> None:
+    # every perturbed score is higher: pure inflation (verbosity-bias shape)
+    stats = score_shift_stats([0.6, 0.7], [0.8, 0.9], threshold=0.75, perturbation="verbose_pad")
+    assert stats.signed_mean_shift == pytest.approx(0.2)
+    assert stats.mean_abs_shift == pytest.approx(0.2)
 
 
 def test_score_shift_stats_no_shift() -> None:
@@ -236,7 +258,9 @@ async def test_run_audit_ceiling_probe_scores_base_and_all_perturbations() -> No
         r for r in report.probes if r.probe == "ceiling" and r.metric == "correctness"
     )
     assert correctness.base_mean == pytest.approx(1.0)
+    # ceiling gets format perturbations only - no verbose_pad (no headroom at 1.0)
     assert len(correctness.shifts) == len(PERTURBATIONS)
+    assert all(s.perturbation != "verbose_pad" for s in correctness.shifts)
     for s in correctness.shifts:
         assert s.mean_abs_shift == pytest.approx(0.2)
         assert s.flip_rate == 0.0  # 0.8 sits exactly on the 0.80 gate - still a pass
@@ -256,15 +280,36 @@ async def test_run_audit_boundary_probe_judges_truncated_answers() -> None:
     with patch("rag_harness.evaluation.judge_audit._score_case", side_effect=fake_score):
         report = await run_audit(cases=cases, probes=("boundary",))
 
-    # boundary is correctness-only: 1 case x (1 base + 4 perturbations) = 5 calls
-    assert len(seen_answers) == 5
+    # boundary correctness: 1 case x (1 base + 4 format + 1 verbose_pad) = 6 calls
+    assert len(seen_answers) == 6
     truncated = truncate_half(_ANSWER)
     assert seen_answers[0] == truncated
-    # every perturbed variant derives from the truncated answer, not the full one
+    # every variant derives from the truncated answer, not the full one
     assert all("They wrap" not in a for a in seen_answers)
     assert [r.metric for r in report.probes] == ["correctness"]
+    # boundary carries the verbosity probe
+    assert any(s.perturbation == "verbose_pad" for s in report.probes[0].shifts)
     # 0.75 sits below the 0.80 correctness gate - nothing passes
     assert report.probes[0].base_pass_rate == 0.0
+
+
+@pytest.mark.asyncio
+async def test_run_audit_boundary_detects_verbosity_inflation() -> None:
+    """A length-biased judge scores the padded answer higher; the signed
+    shift on verbose_pad must be positive and flag it."""
+    cases = [
+        GoldenCase(id="t-1", question="q1", reference_answer=_ANSWER, relevant_doc_ids=[]),
+    ]
+
+    async def length_biased_score(metric: str, case: GoldenCase, answer: str) -> float:
+        # longer answer -> higher score, regardless of content
+        return min(1.0, 0.5 + len(answer) / 2000)
+
+    with patch("rag_harness.evaluation.judge_audit._score_case", side_effect=length_biased_score):
+        report = await run_audit(cases=cases, probes=("boundary",))
+
+    verbose = next(s for s in report.probes[0].shifts if s.perturbation == "verbose_pad")
+    assert verbose.signed_mean_shift > 0.0  # padding inflated the score
 
 
 @pytest.mark.asyncio

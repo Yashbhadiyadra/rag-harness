@@ -161,6 +161,7 @@ def _cmd_judge_audit(args: argparse.Namespace) -> None:
         for s in result.shifts:
             print(
                 f"    {s.perturbation:<12} mean shift {s.mean_abs_shift:.3f}"
+                f"  signed {s.signed_mean_shift:+.3f}"
                 f"  max {s.max_abs_shift:.3f}  flips {s.flip_rate:.0%}"
             )
     print(f"\nReport written to {md_path}")
