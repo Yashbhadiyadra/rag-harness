@@ -190,3 +190,23 @@ gate decisions live or die by the ADR-0011 bootstrap CIs, and the
 eval layer should judge with the cache on (pinning one score per
 input) so this nondeterminism does not leak into run-to-run
 comparisons.
+
+## Sixth measurement (2026-07-13): scale-format sensitivity
+
+CIP found the response scale alone can move a judge's verdict (1.68 on
+a 1-5 scale vs 3.17 on A-E for the same item). `--scales` scores the
+boundary answers on the numeric [0,1] correctness scale and an
+equivalent A-E letter scale (A=1.0 .. E=0.0) and compares. Result
+(gpt-4o-mini, 30 cases): mean absolute divergence **0.090**, signed
+**-0.057** (the letter scale grades stricter), and **23% of gate
+verdicts flip** between scales.
+
+Nearly a quarter of pass/fail decisions depend on whether the judge is
+asked for a number or a letter. Part of this is the letter scale's
+coarse 0.25-wide buckets versus continuous numeric scoring, but the
+consistent negative sign shows a real stricter-grading bias, not just
+quantization. This is the fourth and largest-flip-rate noise source
+found, and it argues for pinning one scale (we keep numeric) and never
+mixing scales within a comparison. It is also the strongest single
+entry for the public report: the scale you pick is not a cosmetic
+choice, it moves a fifth of the verdicts.
