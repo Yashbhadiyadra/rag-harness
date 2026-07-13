@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+from collections.abc import Callable
 from pathlib import Path
 
 from rag_harness.config import settings
@@ -52,6 +53,26 @@ Return a score between 0.0 and 1.0:
 Respond with ONLY a decimal number, nothing else. Example: 0.75
 """
 
+# Same rubric on a categorical A-E scale. Used ONLY by the judge audit's
+# scale-sensitivity probe: a well-behaved judge should grade the same
+# answer consistently whether the scale is numeric or lettered. CIP found
+# the scale format alone can move scores substantially (1.68 vs 3.17).
+_CORRECTNESS_LETTER_PROMPT = """\
+You are an evaluation judge. Given a question, a reference answer, and a generated answer, \
+grade how correct the generated answer is compared to the reference.
+
+Return a single letter grade:
+- A: fully correct, captures all key points.
+- B: mostly correct, a minor point missing.
+- C: partially correct, about half right.
+- D: mostly wrong, only a fragment right.
+- E: wrong or completely unrelated.
+
+Respond with ONLY the letter, nothing else. Example: B
+"""
+
+_LETTER_TO_SCORE = {"A": 1.0, "B": 0.75, "C": 0.5, "D": 0.25, "E": 0.0}
+
 _ANSWER_RELEVANCY_PROMPT = """\
 You are an evaluation judge. Given a question and an answer, decide whether the \
 answer is on-topic and directly addresses the question - regardless of whether \
@@ -86,8 +107,19 @@ Respond with ONLY a decimal number, nothing else. Example: 0.6
 """
 
 
-async def _llm_score_async(system_prompt: str, user_message: str) -> float:
-    """Async judge call. See sync facade below for details."""
+async def _llm_score_async(
+    system_prompt: str,
+    user_message: str,
+    parser: "Callable[[str], float] | None" = None,
+) -> float:
+    """Async judge call. See sync facade below for details.
+
+    ``parser`` converts the raw judge reply to a [0,1] score; it defaults
+    to the numeric parser. An alternate parser (e.g. a letter-grade mapper)
+    lets the same call path score under a different response scale, which
+    is how the judge audit measures scale-format sensitivity.
+    """
+    parse = parser or _parse_score
     cache = _get_cache()
     cache_key: str | None = None
     if cache is not None:
@@ -96,7 +128,7 @@ async def _llm_score_async(system_prompt: str, user_message: str) -> float:
         )
         cached_raw = cache.get(cache_key)
         if cached_raw is not None:
-            return _parse_score(cached_raw)
+            return parse(cached_raw)
 
     response = await _client.chat.completions.create(
         model=settings.generation_model,
@@ -110,7 +142,7 @@ async def _llm_score_async(system_prompt: str, user_message: str) -> float:
     raw = (response.choices[0].message.content or "0").strip()
     if cache is not None and cache_key is not None:
         cache.set(cache_key, raw)
-    return _parse_score(raw)
+    return parse(raw)
 
 
 def _llm_score(system_prompt: str, user_message: str) -> float:
@@ -132,6 +164,15 @@ def _parse_score(raw: str) -> float:
     except ValueError:
         logger.warning("LLM judge returned non-numeric score: %r - defaulting to 0.0", raw)
         return 0.0
+
+
+def _parse_letter(raw: str) -> float:
+    """Map an A-E letter grade to a [0,1] score; unknown replies default to 0.0."""
+    letter = raw.strip().upper()[:1]
+    if letter not in _LETTER_TO_SCORE:
+        logger.warning("LLM judge returned non-letter grade: %r - defaulting to 0.0", raw)
+        return 0.0
+    return _LETTER_TO_SCORE[letter]
 
 
 def context_recall(retrieved_chunks: list[Chunk], relevant_doc_ids: list[str]) -> float:
@@ -172,6 +213,21 @@ async def correctness_async(question: str, answer: str, reference_answer: str) -
 def correctness(question: str, answer: str, reference_answer: str) -> float:
     """Sync facade - score how correct the generated answer is relative to the reference."""
     return asyncio.run(correctness_async(question, answer, reference_answer))
+
+
+async def correctness_letter_async(question: str, answer: str, reference_answer: str) -> float:
+    """Correctness scored on an A-E scale, mapped to [0,1].
+
+    Same rubric as ``correctness_async`` but a categorical response scale.
+    Used by the judge audit's scale-sensitivity probe to measure whether
+    the scale format alone shifts the judge's verdict.
+    """
+    user_message = (
+        f"Question: {question}\n\n"
+        f"Reference answer: {reference_answer}\n\n"
+        f"Generated answer: {answer}"
+    )
+    return await _llm_score_async(_CORRECTNESS_LETTER_PROMPT, user_message, parser=_parse_letter)
 
 
 async def answer_relevancy_async(question: str, answer: str) -> float:

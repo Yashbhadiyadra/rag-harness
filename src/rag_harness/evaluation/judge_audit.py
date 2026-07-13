@@ -28,6 +28,7 @@ from rag_harness.evaluation.metrics import (
     _CORRECTNESS_PROMPT,
     answer_relevancy_async,
     correctness_async,
+    correctness_letter_async,
 )
 from rag_harness.evaluation.runner import load_golden_cases
 from rag_harness.models import GoldenCase
@@ -265,6 +266,44 @@ def stability_stats(
 
 
 @dataclass
+class ScaleResult:
+    """Scale-format sensitivity: numeric [0,1] vs categorical A-E grading.
+
+    A judge that measures the same underlying quality should score an
+    answer the same regardless of the response scale. Divergence here is
+    the scale artifact CIP documented (1.68 vs 3.17 for one item across
+    scales); flip_rate is how often the two scales disagree on the gate
+    verdict.
+    """
+
+    metric: str
+    n_cases: int
+    mean_abs_divergence: float  # mean |numeric - letter| per case
+    signed_mean_divergence: float  # letter minus numeric (does one scale run higher?)
+    flip_rate: float  # fraction of cases where the two scales disagree at the gate
+
+
+def scale_stats(
+    numeric: list[float], letter: list[float], threshold: float, metric: str
+) -> ScaleResult:
+    """Compare per-case scores under two response scales."""
+    if len(numeric) != len(letter) or not numeric:
+        raise ValueError("numeric and letter score lists must be equal-length, non-empty")
+    diffs = [abs(a - b) for a, b in zip(numeric, letter, strict=True)]
+    signed = [b - a for a, b in zip(numeric, letter, strict=True)]
+    flips = sum(
+        1 for a, b in zip(numeric, letter, strict=True) if (a >= threshold) != (b >= threshold)
+    )
+    return ScaleResult(
+        metric=metric,
+        n_cases=len(numeric),
+        mean_abs_divergence=sum(diffs) / len(diffs),
+        signed_mean_divergence=sum(signed) / len(signed),
+        flip_rate=flips / len(numeric),
+    )
+
+
+@dataclass
 class AuditReport:
     """Full result of one judge-reliability audit run."""
 
@@ -275,6 +314,7 @@ class AuditReport:
     prompt_hashes: dict[str, str]
     probes: list[ProbeResult] = field(default_factory=list)
     stability: list[StabilityResult] = field(default_factory=list)
+    scales: list[ScaleResult] = field(default_factory=list)
 
 
 async def _score_case(metric: str, case: GoldenCase, answer: str) -> float:
@@ -348,10 +388,31 @@ async def run_stability(
     return stability_stats(scores_per_case, metric, repeats)
 
 
+async def run_scale_check(cases: list[GoldenCase], metric: str = "correctness") -> ScaleResult:
+    """Score the boundary answers under numeric [0,1] and A-E scales.
+
+    Uses boundary (partial) answers because the ceiling saturates on both
+    scales and would hide any divergence. Correctness only - it is the
+    metric with a second-scale prompt.
+    """
+    answers = _truncated_references(cases)
+    threshold = _METRIC_THRESHOLDS[metric]
+    numeric = [
+        await correctness_async(c.question, a, c.reference_answer)
+        for c, a in zip(cases, answers, strict=True)
+    ]
+    letter = [
+        await correctness_letter_async(c.question, a, c.reference_answer)
+        for c, a in zip(cases, answers, strict=True)
+    ]
+    return scale_stats(numeric, letter, threshold, metric)
+
+
 async def run_audit(
     cases: list[GoldenCase] | None = None,
     probes: tuple[str, ...] = ("ceiling", "boundary", "discrimination"),
     retest: int = 0,
+    scales: bool = False,
 ) -> AuditReport:
     """Run the judge audit over the golden set.
 
@@ -423,6 +484,15 @@ async def run_audit(
             report.stability[-1].max_within_case_range,
             report.stability[-1].n_unstable_cases,
         )
+
+    if scales:
+        report.scales.append(await run_scale_check(cases, "correctness"))
+        logger.info(
+            "audit scale/correctness: mean divergence %.3f (signed %+.3f), flips %.0f%%",
+            report.scales[-1].mean_abs_divergence,
+            report.scales[-1].signed_mean_divergence,
+            report.scales[-1].flip_rate * 100,
+        )
     return report
 
 
@@ -487,6 +557,23 @@ def render_markdown(report: AuditReport) -> str:
                 f"| {st.max_within_case_range:.3f} | {st.n_unstable_cases}/{st.n_cases} |"
             )
         lines.append("")
+    if report.scales:
+        lines.append("## scale-format sensitivity")
+        lines.append("")
+        lines.append(
+            "Same answers scored on a numeric [0,1] scale and an A-E letter "
+            "scale. A consistent judge grades the same either way; divergence "
+            "is a scale artifact. Signed = letter minus numeric."
+        )
+        lines.append("")
+        lines.append("| Metric | n | Mean abs divergence | Signed divergence | Flip rate |")
+        lines.append("|---|---|---|---|---|")
+        for sc in report.scales:
+            lines.append(
+                f"| {sc.metric} | {sc.n_cases} | {sc.mean_abs_divergence:.3f} "
+                f"| {sc.signed_mean_divergence:+.3f} | {sc.flip_rate:.0%} |"
+            )
+        lines.append("")
     return "\n".join(lines)
 
 
@@ -514,6 +601,7 @@ def write_report(report: AuditReport, out_dir: Path | None = None) -> Path:
             for r in report.probes
         ],
         "stability": [vars(st) for st in report.stability],
+        "scales": [vars(sc) for sc in report.scales],
     }
     (out_dir / f"{stem}.json").write_text(json.dumps(payload, indent=2))
     return md_path
@@ -523,6 +611,7 @@ def run_audit_sync(
     cases: list[GoldenCase] | None = None,
     probes: tuple[str, ...] = ("ceiling", "boundary", "discrimination"),
     retest: int = 0,
+    scales: bool = False,
 ) -> AuditReport:
     """Sync facade for the CLI."""
-    return asyncio.run(run_audit(cases=cases, probes=probes, retest=retest))
+    return asyncio.run(run_audit(cases=cases, probes=probes, retest=retest, scales=scales))

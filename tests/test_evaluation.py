@@ -7,9 +7,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from rag_harness.evaluation.metrics import (
+    _parse_letter,
     answer_relevancy,
     context_precision,
     context_recall,
+    correctness_letter_async,
 )
 from rag_harness.evaluation.runner import (
     _percentile,
@@ -250,6 +252,25 @@ def _mock_llm_score(score: str) -> MagicMock:
     resp.usage = MagicMock(prompt_tokens=50, completion_tokens=3)
     client.chat.completions.create = AsyncMock(return_value=resp)
     return client
+
+
+def test_parse_letter_maps_grades() -> None:
+    assert _parse_letter("A") == 1.0
+    assert _parse_letter("B") == 0.75
+    assert _parse_letter("C") == 0.5
+    assert _parse_letter("D") == 0.25
+    assert _parse_letter("E") == 0.0
+    assert _parse_letter(" b ") == 0.75  # tolerant of whitespace/case
+    assert _parse_letter("Grade: A") == 0.0  # not a bare letter -> default
+
+
+@pytest.mark.asyncio
+async def test_correctness_letter_scores_via_letter_prompt() -> None:
+    with patch("rag_harness.evaluation.metrics._client", _mock_llm_score("B")):
+        score = await correctness_letter_async(
+            "What is a Pod?", "A pod runs containers.", "A pod is a group of containers."
+        )
+    assert score == 0.75
 
 
 def test_answer_relevancy_parses_score() -> None:

@@ -20,6 +20,7 @@ from rag_harness.evaluation.judge_audit import (
     prompt_hash,
     render_markdown,
     run_audit,
+    scale_stats,
     score_shift_stats,
     stability_stats,
     truncate_half,
@@ -206,6 +207,64 @@ async def test_run_audit_no_retest_by_default() -> None:
     with patch("rag_harness.evaluation.judge_audit._score_case", side_effect=fake_score):
         report = await run_audit(cases=cases, probes=("boundary",))
     assert report.stability == []
+    assert report.scales == []
+
+
+# --- Scale-format sensitivity --------------------------------------------
+
+
+def test_scale_stats_agreement() -> None:
+    stats = scale_stats([0.75, 0.5], [0.75, 0.5], threshold=0.7, metric="correctness")
+    assert stats.mean_abs_divergence == 0.0
+    assert stats.signed_mean_divergence == 0.0
+    assert stats.flip_rate == 0.0
+
+
+def test_scale_stats_divergence_and_flips() -> None:
+    # case 1: numeric 0.6 (fail) vs letter 0.75 (pass) -> flip
+    # case 2: numeric 0.9 vs letter 0.75, both pass -> no flip
+    stats = scale_stats([0.6, 0.9], [0.75, 0.75], threshold=0.7, metric="correctness")
+    assert stats.mean_abs_divergence == pytest.approx((0.15 + 0.15) / 2)
+    assert stats.signed_mean_divergence == pytest.approx((0.15 - 0.15) / 2)
+    assert stats.flip_rate == pytest.approx(0.5)
+
+
+def test_scale_stats_rejects_bad_input() -> None:
+    with pytest.raises(ValueError):
+        scale_stats([0.5], [0.5, 0.6], threshold=0.7, metric="correctness")
+    with pytest.raises(ValueError):
+        scale_stats([], [], threshold=0.7, metric="correctness")
+
+
+@pytest.mark.asyncio
+async def test_run_audit_scales_uses_both_scorers() -> None:
+    cases = [
+        GoldenCase(id="t-1", question="q1", reference_answer=_ANSWER, relevant_doc_ids=[]),
+    ]
+
+    async def fake_score(metric: str, case: GoldenCase, answer: str) -> float:
+        return 0.7
+
+    async def fake_numeric(q: str, a: str, ref: str) -> float:
+        return 0.6
+
+    async def fake_letter(q: str, a: str, ref: str) -> float:
+        return 0.75
+
+    with (
+        patch("rag_harness.evaluation.judge_audit._score_case", side_effect=fake_score),
+        patch("rag_harness.evaluation.judge_audit.correctness_async", side_effect=fake_numeric),
+        patch(
+            "rag_harness.evaluation.judge_audit.correctness_letter_async",
+            side_effect=fake_letter,
+        ),
+    ):
+        report = await run_audit(cases=cases, probes=("boundary",), scales=True)
+
+    assert len(report.scales) == 1
+    sc = report.scales[0]
+    assert sc.mean_abs_divergence == pytest.approx(0.15)
+    assert sc.signed_mean_divergence == pytest.approx(0.15)  # letter ran higher
 
 
 # --- Cohen's kappa -------------------------------------------------------

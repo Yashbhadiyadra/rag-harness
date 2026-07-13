@@ -146,7 +146,7 @@ def _cmd_judge_audit(args: argparse.Namespace) -> None:
     if args.judge_model:
         settings.generation_model = args.judge_model
 
-    report = run_audit_sync(retest=args.retest)
+    report = run_audit_sync(retest=args.retest, scales=args.scales)
     md_path = write_report(report, out_dir=Path(args.output_dir))
 
     print("\nJudge reliability audit (ADR-0014)")
@@ -169,6 +169,12 @@ def _cmd_judge_audit(args: argparse.Namespace) -> None:
             f"\n  test-retest · {st.metric} (x{st.repeats}) - mean variance "
             f"{st.mean_variance:.4f}, max range {st.max_within_case_range:.3f}, "
             f"{st.n_unstable_cases}/{st.n_cases} unstable"
+        )
+    for sc in report.scales:
+        print(
+            f"\n  scale-format · {sc.metric} - mean divergence "
+            f"{sc.mean_abs_divergence:.3f} (signed {sc.signed_mean_divergence:+.3f}), "
+            f"flips {sc.flip_rate:.0%}"
         )
     print(f"\nReport written to {md_path}")
 
@@ -338,6 +344,15 @@ def main() -> None:
             "Run a test-retest stability pass: judge the boundary answers N "
             "times with the cache off and report score variance. N>=2. "
             "Default 0 (skip). Costs N uncached judge calls per case."
+        ),
+    )
+    judge_audit_p.add_argument(
+        "--scales",
+        action="store_true",
+        help=(
+            "Run the scale-format sensitivity check: score the boundary "
+            "answers on a numeric [0,1] and an A-E letter scale and report "
+            "their divergence (ADR-0014)."
         ),
     )
 
