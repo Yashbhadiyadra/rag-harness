@@ -82,3 +82,22 @@ it before baselines exist would be measurement theater.
 - Future judge-model comparisons (the reliability x cost selection
   matrix) reuse this machinery unchanged: run the audit under each
   candidate model, compare reports.
+
+## First measurement (2026-07-13) and known limitation
+
+First run (gpt-4o-mini, 30 cases, commit 377a3de): base mean 1.000 on
+both metrics, zero shift and zero flips under all four perturbations.
+Two readings, both recorded:
+
+1. The production judge is perfectly calibrated on self-comparison and
+   format-invariant on this probe - a real baseline worth publishing.
+2. The probe has a ceiling effect. Reference-vs-itself is the easiest
+   possible judging task; scores saturate at 1.0, far from the gate
+   thresholds where formatting flips would materialize. Literature
+   findings of format sensitivity concern borderline answers.
+
+Follow-up (same milestone, before the public report): add a
+degraded-answer probe - deterministically truncated references that
+score in the 0.5-0.8 band - and measure perturbation shifts there,
+where the gate actually operates. A judge that is format-invariant at
+the ceiling may still flip verdicts at the boundary.
