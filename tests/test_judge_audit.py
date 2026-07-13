@@ -16,6 +16,7 @@ from rag_harness.evaluation.judge_audit import (
     ProbeResult,
     ShiftStats,
     cohens_kappa,
+    cross_pair_answers,
     prompt_hash,
     render_markdown,
     run_audit,
@@ -74,6 +75,20 @@ def test_truncate_half_single_sentence_keeps_it() -> None:
 def test_truncate_half_is_deterministic_and_strictly_shorter() -> None:
     assert truncate_half(_ANSWER) == truncate_half(_ANSWER)
     assert len(truncate_half(_ANSWER)) < len(_ANSWER)
+
+
+def test_cross_pair_answers_rotates_references() -> None:
+    cases = [
+        GoldenCase(id=f"t-{i}", question=f"q{i}", reference_answer=f"ref{i}", relevant_doc_ids=[])
+        for i in range(3)
+    ]
+    assert cross_pair_answers(cases) == ["ref1", "ref2", "ref0"]
+
+
+def test_cross_pair_answers_needs_two_cases() -> None:
+    only = [GoldenCase(id="t", question="q", reference_answer="r", relevant_doc_ids=[])]
+    with pytest.raises(ValueError):
+        cross_pair_answers(only)
 
 
 # --- Shift statistics ----------------------------------------------------
@@ -162,6 +177,7 @@ def _make_report() -> AuditReport:
                 probe="boundary",
                 metric="correctness",
                 base_mean=0.95,
+                base_pass_rate=0.5,
                 shifts=[
                     ShiftStats(
                         perturbation="code_fence",
@@ -184,7 +200,7 @@ def test_render_markdown_contains_provenance_and_stats() -> None:
     assert "code_fence" in md
     assert "boundary · correctness" in md
     assert "0.950" in md
-    assert "50%" in md
+    assert "pass rate at gate: **50%**" in md
 
 
 def test_write_report_creates_md_and_json(tmp_path: Path) -> None:
@@ -247,3 +263,26 @@ async def test_run_audit_boundary_probe_judges_truncated_answers() -> None:
     # every perturbed variant derives from the truncated answer, not the full one
     assert all("They wrap" not in a for a in seen_answers)
     assert [r.metric for r in report.probes] == ["correctness"]
+    # 0.75 sits below the 0.80 correctness gate - nothing passes
+    assert report.probes[0].base_pass_rate == 0.0
+
+
+@pytest.mark.asyncio
+async def test_run_audit_discrimination_probe_reports_false_accept_rate() -> None:
+    cases = [
+        GoldenCase(id="t-1", question="q1", reference_answer="About pods.", relevant_doc_ids=[]),
+        GoldenCase(id="t-2", question="q2", reference_answer="About rbac.", relevant_doc_ids=[]),
+    ]
+
+    async def fake_score(metric: str, case: GoldenCase, answer: str) -> float:
+        # A discriminating judge: low score when the answer is the other
+        # case's reference, regardless of formatting.
+        return 0.1 if case.reference_answer.split()[1] not in answer else 1.0
+
+    with patch("rag_harness.evaluation.judge_audit._score_case", side_effect=fake_score):
+        report = await run_audit(cases=cases, probes=("discrimination",))
+
+    result = report.probes[0]
+    assert result.probe == "discrimination"
+    assert result.base_mean == pytest.approx(0.1)
+    assert result.base_pass_rate == 0.0  # no wrong answer passed the gate

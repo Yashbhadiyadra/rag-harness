@@ -150,7 +150,7 @@ def _current_git_commit() -> str:
         return "unknown"
 
 
-# --- Degradation (the boundary probe's answer builder) -------------------
+# --- Probe answer builders ------------------------------------------------
 
 
 def truncate_half(text: str) -> str:
@@ -166,6 +166,22 @@ def truncate_half(text: str) -> str:
     return kept if kept.endswith(".") else kept + "."
 
 
+def cross_pair_answers(cases: list[GoldenCase]) -> list[str]:
+    """Answer case i with case i+1's reference (wrapping) - guaranteed wrong.
+
+    The discrimination probe's builder (JRH's "label-flip grading
+    accuracy", arXiv:2603.05399): each answer is fluent, on-domain
+    Kubernetes prose - but for a different question. A discriminating
+    correctness judge must score these low; the fraction it passes at the
+    gate is the false-accept rate. Deterministic by construction, and the
+    hardest fair negative available without generating text: same corpus,
+    same register, same style as real answers.
+    """
+    if len(cases) < 2:
+        raise ValueError("discrimination probe needs at least 2 cases to cross-pair")
+    return [cases[(i + 1) % len(cases)].reference_answer for i in range(len(cases))]
+
+
 # --- Audit runner --------------------------------------------------------
 
 
@@ -173,9 +189,10 @@ def truncate_half(text: str) -> str:
 class ProbeResult:
     """Shift statistics for one (probe, metric) pair."""
 
-    probe: str  # "ceiling" | "boundary"
+    probe: str  # "ceiling" | "boundary" | "discrimination"
     metric: str
     base_mean: float  # mean unperturbed score under this probe
+    base_pass_rate: float  # fraction of unperturbed scores at/above the gate
     shifts: list[ShiftStats] = field(default_factory=list)
 
 
@@ -206,7 +223,8 @@ _METRIC_THRESHOLDS: dict[str, float] = {
     "answer_relevancy": settings.rbi_relevancy_min,
 }
 
-# Probe -> (answer builder, metrics it can honestly test).
+
+# Probe -> (answers builder over the case list, metrics it can honestly test).
 #
 # ceiling: the reference itself - calibration check; scores saturate at
 #   1.0, so shifts here understate boundary behavior (ADR-0014 first run).
@@ -215,22 +233,38 @@ _METRIC_THRESHOLDS: dict[str, float] = {
 #   Truncation degrades completeness, not topicality, so relevancy is
 #   excluded: its boundary scores would still sit at the ceiling and the
 #   probe would prove nothing.
-_PROBES: dict[str, tuple[Callable[[str], str], tuple[str, ...]]] = {
-    "ceiling": (lambda text: text, ("correctness", "answer_relevancy")),
-    "boundary": (truncate_half, ("correctness",)),
+# discrimination: another case's reference - fluent, on-domain, wrong.
+#   base_pass_rate here IS the false-accept rate; a judge that never
+#   fails anything sails through ceiling and boundary but is exposed
+#   here. Correctness-only: a cross-paired answer is still topical prose,
+#   just for the wrong question, so relevancy is measured incidentally
+#   low-signal and excluded.
+def _references(cases: list[GoldenCase]) -> list[str]:
+    return [c.reference_answer for c in cases]
+
+
+def _truncated_references(cases: list[GoldenCase]) -> list[str]:
+    return [truncate_half(c.reference_answer) for c in cases]
+
+
+_PROBES: dict[str, tuple[Callable[[list[GoldenCase]], list[str]], tuple[str, ...]]] = {
+    "ceiling": (_references, ("correctness", "answer_relevancy")),
+    "boundary": (_truncated_references, ("correctness",)),
+    "discrimination": (cross_pair_answers, ("correctness",)),
 }
 
 
 async def run_audit(
     cases: list[GoldenCase] | None = None,
-    probes: tuple[str, ...] = ("ceiling", "boundary"),
+    probes: tuple[str, ...] = ("ceiling", "boundary", "discrimination"),
 ) -> AuditReport:
-    """Run the format-invariance audit over the golden set.
+    """Run the judge audit over the golden set.
 
-    For each probe, build the base answer (reference as-is, or degraded),
-    judge it, then judge each format-perturbed variant. Perturbations are
-    meaning-preserving, so any shift is pure format sensitivity; the
-    boundary probe measures it where the gate actually operates.
+    For each probe, build the base answers (reference as-is, degraded, or
+    cross-paired wrong), judge them, then judge each format-perturbed
+    variant. Perturbations are meaning-preserving, so shifts are pure
+    format sensitivity; the discrimination probe additionally reports
+    whether formatting can rescue a wrong answer past the gate.
     """
     if cases is None:
         cases = load_golden_cases()
@@ -246,10 +280,10 @@ async def run_audit(
     )
 
     for probe in probes:
-        answer_fn, metrics = _PROBES[probe]
+        answers_fn, metrics = _PROBES[probe]
+        base_answers = answers_fn(cases)
         for metric in metrics:
             threshold = _METRIC_THRESHOLDS[metric]
-            base_answers = [answer_fn(c.reference_answer) for c in cases]
             base_scores = [
                 await _score_case(metric, c, a) for c, a in zip(cases, base_answers, strict=True)
             ]
@@ -257,6 +291,7 @@ async def run_audit(
                 probe=probe,
                 metric=metric,
                 base_mean=sum(base_scores) / len(base_scores),
+                base_pass_rate=sum(1 for s in base_scores if s >= threshold) / len(base_scores),
             )
             for name, perturb in PERTURBATIONS.items():
                 perturbed_scores = [
@@ -294,14 +329,19 @@ def render_markdown(report: AuditReport) -> str:
         "Probes: **ceiling** judges the reference answer as-is (calibration",
         "check; ~1.0 expected). **boundary** judges the half-truncated",
         "reference - a partial answer scoring near the gate, where",
-        "format-induced verdict flips are possible. Perturbations are",
-        "meaning-preserving; any shift is pure format sensitivity.",
+        "format-induced verdict flips are possible. **discrimination**",
+        "judges another case's reference - fluent, on-domain, wrong; its",
+        "base pass rate is the judge's false-accept rate and should be ~0%.",
+        "Perturbations are meaning-preserving; shifts are format sensitivity.",
         "",
     ]
     for result in report.probes:
         lines.append(f"## {result.probe} · {result.metric}")
         lines.append("")
-        lines.append(f"Base mean score: **{result.base_mean:.3f}**")
+        lines.append(
+            f"Base mean score: **{result.base_mean:.3f}** · "
+            f"base pass rate at gate: **{result.base_pass_rate:.0%}**"
+        )
         lines.append("")
         lines.append("| Perturbation | n | Mean abs shift | Max abs shift | Flip rate |")
         lines.append("|---|---|---|---|---|")
@@ -332,6 +372,7 @@ def write_report(report: AuditReport, out_dir: Path | None = None) -> Path:
                 "probe": r.probe,
                 "metric": r.metric,
                 "base_mean": r.base_mean,
+                "base_pass_rate": r.base_pass_rate,
                 "shifts": [vars(s) for s in r.shifts],
             }
             for r in report.probes
@@ -343,7 +384,7 @@ def write_report(report: AuditReport, out_dir: Path | None = None) -> Path:
 
 def run_audit_sync(
     cases: list[GoldenCase] | None = None,
-    probes: tuple[str, ...] = ("ceiling", "boundary"),
+    probes: tuple[str, ...] = ("ceiling", "boundary", "discrimination"),
 ) -> AuditReport:
     """Sync facade for the CLI."""
     return asyncio.run(run_audit(cases=cases, probes=probes))

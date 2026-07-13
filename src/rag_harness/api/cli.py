@@ -140,6 +140,12 @@ def _cmd_judge_audit(args: argparse.Namespace) -> None:
     if not args.no_cache:
         settings.llm_cache_enabled = True
 
+    # Judge-model override for the selection matrix (ADR-0014): audits of
+    # candidate judges run in their own process, so a process-local settings
+    # override is safe - cache keys and usage records both carry the model id.
+    if args.judge_model:
+        settings.generation_model = args.judge_model
+
     report = run_audit_sync()
     md_path = write_report(report, out_dir=Path(args.output_dir))
 
@@ -148,7 +154,10 @@ def _cmd_judge_audit(args: argparse.Namespace) -> None:
     print(f"  Judge model  : {report.judge_model}")
     print(f"  Golden cases : {report.n_cases}")
     for result in report.probes:
-        print(f"\n  {result.probe} · {result.metric} - base mean {result.base_mean:.3f}")
+        print(
+            f"\n  {result.probe} · {result.metric} - base mean {result.base_mean:.3f}"
+            f", pass rate {result.base_pass_rate:.0%}"
+        )
         for s in result.shifts:
             print(
                 f"    {s.perturbation:<12} mean shift {s.mean_abs_shift:.3f}"
@@ -303,6 +312,15 @@ def main() -> None:
         "--no-cache",
         action="store_true",
         help="Disable the LLM judge cache (default: on for audit runs).",
+    )
+    judge_audit_p.add_argument(
+        "--judge-model",
+        default=None,
+        metavar="MODEL",
+        help=(
+            "Audit a candidate judge model instead of GENERATION_MODEL "
+            "(judge selection matrix, ADR-0014). E.g. gpt-4o."
+        ),
     )
 
     # Golden-set management: currently one action (review). Uses nested
