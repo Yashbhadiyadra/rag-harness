@@ -29,6 +29,7 @@ from rag_harness.api.metrics import (
 )
 from rag_harness.api.middleware.daily_cap import DailyCapMiddleware
 from rag_harness.api.middleware.kill_switch import KillSwitchMiddleware
+from rag_harness.api.middleware.security_headers import SecurityHeadersMiddleware
 from rag_harness.config import settings
 from rag_harness.generation.corrective import NO_INFO_MESSAGE, corrective_generate_async
 from rag_harness.generation.generator import generate_async
@@ -55,11 +56,16 @@ async def _lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     yield
 
 
+# /docs stays enabled deliberately: the repo is public, so the OpenAPI
+# schema reveals nothing an attacker cannot read in source, and the
+# interactive docs showcase the API. /redoc is dropped as an unused
+# duplicate surface - one documented interface is enough to maintain.
 app = FastAPI(
     title="RAG Harness",
     description="Reliability-first RAG over Kubernetes documentation.",
     version="0.1.0",
     lifespan=_lifespan,
+    redoc_url=None,
 )
 
 # Rate limiting: per-IP by default. See settings.api_rate_limit
@@ -75,10 +81,13 @@ app.add_middleware(SlowAPIMiddleware)
 # app.state so tests can reach it via `app.state.daily_budget.reset()`.
 #
 # Middleware add order matters: the LAST middleware added runs FIRST on
-# the inbound path. Order below = kill switch → daily cap → slowapi.
+# the inbound path. Order below = security headers → kill switch →
+# daily cap → slowapi. Security headers outermost so every response -
+# including kill-switch and rate-limit rejections - carries them.
 app.state.daily_budget = DailyBudget(cap=settings.demo_daily_request_cap)
 app.add_middleware(DailyCapMiddleware, budget=app.state.daily_budget)
 app.add_middleware(KillSwitchMiddleware)
+app.add_middleware(SecurityHeadersMiddleware)
 
 
 @app.exception_handler(RagHarnessError)
