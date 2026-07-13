@@ -146,3 +146,26 @@ noisy only in the middle (10-13% flips near the gate). The middle is
 where pipeline outputs live, which is why the bootstrap CIs stay
 mandatory. This is the shape of the public judge report: three probes,
 three numbers, one honest conclusion.
+
+## Fourth measurement (2026-07-13): verbosity-bias probe
+
+The classic LLM-judge failure is verbosity bias: rewarding longer
+answers over substance. The probe appends deterministic content-free
+filler (hedging prose that adds zero correct information) to the
+boundary and discrimination answers and reports the *signed* mean
+shift - positive would mean the padding inflated the score.
+
+Result on the boundary probe (gpt-4o-mini, 30 cases): signed shift
+**-0.180**, with 23% of gate verdicts flipping - almost all
+*downward*. The production judge is not verbosity-biased; it does the
+opposite, penalising a partial answer that gets padded with fluff
+(the filler dilutes the on-point content and reads as non-answer).
+On discrimination answers the effect is negligible (-0.013). To make
+the direction legible, `ShiftStats` now carries `signed_mean_shift`
+alongside the absolute magnitude.
+
+This is a genuinely good property worth publishing: the gate cannot be
+gamed by padding. It also sharpens the boundary caution - verbose_pad
+is the single largest perturbation (0.180 mean shift vs 0.03-0.07 for
+formatting), so answer length near the threshold moves scores far more
+than cosmetic formatting does.
