@@ -384,6 +384,9 @@ All non-trivial decisions are captured as Architecture Decision Records in
 - [ADR-0008](docs/adr/ADR-0008-observability-usage-tracking.md): ContextVar collector for token usage
 - [ADR-0009](docs/adr/ADR-0009-tracing-backend.md): Arize Phoenix for per-stage tracing
 - [ADR-0010](docs/adr/ADR-0010-cloud-run-and-persistence.md): Cloud Run, scale-to-zero, baked Chroma index, cost guardrails
+- [ADR-0011](docs/adr/ADR-0011-statistical-significance.md): Statistical significance for ablation comparisons
+- [ADR-0012](docs/adr/ADR-0012-golden-set-expansion.md): Golden-set expansion pipeline
+- [ADR-0013](docs/adr/ADR-0013-api-security-hardening.md): API security hardening baseline
 
 ## Research foundations
 
@@ -394,6 +397,36 @@ The retrieval and evaluation design draws on:
 - **HyDE (Gao et al. 2022)**: Precise Zero-Shot Dense Retrieval without Relevance Labels
 - **MS MARCO cross-encoders**: retrieve-then-rerank two-stage pattern
 - **CRAG (Yan et al. 2024)**: critic-and-retry loop
+
+## Security
+
+Secure by default: the service ships with its protections on, and
+weakening any of them requires an explicit opt-out in configuration.
+See [ADR-0013](docs/adr/ADR-0013-api-security-hardening.md).
+
+- **Data boundary.** The only data that leaves the service is the user
+  question plus the retrieved documentation chunks, sent to the LLM
+  API to generate the answer. No accounts, no analytics, no other
+  third parties.
+- **Logging.** Query text is never logged in full; warning-path log
+  events carry at most a 60-character prefix. `/metrics` exposes
+  aggregate counters only (request totals, token counts, cost sums).
+- **Abuse protection.** Per-IP rate limiting (`API_RATE_LIMIT`), a
+  global daily request cap (`DEMO_DAILY_REQUEST_CAP`), an emergency
+  kill switch (`DEMO_ENABLED=false`), bounded question length, and
+  capped `top_k`.
+- **Injection screening.** Requests matching common prompt-injection
+  patterns are rejected at the boundary; generation runs with a
+  context-only prompt. This is a hygiene layer, not a guarantee - see
+  `api/guardrails.py` for the honest scope.
+- **Response headers.** Strict same-origin CSP, `nosniff`,
+  `X-Frame-Options: DENY`, HSTS, and `Referrer-Policy: no-referrer`
+  on every response.
+- **Supply chain.** Dependencies are scanned with `pip-audit` in CI;
+  the documentation corpus is pinned to an immutable commit whose SHA
+  is verified at ingest and recorded per chunk.
+- **Secrets.** Keys live only in the git-ignored `.env`;
+  `.env.example` documents every variable with placeholders.
 
 ## Development
 
