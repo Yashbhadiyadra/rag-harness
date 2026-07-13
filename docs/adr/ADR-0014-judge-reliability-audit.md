@@ -101,3 +101,27 @@ degraded-answer probe - deterministically truncated references that
 score in the 0.5-0.8 band - and measure perturbation shifts there,
 where the gate actually operates. A judge that is format-invariant at
 the ceiling may still flip verdicts at the boundary.
+
+## Second measurement (2026-07-13): the boundary probe confirms it
+
+Same judge, same 30 cases, references truncated to half their
+sentences (commit 2d757ad). Base mean 0.740 - the probe landed where
+intended, near the 0.80 gate. Results:
+
+| Perturbation | Mean shift | Max shift | Verdict flips |
+|---|---|---|---|
+| code_fence | 0.042 | 0.250 | 10% |
+| bullets | 0.037 | 0.250 | 10% |
+| whitespace | 0.067 | 0.300 | 10% |
+| bold_lead | 0.035 | 0.250 | 13% |
+
+The same judge that was perfectly format-invariant at the ceiling
+flips 10-13% of gate verdicts at the boundary on formatting alone,
+with individual scores moving up to 0.30. This reproduces the
+literature's core claim (arXiv:2603.05399) on our own golden set and
+quantifies the trust radius of any single-score gate decision:
+near-threshold verdicts carry roughly a ±0.07 formatting noise floor
+and a one-in-ten flip risk. Consequences for the eval layer: gate
+comparisons near the threshold should not be read as significant
+without the bootstrap CIs (ADR-0011), and the public judge report has
+its headline number.

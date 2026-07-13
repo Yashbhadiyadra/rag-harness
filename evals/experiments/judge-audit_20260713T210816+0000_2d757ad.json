@@ -1,0 +1,117 @@
+{
+  "judge_model": "gpt-4o-mini",
+  "commit": "2d757ad",
+  "timestamp": "20260713T210816+0000",
+  "n_cases": 30,
+  "prompt_hashes": {
+    "correctness": "0efa46ebdf04",
+    "answer_relevancy": "8609cb412420"
+  },
+  "probes": [
+    {
+      "probe": "ceiling",
+      "metric": "correctness",
+      "base_mean": 1.0,
+      "shifts": [
+        {
+          "perturbation": "code_fence",
+          "n": 30,
+          "mean_abs_shift": 0.0,
+          "max_abs_shift": 0.0,
+          "flip_rate": 0.0
+        },
+        {
+          "perturbation": "bullets",
+          "n": 30,
+          "mean_abs_shift": 0.0,
+          "max_abs_shift": 0.0,
+          "flip_rate": 0.0
+        },
+        {
+          "perturbation": "whitespace",
+          "n": 30,
+          "mean_abs_shift": 0.0,
+          "max_abs_shift": 0.0,
+          "flip_rate": 0.0
+        },
+        {
+          "perturbation": "bold_lead",
+          "n": 30,
+          "mean_abs_shift": 0.0,
+          "max_abs_shift": 0.0,
+          "flip_rate": 0.0
+        }
+      ]
+    },
+    {
+      "probe": "ceiling",
+      "metric": "answer_relevancy",
+      "base_mean": 1.0,
+      "shifts": [
+        {
+          "perturbation": "code_fence",
+          "n": 30,
+          "mean_abs_shift": 0.0,
+          "max_abs_shift": 0.0,
+          "flip_rate": 0.0
+        },
+        {
+          "perturbation": "bullets",
+          "n": 30,
+          "mean_abs_shift": 0.0,
+          "max_abs_shift": 0.0,
+          "flip_rate": 0.0
+        },
+        {
+          "perturbation": "whitespace",
+          "n": 30,
+          "mean_abs_shift": 0.0,
+          "max_abs_shift": 0.0,
+          "flip_rate": 0.0
+        },
+        {
+          "perturbation": "bold_lead",
+          "n": 30,
+          "mean_abs_shift": 0.0,
+          "max_abs_shift": 0.0,
+          "flip_rate": 0.0
+        }
+      ]
+    },
+    {
+      "probe": "boundary",
+      "metric": "correctness",
+      "base_mean": 0.74,
+      "shifts": [
+        {
+          "perturbation": "code_fence",
+          "n": 30,
+          "mean_abs_shift": 0.041666666666666664,
+          "max_abs_shift": 0.25,
+          "flip_rate": 0.1
+        },
+        {
+          "perturbation": "bullets",
+          "n": 30,
+          "mean_abs_shift": 0.03666666666666667,
+          "max_abs_shift": 0.25,
+          "flip_rate": 0.1
+        },
+        {
+          "perturbation": "whitespace",
+          "n": 30,
+          "mean_abs_shift": 0.06666666666666667,
+          "max_abs_shift": 0.3,
+          "flip_rate": 0.1
+        },
+        {
+          "perturbation": "bold_lead",
+          "n": 30,
+          "mean_abs_shift": 0.035,
+          "max_abs_shift": 0.25,
+          "flip_rate": 0.13333333333333333
+        }
+      ]
+    }
+  ]
+}
