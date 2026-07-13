@@ -130,6 +130,33 @@ def _cmd_eval(args: argparse.Namespace) -> None:
         sys.exit(1)
 
 
+def _cmd_judge_audit(args: argparse.Namespace) -> None:
+    from pathlib import Path
+
+    from rag_harness.evaluation.judge_audit import run_audit_sync, write_report
+
+    # Same reasoning as ablation: the audit re-scores identical inputs
+    # across runs, so the judge cache makes reruns effectively free.
+    if not args.no_cache:
+        settings.llm_cache_enabled = True
+
+    report = run_audit_sync()
+    md_path = write_report(report, out_dir=Path(args.output_dir))
+
+    print("\nJudge reliability audit (ADR-0014)")
+    print("=" * 56)
+    print(f"  Judge model  : {report.judge_model}")
+    print(f"  Golden cases : {report.n_cases}")
+    for metric, stats in report.shifts.items():
+        print(f"\n  {metric} - base mean {report.base_mean[metric]:.3f}")
+        for s in stats:
+            print(
+                f"    {s.perturbation:<12} mean shift {s.mean_abs_shift:.3f}"
+                f"  max {s.max_abs_shift:.3f}  flips {s.flip_rate:.0%}"
+            )
+    print(f"\nReport written to {md_path}")
+
+
 def _cmd_ablation(args: argparse.Namespace) -> None:
     from pathlib import Path
 
@@ -263,6 +290,21 @@ def main() -> None:
         help="Disable the LLM judge cache (default: on for ablation runs).",
     )
 
+    judge_audit_p = sub.add_parser(
+        "judge-audit",
+        help="Audit the LLM judges' format sensitivity against the golden set (ADR-0014).",
+    )
+    judge_audit_p.add_argument(
+        "--output-dir",
+        default="evals/experiments",
+        help="Directory to write judge-audit_<ts>_<sha>.{md,json} into (default: %(default)s).",
+    )
+    judge_audit_p.add_argument(
+        "--no-cache",
+        action="store_true",
+        help="Disable the LLM judge cache (default: on for audit runs).",
+    )
+
     # Golden-set management: currently one action (review). Uses nested
     # subparsers so future actions (e.g., `golden validate`, `golden stats`)
     # slot in without renaming existing commands.
@@ -289,6 +331,7 @@ def main() -> None:
         "query": _cmd_query,
         "eval": _cmd_eval,
         "ablation": _cmd_ablation,
+        "judge-audit": _cmd_judge_audit,
     }[args.command](args)
 
 
