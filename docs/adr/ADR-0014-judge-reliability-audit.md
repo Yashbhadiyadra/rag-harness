@@ -125,3 +125,24 @@ and a one-in-ten flip risk. Consequences for the eval layer: gate
 comparisons near the threshold should not be read as significant
 without the bootstrap CIs (ADR-0011), and the public judge report has
 its headline number.
+
+## Third measurement (2026-07-13): discrimination probe
+
+Format noise alone cannot certify a judge - a judge that passes
+everything also shows zero flips. The discrimination probe (JRH's
+label-flip accuracy) cross-pairs each question with another case's
+reference: fluent, on-domain, wrong by construction. Results
+(gpt-4o-mini, 30 cases, commit b787f0a):
+
+- Base mean 0.027, **false-accept rate 0%** - no wrong answer passed
+  the 0.80 gate.
+- Under all four format perturbations: 0% flips - **formatting cannot
+  rescue a wrong answer** (max individual shift 0.30, but never across
+  the gate).
+
+Complete three-probe verdict for the production judge: calibrated at
+the ceiling (1.000), discriminating at the floor (0% false accepts),
+noisy only in the middle (10-13% flips near the gate). The middle is
+where pipeline outputs live, which is why the bootstrap CIs stay
+mandatory. This is the shape of the public judge report: three probes,
+three numbers, one honest conclusion.
