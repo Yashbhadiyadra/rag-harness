@@ -13,12 +13,14 @@ import pytest
 from rag_harness.evaluation.judge_audit import (
     PERTURBATIONS,
     AuditReport,
+    ProbeResult,
     ShiftStats,
     cohens_kappa,
     prompt_hash,
     render_markdown,
     run_audit,
     score_shift_stats,
+    truncate_half,
     write_report,
 )
 from rag_harness.models import GoldenCase
@@ -54,6 +56,24 @@ def test_bullets_one_per_sentence() -> None:
 
 def test_bold_lead_single_sentence_answer() -> None:
     assert PERTURBATIONS["bold_lead"]("One sentence only") == "**One sentence only**"
+
+
+# --- Degradation ---------------------------------------------------------
+
+
+def test_truncate_half_keeps_first_half() -> None:
+    text = "First point. Second point. Third point. Fourth point."
+    result = truncate_half(text)
+    assert result == "First point. Second point."
+
+
+def test_truncate_half_single_sentence_keeps_it() -> None:
+    assert truncate_half("Only sentence here.") == "Only sentence here."
+
+
+def test_truncate_half_is_deterministic_and_strictly_shorter() -> None:
+    assert truncate_half(_ANSWER) == truncate_half(_ANSWER)
+    assert len(truncate_half(_ANSWER)) < len(_ANSWER)
 
 
 # --- Shift statistics ----------------------------------------------------
@@ -137,18 +157,22 @@ def _make_report() -> AuditReport:
         timestamp="20260713T000000+0000",
         n_cases=2,
         prompt_hashes={"correctness": "deadbeef0123"},
-        base_mean={"correctness": 0.95},
-        shifts={
-            "correctness": [
-                ShiftStats(
-                    perturbation="code_fence",
-                    n=2,
-                    mean_abs_shift=0.10,
-                    max_abs_shift=0.20,
-                    flip_rate=0.5,
-                )
-            ]
-        },
+        probes=[
+            ProbeResult(
+                probe="boundary",
+                metric="correctness",
+                base_mean=0.95,
+                shifts=[
+                    ShiftStats(
+                        perturbation="code_fence",
+                        n=2,
+                        mean_abs_shift=0.10,
+                        max_abs_shift=0.20,
+                        flip_rate=0.5,
+                    )
+                ],
+            )
+        ],
     )
 
 
@@ -158,6 +182,7 @@ def test_render_markdown_contains_provenance_and_stats() -> None:
     assert "abc1234" in md
     assert "deadbeef0123" in md
     assert "code_fence" in md
+    assert "boundary · correctness" in md
     assert "0.950" in md
     assert "50%" in md
 
@@ -174,7 +199,7 @@ def test_write_report_creates_md_and_json(tmp_path: Path) -> None:
 
 
 @pytest.mark.asyncio
-async def test_run_audit_scores_base_and_all_perturbations() -> None:
+async def test_run_audit_ceiling_probe_scores_base_and_all_perturbations() -> None:
     cases = [
         GoldenCase(id="t-1", question="q1", reference_answer=_ANSWER, relevant_doc_ids=[]),
         GoldenCase(id="t-2", question="q2", reference_answer=_ANSWER, relevant_doc_ids=[]),
@@ -186,14 +211,39 @@ async def test_run_audit_scores_base_and_all_perturbations() -> None:
         return 1.0 if answer == case.reference_answer else 0.8
 
     with patch("rag_harness.evaluation.judge_audit._score_case", side_effect=fake_score):
-        report = await run_audit(cases=cases, metrics=("correctness",))
+        report = await run_audit(cases=cases, probes=("ceiling",))
 
-    # 2 cases x (1 base + 4 perturbations) = 10 scoring calls
-    assert len(calls) == 10
+    # ceiling covers 2 metrics: 2 cases x (1 base + 4 perturbations) x 2 = 20 calls
+    assert len(calls) == 20
     assert report.n_cases == 2
-    assert report.base_mean["correctness"] == pytest.approx(1.0)
-    stats = report.shifts["correctness"]
-    assert len(stats) == len(PERTURBATIONS)
-    for s in stats:
+    correctness = next(
+        r for r in report.probes if r.probe == "ceiling" and r.metric == "correctness"
+    )
+    assert correctness.base_mean == pytest.approx(1.0)
+    assert len(correctness.shifts) == len(PERTURBATIONS)
+    for s in correctness.shifts:
         assert s.mean_abs_shift == pytest.approx(0.2)
         assert s.flip_rate == 0.0  # 0.8 sits exactly on the 0.80 gate - still a pass
+
+
+@pytest.mark.asyncio
+async def test_run_audit_boundary_probe_judges_truncated_answers() -> None:
+    cases = [
+        GoldenCase(id="t-1", question="q1", reference_answer=_ANSWER, relevant_doc_ids=[]),
+    ]
+    seen_answers: list[str] = []
+
+    async def fake_score(metric: str, case: GoldenCase, answer: str) -> float:
+        seen_answers.append(answer)
+        return 0.75
+
+    with patch("rag_harness.evaluation.judge_audit._score_case", side_effect=fake_score):
+        report = await run_audit(cases=cases, probes=("boundary",))
+
+    # boundary is correctness-only: 1 case x (1 base + 4 perturbations) = 5 calls
+    assert len(seen_answers) == 5
+    truncated = truncate_half(_ANSWER)
+    assert seen_answers[0] == truncated
+    # every perturbed variant derives from the truncated answer, not the full one
+    assert all("They wrap" not in a for a in seen_answers)
+    assert [r.metric for r in report.probes] == ["correctness"]

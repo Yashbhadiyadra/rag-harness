@@ -147,9 +147,9 @@ def _cmd_judge_audit(args: argparse.Namespace) -> None:
     print("=" * 56)
     print(f"  Judge model  : {report.judge_model}")
     print(f"  Golden cases : {report.n_cases}")
-    for metric, stats in report.shifts.items():
-        print(f"\n  {metric} - base mean {report.base_mean[metric]:.3f}")
-        for s in stats:
+    for result in report.probes:
+        print(f"\n  {result.probe} · {result.metric} - base mean {result.base_mean:.3f}")
+        for s in result.shifts:
             print(
                 f"    {s.perturbation:<12} mean shift {s.mean_abs_shift:.3f}"
                 f"  max {s.max_abs_shift:.3f}  flips {s.flip_rate:.0%}"

@@ -150,7 +150,33 @@ def _current_git_commit() -> str:
         return "unknown"
 
 
+# --- Degradation (the boundary probe's answer builder) -------------------
+
+
+def truncate_half(text: str) -> str:
+    """Keep the first half of the sentences (at least one).
+
+    Deterministic degradation: the result is a genuinely partial answer -
+    correct as far as it goes, missing the rest - so its correctness score
+    should land near the reliability gate rather than at the ceiling.
+    """
+    sentences = [s.strip() for s in text.replace("\n", " ").split(". ") if s.strip()]
+    keep = max(1, len(sentences) // 2)
+    kept = ". ".join(sentences[:keep])
+    return kept if kept.endswith(".") else kept + "."
+
+
 # --- Audit runner --------------------------------------------------------
+
+
+@dataclass
+class ProbeResult:
+    """Shift statistics for one (probe, metric) pair."""
+
+    probe: str  # "ceiling" | "boundary"
+    metric: str
+    base_mean: float  # mean unperturbed score under this probe
+    shifts: list[ShiftStats] = field(default_factory=list)
 
 
 @dataclass
@@ -162,8 +188,7 @@ class AuditReport:
     timestamp: str
     n_cases: int
     prompt_hashes: dict[str, str]
-    base_mean: dict[str, float]  # metric -> mean base (unperturbed) score
-    shifts: dict[str, list[ShiftStats]] = field(default_factory=dict)  # metric -> stats
+    probes: list[ProbeResult] = field(default_factory=list)
 
 
 async def _score_case(metric: str, case: GoldenCase, answer: str) -> float:
@@ -181,17 +206,31 @@ _METRIC_THRESHOLDS: dict[str, float] = {
     "answer_relevancy": settings.rbi_relevancy_min,
 }
 
+# Probe -> (answer builder, metrics it can honestly test).
+#
+# ceiling: the reference itself - calibration check; scores saturate at
+#   1.0, so shifts here understate boundary behavior (ADR-0014 first run).
+# boundary: the truncated reference - a partial answer whose correctness
+#   sits near the gate, where format-induced verdict flips are possible.
+#   Truncation degrades completeness, not topicality, so relevancy is
+#   excluded: its boundary scores would still sit at the ceiling and the
+#   probe would prove nothing.
+_PROBES: dict[str, tuple[Callable[[str], str], tuple[str, ...]]] = {
+    "ceiling": (lambda text: text, ("correctness", "answer_relevancy")),
+    "boundary": (truncate_half, ("correctness",)),
+}
+
 
 async def run_audit(
     cases: list[GoldenCase] | None = None,
-    metrics: tuple[str, ...] = ("correctness", "answer_relevancy"),
+    probes: tuple[str, ...] = ("ceiling", "boundary"),
 ) -> AuditReport:
     """Run the format-invariance audit over the golden set.
 
-    For each case the *reference answer itself* is judged (base), then each
-    perturbed variant. Base correctness should be ~1.0 - the reference
-    compared against itself - so both the calibration gap (1.0 - base mean)
-    and the perturbation shifts are diagnostic.
+    For each probe, build the base answer (reference as-is, or degraded),
+    judge it, then judge each format-perturbed variant. Perturbations are
+    meaning-preserving, so any shift is pure format sensitivity; the
+    boundary probe measures it where the gate actually operates.
     """
     if cases is None:
         cases = load_golden_cases()
@@ -204,27 +243,38 @@ async def run_audit(
             "correctness": prompt_hash(_CORRECTNESS_PROMPT),
             "answer_relevancy": prompt_hash(_ANSWER_RELEVANCY_PROMPT),
         },
-        base_mean={},
     )
 
-    for metric in metrics:
-        threshold = _METRIC_THRESHOLDS[metric]
-        base_scores = [await _score_case(metric, c, c.reference_answer) for c in cases]
-        report.base_mean[metric] = sum(base_scores) / len(base_scores)
-        stats: list[ShiftStats] = []
-        for name, perturb in PERTURBATIONS.items():
-            perturbed_scores = [
-                await _score_case(metric, c, perturb(c.reference_answer)) for c in cases
+    for probe in probes:
+        answer_fn, metrics = _PROBES[probe]
+        for metric in metrics:
+            threshold = _METRIC_THRESHOLDS[metric]
+            base_answers = [answer_fn(c.reference_answer) for c in cases]
+            base_scores = [
+                await _score_case(metric, c, a) for c, a in zip(cases, base_answers, strict=True)
             ]
-            stats.append(score_shift_stats(base_scores, perturbed_scores, threshold, name))
-            logger.info(
-                "audit %s/%s: mean shift %.3f, flips %.0f%%",
-                metric,
-                name,
-                stats[-1].mean_abs_shift,
-                stats[-1].flip_rate * 100,
+            result = ProbeResult(
+                probe=probe,
+                metric=metric,
+                base_mean=sum(base_scores) / len(base_scores),
             )
-        report.shifts[metric] = stats
+            for name, perturb in PERTURBATIONS.items():
+                perturbed_scores = [
+                    await _score_case(metric, c, perturb(a))
+                    for c, a in zip(cases, base_answers, strict=True)
+                ]
+                result.shifts.append(
+                    score_shift_stats(base_scores, perturbed_scores, threshold, name)
+                )
+                logger.info(
+                    "audit %s/%s/%s: mean shift %.3f, flips %.0f%%",
+                    probe,
+                    metric,
+                    name,
+                    result.shifts[-1].mean_abs_shift,
+                    result.shifts[-1].flip_rate * 100,
+                )
+            report.probes.append(result)
     return report
 
 
@@ -241,20 +291,21 @@ def render_markdown(report: AuditReport) -> str:
         f"- Golden cases: {report.n_cases}",
         "- Prompt hashes: " + ", ".join(f"{m} `{h}`" for m, h in report.prompt_hashes.items()),
         "",
-        "Base = reference answer judged as-is (a calibrated correctness judge",
-        "returns ~1.0). Perturbations are meaning-preserving; any shift is",
-        "pure format sensitivity. Flip rate = verdicts changed at the gate",
-        "threshold by formatting alone.",
+        "Probes: **ceiling** judges the reference answer as-is (calibration",
+        "check; ~1.0 expected). **boundary** judges the half-truncated",
+        "reference - a partial answer scoring near the gate, where",
+        "format-induced verdict flips are possible. Perturbations are",
+        "meaning-preserving; any shift is pure format sensitivity.",
         "",
     ]
-    for metric, stats in report.shifts.items():
-        lines.append(f"## {metric}")
+    for result in report.probes:
+        lines.append(f"## {result.probe} · {result.metric}")
         lines.append("")
-        lines.append(f"Base mean score: **{report.base_mean[metric]:.3f}**")
+        lines.append(f"Base mean score: **{result.base_mean:.3f}**")
         lines.append("")
         lines.append("| Perturbation | n | Mean abs shift | Max abs shift | Flip rate |")
         lines.append("|---|---|---|---|---|")
-        for s in stats:
+        for s in result.shifts:
             lines.append(
                 f"| {s.perturbation} | {s.n} | {s.mean_abs_shift:.3f} "
                 f"| {s.max_abs_shift:.3f} | {s.flip_rate:.0%} |"
@@ -276,8 +327,15 @@ def write_report(report: AuditReport, out_dir: Path | None = None) -> Path:
         "timestamp": report.timestamp,
         "n_cases": report.n_cases,
         "prompt_hashes": report.prompt_hashes,
-        "base_mean": report.base_mean,
-        "shifts": {metric: [vars(s) for s in stats] for metric, stats in report.shifts.items()},
+        "probes": [
+            {
+                "probe": r.probe,
+                "metric": r.metric,
+                "base_mean": r.base_mean,
+                "shifts": [vars(s) for s in r.shifts],
+            }
+            for r in report.probes
+        ],
     }
     (out_dir / f"{stem}.json").write_text(json.dumps(payload, indent=2))
     return md_path
@@ -285,7 +343,7 @@ def write_report(report: AuditReport, out_dir: Path | None = None) -> Path:
 
 def run_audit_sync(
     cases: list[GoldenCase] | None = None,
-    metrics: tuple[str, ...] = ("correctness", "answer_relevancy"),
+    probes: tuple[str, ...] = ("ceiling", "boundary"),
 ) -> AuditReport:
     """Sync facade for the CLI."""
-    return asyncio.run(run_audit(cases=cases, metrics=metrics))
+    return asyncio.run(run_audit(cases=cases, probes=probes))
