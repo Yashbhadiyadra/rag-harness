@@ -38,5 +38,101 @@
     "relevant_doc_ids": [
       "content/en/docs/concepts/policy/resource-quotas.md"
     ]
+  },
+  {
+    "id": "cluster-006",
+    "question": "How does Kubernetes manage the lifecycle of container images and what are the thresholds for garbage collection?",
+    "reference_answer": "Kubernetes manages the lifecycle of all images through its image manager, which is part of the kubelet. The kubelet considers the HighThresholdPercent and LowThresholdPercent when making garbage collection decisions. Disk usage above the HighThresholdPercent triggers garbage collection, deleting images based on the last time they were used, until disk usage reaches the LowThresholdPercent.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/architecture/garbage-collection.md"
+    ]
+  },
+  {
+    "id": "cluster-007",
+    "question": "What are the valid values for the mode field in KubeletAuthorization?",
+    "reference_answer": "Valid values are AlwaysAllow and Webhook. Webhook mode uses the SubjectAccessReview API to determine authorization.",
+    "relevant_doc_ids": [
+      "content/en/docs/reference/config-api/kubelet-config.v1beta1.md"
+    ]
+  },
+  {
+    "id": "cluster-008",
+    "question": "What does enabling AppArmor do for Pods running on Linux nodes?",
+    "reference_answer": "Enable use of AppArmor mandatory access control for Pods running on Linux nodes.",
+    "relevant_doc_ids": [
+      "content/en/docs/reference/command-line-tools-reference/feature-gates/apparmor.md"
+    ]
+  },
+  {
+    "id": "cluster-009",
+    "question": "What is API-initiated eviction in Kubernetes?",
+    "reference_answer": "API-initiated eviction is the process by which you use the Eviction API to create an `Eviction` object that triggers graceful pod termination.",
+    "relevant_doc_ids": [
+      "content/en/docs/reference/glossary/api-eviction.md"
+    ]
+  },
+  {
+    "id": "cluster-010",
+    "question": "How can I preserve the client source IP in a Kubernetes Service?",
+    "reference_answer": "To preserve the client source IP, set `.spec.externalTrafficPolicy` to `Local` in the Service manifest.",
+    "relevant_doc_ids": [
+      "content/en/docs/tasks/access-application-cluster/create-external-load-balancer.md"
+    ]
+  },
+  {
+    "id": "cluster-011",
+    "question": "What happens when the annotation rbac.authorization.kubernetes.io/autoupdate is set to 'false' on RBAC objects?",
+    "reference_answer": "When this annotation is set to 'false', the particular role or rolebinding will not be autoupdated, and `kubectl auth reconcile` will respect this annotation and not automatically add missing permissions and subjects.",
+    "relevant_doc_ids": [
+      "content/en/docs/reference/labels-annotations-taints/_index.md"
+    ]
+  },
+  {
+    "id": "cluster-012",
+    "question": "How can I manually upgrade CoreDNS in my Kubernetes cluster?",
+    "reference_answer": "CoreDNS can be upgraded manually in case you want to only upgrade CoreDNS or use your own custom image. There is a helpful guideline and walkthrough available to ensure a smooth upgrade.",
+    "relevant_doc_ids": [
+      "content/en/docs/tasks/administer-cluster/coredns.md"
+    ]
+  },
+  {
+    "id": "cluster-013",
+    "question": "What is the purpose of the command 'kubeadm init phase upload-config all'?",
+    "reference_answer": "Upload all configuration to a config map",
+    "relevant_doc_ids": [
+      "content/en/docs/reference/setup-tools/kubeadm/generated/kubeadm_init/kubeadm_init_phase_upload-config_all.md"
+    ]
+  },
+  {
+    "id": "cluster-014",
+    "question": "What command is used to run pre-flight checks for kubeadm join?",
+    "reference_answer": "Run pre-flight checks for kubeadm join.\n\n```\nkubeadm join phase preflight [api-server-endpoint] [flags]\n```",
+    "relevant_doc_ids": [
+      "content/en/docs/reference/setup-tools/kubeadm/generated/kubeadm_join/kubeadm_join_phase_preflight.md"
+    ]
+  },
+  {
+    "id": "cluster-015",
+    "question": "What does the `TracingConfiguration` provide in Kubernetes?",
+    "reference_answer": "TracingConfiguration provides versioned configuration for tracing clients.",
+    "relevant_doc_ids": [
+      "content/en/docs/reference/config-api/apiserver-config.v1alpha1.md"
+    ]
+  },
+  {
+    "id": "cluster-016",
+    "question": "What is the purpose of the label 'batch.kubernetes.io/job-name'?",
+    "reference_answer": "This label is used as a user-friendly way to get Pods corresponding to a Job.",
+    "relevant_doc_ids": [
+      "content/en/docs/reference/labels-annotations-taints/_index.md"
+    ]
+  },
+  {
+    "id": "cluster-017",
+    "question": "What command can I use to see the changes that would be applied to static pod manifests during a kubeadm upgrade?",
+    "reference_answer": "You can use `kubeadm upgrade diff` to see the changes that would be applied to static pod manifests.",
+    "relevant_doc_ids": [
+      "content/en/docs/reference/setup-tools/kubeadm/kubeadm-upgrade.md"
+    ]
   }
 ]

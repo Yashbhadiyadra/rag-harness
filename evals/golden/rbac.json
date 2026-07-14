@@ -6,5 +6,93 @@
     "relevant_doc_ids": [
       "content/en/docs/reference/access-authn-authz/rbac.md"
     ]
+  },
+  {
+    "id": "rbac-002",
+    "question": "What issues might arise when upgrading from ABAC to RBAC in Kubernetes?",
+    "reference_answer": "While far more secure, this can be disruptive to existing workloads expecting to automatically receive API permissions.",
+    "relevant_doc_ids": [
+      "content/en/docs/reference/access-authn-authz/rbac.md"
+    ]
+  },
+  {
+    "id": "rbac-003",
+    "question": "What roles are associated with the built-in controllers in Kubernetes when the controller manager is not started with the `--use-service-account-credentials` flag?",
+    "reference_answer": "These roles include: system:controller:attachdetach-controller, system:controller:certificate-controller, system:controller:clusterrole-aggregation-controller, system:controller:cronjob-controller, system:controller:daemon-set-controller, system:controller:deployment-controller, system:controller:disruption-controller, system:controller:endpoint-controller, system:controller:expand-controller, system:controller:generic-garbage-collector, system:controller:horizontal-pod-autoscaler, system:controller:job-controller, system:controller:namespace-controller, system:controller:node-controller, system:controller:persistent-volume-binder, system:controller:pod-garbage-collector, system:controller:pv-protection-controller, system:controller:pvc-protection-controller, system:controller:replicaset-controller, system:controller:replication-controller, system:controller:resourcequota-controller, system:controller:root-ca-cert-publisher, system:controller:route-controller, system:controller:service-account-controller, system:controller:service-controller, system:controller:statefulset-controller, system:controller:ttl-controller.",
+    "relevant_doc_ids": [
+      "content/en/docs/reference/access-authn-authz/rbac.md"
+    ]
+  },
+  {
+    "id": "rbac-004",
+    "question": "What permissions are required for a user to create or update a role binding in Kubernetes?",
+    "reference_answer": "You can only create/update a role binding if you already have all the permissions contained in the referenced role (at the same scope as the role binding) or if you have been authorized to perform the `bind` verb on the referenced role.",
+    "relevant_doc_ids": [
+      "content/en/docs/reference/access-authn-authz/rbac.md"
+    ]
+  },
+  {
+    "id": "rbac-005",
+    "question": "What are the three critical areas of the Runtime phase in cloud-native information security?",
+    "reference_answer": "The Runtime phase comprises three critical areas: access, compute, and storage.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/security/cloud-native-security.md"
+    ]
+  },
+  {
+    "id": "rbac-006",
+    "question": "What happens if an expression in a validating admission policy grows too complicated?",
+    "reference_answer": "If an expression grows too complicated, or part of the expression is reusable and computationally expensive to evaluate, you can extract some part of the expressions into variables.",
+    "relevant_doc_ids": [
+      "content/en/docs/reference/access-authn-authz/validating-admission-policy.md"
+    ]
+  },
+  {
+    "id": "rbac-007",
+    "question": "What is a virtual control plane in the context of Kubernetes multi-tenancy?",
+    "reference_answer": "A virtual control plane is a form of control-plane isolation that provides each tenant with dedicated control plane components, enabling complete control over cluster-wide resources and add-on services, while sharing worker nodes across all tenants.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/security/multi-tenancy.md"
+    ]
+  },
+  {
+    "id": "rbac-008",
+    "question": "How can I write a policy to allow any authenticated user to perform an action?",
+    "reference_answer": "To permit any authenticated user to do something, write a policy with the group property set to \"system:authenticated\".",
+    "relevant_doc_ids": [
+      "content/en/docs/reference/access-authn-authz/abac.md"
+    ]
+  },
+  {
+    "id": "rbac-009",
+    "question": "How can I restrict a Kubernetes workload from running as the root user?",
+    "reference_answer": "Use the Pod specification to restrict the workload from running as the root user by defining the specific Linux user and group for the processes in the Pod using the Pod `securityContext`.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/security/linux-kernel-security-constraints.md"
+    ]
+  },
+  {
+    "id": "rbac-010",
+    "question": "What does Kubernetes include to help manage information security?",
+    "reference_answer": "Kubernetes includes several APIs and security controls, as well as ways to define policies that can form part of how you manage information security.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/security/_index.md"
+    ]
+  },
+  {
+    "id": "rbac-011",
+    "question": "What does the ServiceAccount admission controller do when a Pod is created without a specified serviceAccountName?",
+    "reference_answer": "If the pod does not have a `.spec.serviceAccountName` set, the admission controller sets the name of the ServiceAccount for this incoming Pod to `default`.",
+    "relevant_doc_ids": [
+      "content/en/docs/reference/access-authn-authz/service-accounts-admin.md"
+    ]
+  },
+  {
+    "id": "rbac-012",
+    "question": "How does Kubernetes authorization relate to existing access control systems?",
+    "reference_answer": "Kubernetes authorization works with existing organization-wide or cloud-provider-wide access control systems which may handle other APIs besides the Kubernetes API.",
+    "relevant_doc_ids": [
+      "content/en/docs/reference/access-authn-authz/authorization.md"
+    ]
   }
 ]

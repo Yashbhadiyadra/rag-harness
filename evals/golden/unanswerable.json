@@ -1,0 +1,128 @@
+[
+  {
+    "id": "unanswerable-001",
+    "question": "How can I configure AWS EKS to automatically scale my managed node groups based on specific CloudWatch metrics?",
+    "reference_answer": "I do not have enough information in the provided context to answer this question.",
+    "relevant_doc_ids": []
+  },
+  {
+    "id": "unanswerable-002",
+    "question": "How can I customize the resource requests and limits for individual components within an Istio service mesh when using the IstioOperator custom resource?",
+    "reference_answer": "I do not have enough information in the provided context to answer this question.",
+    "relevant_doc_ids": []
+  },
+  {
+    "id": "unanswerable-003",
+    "question": "What proprietary options does the Calico CNI plugin offer for integrating with AWS VPC CNI for enhanced network policies?",
+    "reference_answer": "I do not have enough information in the provided context to answer this question.",
+    "relevant_doc_ids": []
+  },
+  {
+    "id": "unanswerable-004",
+    "question": "What is the expected release date for Kubernetes v1.33 and what are the SLA guarantees associated with that version?",
+    "reference_answer": "I do not have enough information in the provided context to answer this question.",
+    "relevant_doc_ids": []
+  },
+  {
+    "id": "unanswerable-005",
+    "question": "How can I configure IAM roles for service accounts in AWS EKS to limit permissions for a specific pod running in a managed node group?",
+    "reference_answer": "I do not have enough information in the provided context to answer this question.",
+    "relevant_doc_ids": []
+  },
+  {
+    "id": "unanswerable-006",
+    "question": "How does Argo CD handle secret management for GitOps workflows when deploying applications in Kubernetes?",
+    "reference_answer": "I do not have enough information in the provided context to answer this question.",
+    "relevant_doc_ids": []
+  },
+  {
+    "id": "unanswerable-007",
+    "question": "How can I use the 'kubectl manage-resources' subcommand to optimize resource allocation in my cluster?",
+    "reference_answer": "I do not have enough information in the provided context to answer this question.",
+    "relevant_doc_ids": []
+  },
+  {
+    "id": "unanswerable-008",
+    "question": "What are the specific configuration options provided by the Calico CNI plugin for enabling eBPF-based networking features in Kubernetes v1.32?",
+    "reference_answer": "I do not have enough information in the provided context to answer this question.",
+    "relevant_doc_ids": []
+  },
+  {
+    "id": "unanswerable-009",
+    "question": "What are the specific release dates for the Kubernetes v1.32 upgrade compared to the previous v1.31 version?",
+    "reference_answer": "I do not have enough information in the provided context to answer this question.",
+    "relevant_doc_ids": []
+  },
+  {
+    "id": "unanswerable-010",
+    "question": "How can I configure auto-scaling for managed node groups in AWS EKS based on custom metrics?",
+    "reference_answer": "I do not have enough information in the provided context to answer this question.",
+    "relevant_doc_ids": []
+  },
+  {
+    "id": "unanswerable-011",
+    "question": "How can I customize the Prometheus Operator's alerting rules for specific applications without modifying the default configuration in Kubernetes?",
+    "reference_answer": "I do not have enough information in the provided context to answer this question.",
+    "relevant_doc_ids": []
+  },
+  {
+    "id": "unanswerable-012",
+    "question": "How do I use the 'kubectl manage-policies' command to apply network policies in my Kubernetes cluster?",
+    "reference_answer": "I do not have enough information in the provided context to answer this question.",
+    "relevant_doc_ids": []
+  },
+  {
+    "id": "unanswerable-013",
+    "question": "What proprietary options does the Calico CNI plugin provide for enabling eBPF-based networking enhancements in Kubernetes v1.32?",
+    "reference_answer": "I do not have enough information in the provided context to answer this question.",
+    "relevant_doc_ids": []
+  },
+  {
+    "id": "unanswerable-014",
+    "question": "What is the expected timeline for the v1.32 to v1.33 Kubernetes version upgrade, including any specific dates for release candidates and stable releases?",
+    "reference_answer": "I do not have enough information in the provided context to answer this question.",
+    "relevant_doc_ids": []
+  },
+  {
+    "id": "unanswerable-015",
+    "question": "How can I set up automatic scaling for Amazon EKS managed node groups based on custom metrics using the AWS console?",
+    "reference_answer": "I do not have enough information in the provided context to answer this question.",
+    "relevant_doc_ids": []
+  },
+  {
+    "id": "unanswerable-016",
+    "question": "What are the best practices for managing Helm chart dependencies in a multi-environment setup using Argo CD for CI/CD pipelines?",
+    "reference_answer": "I do not have enough information in the provided context to answer this question.",
+    "relevant_doc_ids": []
+  },
+  {
+    "id": "unanswerable-017",
+    "question": "What proprietary options does the Calico CNI plugin provide for configuring network policies that are not covered in the Kubernetes v1.32 documentation?",
+    "reference_answer": "I do not have enough information in the provided context to answer this question.",
+    "relevant_doc_ids": []
+  },
+  {
+    "id": "unanswerable-018",
+    "question": "What is the expected Service Level Agreement (SLA) for Kubernetes v1.32 when running in a managed cloud environment, such as Google Kubernetes Engine or Azure Kubernetes Service?",
+    "reference_answer": "I do not have enough information in the provided context to answer this question.",
+    "relevant_doc_ids": []
+  },
+  {
+    "id": "unanswerable-019",
+    "question": "How does Argo CD handle syncing git repository changes when there are conflicting resources in the target Kubernetes cluster?",
+    "reference_answer": "I do not have enough information in the provided context to answer this question.",
+    "relevant_doc_ids": []
+  },
+  {
+    "id": "unanswerable-020",
+    "question": "What are the specific configuration options available for the AWS VPC CNI plugin in Kubernetes v1.32 that are not documented in the core Kubernetes documentation?",
+    "reference_answer": "I do not have enough information in the provided context to answer this question.",
+    "relevant_doc_ids": []
+  },
+  {
+    "id": "unanswerable-021",
+    "question": "What are the specific SLA commitments for Kubernetes v1.32 regarding support response times during critical incidents?",
+    "reference_answer": "I do not have enough information in the provided context to answer this question.",
+    "relevant_doc_ids": []
+  }
+]

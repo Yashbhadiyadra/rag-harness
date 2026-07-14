@@ -38,5 +38,109 @@
     "relevant_doc_ids": [
       "content/en/docs/concepts/scheduling-eviction/assign-pod-node.md"
     ]
+  },
+  {
+    "id": "scheduling-006",
+    "question": "What happens when a node experiences an out of memory (OOM) event before the kubelet can reclaim memory?",
+    "reference_answer": "If the node experiences an out of memory (OOM) event prior to the kubelet being able to reclaim memory, the node depends on the oom_killer to respond.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/scheduling-eviction/node-pressure-eviction.md"
+    ]
+  },
+  {
+    "id": "scheduling-007",
+    "question": "What is an example of a PriorityClass definition in Kubernetes?",
+    "reference_answer": "apiVersion: scheduling.k8s.io/v1\nkind: PriorityClass\nmetadata:\n  name: high-priority\nvalue: 1000000\nglobalDefault: false\ndescription: \"This priority class should be used for XYZ service pods only.\"",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/scheduling-eviction/pod-priority-preemption.md"
+    ]
+  },
+  {
+    "id": "scheduling-008",
+    "question": "What are the known limitations of topology spread constraints in Kubernetes?",
+    "reference_answer": "- There's no guarantee that the constraints remain satisfied when Pods are removed. For example, scaling down a Deployment may result in imbalanced Pods distribution.\n- Pods matched on tainted nodes are respected.\n- The scheduler doesn't have prior knowledge of all the zones or other topology domains that a cluster has, which could lead to problems in autoscaled clusters.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/scheduling-eviction/topology-spread-constraints.md"
+    ]
+  },
+  {
+    "id": "scheduling-009",
+    "question": "What is the role of kube-scheduler in Kubernetes?",
+    "reference_answer": "kube-scheduler is the default scheduler for Kubernetes and runs as part of the control plane. It selects an optimal node to run newly created or unscheduled pods and filters out nodes that don't meet a Pod's specific scheduling needs.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/scheduling-eviction/kube-scheduler.md"
+    ]
+  },
+  {
+    "id": "scheduling-010",
+    "question": "How can I discover dynamic resources of running Pods in Kubernetes?",
+    "reference_answer": "The kubelet provides a gRPC service to enable discovery of dynamic resources of running Pods.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/scheduling-eviction/dynamic-resource-allocation.md"
+    ]
+  },
+  {
+    "id": "scheduling-011",
+    "question": "How should the kubelet be configured to avoid scheduling pods that will trigger eviction due to memory pressure?",
+    "reference_answer": "The kubelet should be configured with an eviction policy that ensures the scheduler will not schedule pods if they will trigger eviction because they immediately induce memory pressure. For example, using the flags --eviction-hard=memory.available<500Mi and --system-reserved=memory=1.5Gi.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/scheduling-eviction/node-pressure-eviction.md"
+    ]
+  },
+  {
+    "id": "scheduling-012",
+    "question": "What kubelet garbage collection features have been deprecated and why?",
+    "reference_answer": "The kubelet garbage collection features that are deprecated are `--maximum-dead-containers`, `--maximum-dead-containers-per-container`, and `--minimum-container-ttl-duration`, all deprecated once old logs are stored outside of container's context.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/scheduling-eviction/node-pressure-eviction.md"
+    ]
+  },
+  {
+    "id": "scheduling-013",
+    "question": "How can I configure a minimum reclaim amount for resources in Kubernetes?",
+    "reference_answer": "You can use the `--eviction-minimum-reclaim` flag or a kubelet config file to configure a minimum reclaim amount for each resource.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/scheduling-eviction/node-pressure-eviction.md"
+    ]
+  },
+  {
+    "id": "scheduling-014",
+    "question": "What actions can a permit plugin take at the end of the scheduling cycle for a Pod?",
+    "reference_answer": "A permit plugin can do one of three things: approve, deny, or wait (with a timeout).",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/scheduling-eviction/scheduling-framework.md"
+    ]
+  },
+  {
+    "id": "scheduling-015",
+    "question": "How can I ensure that my pod is placed into zone B instead of zone C in a Kubernetes cluster?",
+    "reference_answer": "You can compose a manifest to exclude zone C, ensuring that Pod `mypod` will be placed into zone B instead.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/scheduling-eviction/topology-spread-constraints.md"
+    ]
+  },
+  {
+    "id": "scheduling-016",
+    "question": "What do topology spread constraints rely on to identify the topology domain(s) of nodes?",
+    "reference_answer": "Topology spread constraints rely on node labels to identify the topology domain(s) that each node is in.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/scheduling-eviction/topology-spread-constraints.md"
+    ]
+  },
+  {
+    "id": "scheduling-017",
+    "question": "What is an example configuration for setting percentageOfNodesToScore in KubeSchedulerConfiguration?",
+    "reference_answer": "Below is an example configuration that sets percentageOfNodesToScore to 50%.\n\n```yaml\napiVersion: kubescheduler.config.k8s.io/v1alpha1\nkind: KubeSchedulerConfiguration\nalgorithmSource:\n  provider: DefaultProvider\n\n...\n\npercentageOfNodesToScore: 50\n```",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/scheduling-eviction/scheduler-perf-tuning.md"
+    ]
+  },
+  {
+    "id": "scheduling-018",
+    "question": "What feature allows you to control a Pod's scheduling readiness?",
+    "reference_answer": "Enable setting `schedulingGates` field to control a Pod's scheduling readiness.",
+    "relevant_doc_ids": [
+      "content/en/docs/reference/command-line-tools-reference/feature-gates/pod-scheduling-readiness.md"
+    ]
   }
 ]

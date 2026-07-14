@@ -1,0 +1,306 @@
+[
+  {
+    "id": "version-sensitive-001",
+    "question": "What happens to the `adminAccess` field when the DRAAdminAccess feature is disabled in Kubernetes?",
+    "reference_answer": "If this feature is disabled, the `adminAccess` field will be removed automatically when creating such a ResourceClaim.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/scheduling-eviction/dynamic-resource-allocation.md"
+    ]
+  },
+  {
+    "id": "version-sensitive-002",
+    "question": "What is the apiVersion for a PersistentVolumeClaim in the version documented in this chunk?",
+    "reference_answer": "v1",
+    "relevant_doc_ids": [
+      "content/en/docs/reference/kubernetes-api/config-and-storage-resources/persistent-volume-claim-v1.md"
+    ]
+  },
+  {
+    "id": "version-sensitive-003",
+    "question": "How do you approve a CertificateSigningRequest (CSR) using the Kubernetes API in this version?",
+    "reference_answer": "Users of the REST API can approve CSRs by submitting an UPDATE request to the `approval` subresource of the CSR to be approved.",
+    "relevant_doc_ids": [
+      "content/en/docs/reference/access-authn-authz/certificate-signing-requests.md"
+    ]
+  },
+  {
+    "id": "version-sensitive-004",
+    "question": "What field can be used to specify non-base64 encoded strings directly when creating a Secret in Kubernetes?",
+    "reference_answer": "The `stringData` field.",
+    "relevant_doc_ids": [
+      "content/en/docs/tasks/configmap-secret/managing-secret-using-config-file.md"
+    ]
+  },
+  {
+    "id": "version-sensitive-005",
+    "question": "What label is deprecated in Kubernetes v1.17 in favor of topology.kubernetes.io/region?",
+    "reference_answer": "The label failure-domain.beta.kubernetes.io/region is deprecated in favor of topology.kubernetes.io/region.",
+    "relevant_doc_ids": [
+      "content/en/docs/reference/labels-annotations-taints/_index.md"
+    ]
+  },
+  {
+    "id": "version-sensitive-006",
+    "question": "What is the status of the `azureDisk` in-tree storage driver in Kubernetes version 1.27?",
+    "reference_answer": "In Kubernetes 1.27, the `azureDisk` in-tree storage driver has been removed entirely, and all operations are redirected to the `disk.csi.azure.com` CSI driver.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/storage/volumes.md"
+    ]
+  },
+  {
+    "id": "version-sensitive-007",
+    "question": "What is the apiVersion required for configuring kube-proxy in a user namespace?",
+    "reference_answer": "apiVersion: kubeproxy.config.k8s.io/v1alpha1",
+    "relevant_doc_ids": [
+      "content/en/docs/tasks/administer-cluster/kubelet-in-userns.md"
+    ]
+  },
+  {
+    "id": "version-sensitive-008",
+    "question": "What must be specified alongside `x-kubernetes-embedded-resource: true` to ensure that nothing is pruned from the embedded object in a Custom Resource Definition?",
+    "reference_answer": "x-kubernetes-preserve-unknown-fields: true",
+    "relevant_doc_ids": [
+      "content/en/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions.md"
+    ]
+  },
+  {
+    "id": "version-sensitive-009",
+    "question": "What command-line parameters were removed in Kubernetes 1.24 regarding the management of CNI plugins by kubelet?",
+    "reference_answer": "The command-line parameters `cni-bin-dir` and `network-plugin` were removed in Kubernetes 1.24.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/extend-kubernetes/compute-storage-net/network-plugins.md"
+    ]
+  },
+  {
+    "id": "version-sensitive-010",
+    "question": "What is the apiVersion required for a Deployment resource in Kubernetes as specified in the deployment.yaml file?",
+    "reference_answer": "apps/v1",
+    "relevant_doc_ids": [
+      "content/en/docs/tasks/manage-kubernetes-objects/kustomization.md"
+    ]
+  },
+  {
+    "id": "version-sensitive-011",
+    "question": "What is the correct apiVersion for the LeaderMigrationConfiguration resource in the specified Kubernetes version?",
+    "reference_answer": "controllermanager.config.k8s.io/v1",
+    "relevant_doc_ids": [
+      "content/en/docs/tasks/administer-cluster/controller-manager-leader-migration.md"
+    ]
+  },
+  {
+    "id": "version-sensitive-012",
+    "question": "What is the status of the annotation 'experimental.windows.kubernetes.io/isolation-type' in Kubernetes version 1.20?",
+    "reference_answer": "The annotation 'experimental.windows.kubernetes.io/isolation-type' is deprecated starting from v1.20.",
+    "relevant_doc_ids": [
+      "content/en/docs/reference/labels-annotations-taints/_index.md"
+    ]
+  },
+  {
+    "id": "version-sensitive-013",
+    "question": "What is the behavior of CoreDNS regarding FQDNs for stub-domains and nameservers?",
+    "reference_answer": "CoreDNS does not support FQDNs for stub-domains and nameservers (eg: \"ns.foo.com\"). During translation, all FQDN nameservers will be omitted from the CoreDNS config.",
+    "relevant_doc_ids": [
+      "content/en/docs/tasks/administer-cluster/dns-custom-nameservers.md"
+    ]
+  },
+  {
+    "id": "version-sensitive-014",
+    "question": "What happens to the `.metadata.deletionTimestamp` when a delete request for a resource is sent in Kubernetes?",
+    "reference_answer": "When a client first sends a **delete** to request the removal of a resource, the `.metadata.deletionTimestamp` is set to the current time.",
+    "relevant_doc_ids": [
+      "content/en/docs/reference/using-api/api-concepts.md"
+    ]
+  },
+  {
+    "id": "version-sensitive-015",
+    "question": "What is the apiVersion for PolicyList in Kubernetes audit configuration?",
+    "reference_answer": "audit.k8s.io/v1",
+    "relevant_doc_ids": [
+      "content/en/docs/reference/config-api/apiserver-audit.v1.md"
+    ]
+  },
+  {
+    "id": "version-sensitive-016",
+    "question": "What must a Gateway reference in order to be managed by a specific controller in Kubernetes?",
+    "reference_answer": "A Gateway must reference a GatewayClass that contains the name of the controller that implements the class.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/services-networking/gateway.md"
+    ]
+  },
+  {
+    "id": "version-sensitive-017",
+    "question": "What is the purpose of the `subPath` property in volume mounts for a Pod in Kubernetes?",
+    "reference_answer": "The `volumeMounts[*].subPath` property specifies a sub-path inside the referenced volume instead of its root.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/storage/volumes.md"
+    ]
+  },
+  {
+    "id": "version-sensitive-018",
+    "question": "What option must be used with `kubectl delete` to delete a ReplicaSet without affecting its Pods in this version of Kubernetes?",
+    "reference_answer": "You can delete a ReplicaSet without affecting any of its Pods using `kubectl delete` with the `--cascade=orphan` option.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/workloads/controllers/replicaset.md"
+    ]
+  },
+  {
+    "id": "version-sensitive-019",
+    "question": "What annotation was used in Kubernetes to indicate a critical Pod before it was removed in favor of Pod Priority?",
+    "reference_answer": "scheduler.alpha.kubernetes.io/critical-pod: \"\"",
+    "relevant_doc_ids": [
+      "content/en/docs/reference/labels-annotations-taints/_index.md"
+    ]
+  },
+  {
+    "id": "version-sensitive-020",
+    "question": "What is the default value for `failurePolicy` in admission webhooks in this version of Kubernetes?",
+    "reference_answer": "The default `failurePolicy` for an admission webhooks is `Fail`.",
+    "relevant_doc_ids": [
+      "content/en/docs/reference/access-authn-authz/extensible-admission-controllers.md"
+    ]
+  },
+  {
+    "id": "version-sensitive-021",
+    "question": "What happens to the manually specified values in the `rules` field of an aggregated ClusterRole?",
+    "reference_answer": "The control plane overwrites any values that you manually specify in the `rules` field of an aggregate ClusterRole. If you want to change or add rules, do so in the ClusterRole objects that are selected by the `aggregationRule`.",
+    "relevant_doc_ids": [
+      "content/en/docs/reference/access-authn-authz/rbac.md"
+    ]
+  },
+  {
+    "id": "version-sensitive-022",
+    "question": "What is the behavior of the generatorOptions regarding the appending of content hash suffixes to generated ConfigMaps and Secrets in the kustomization.yaml file?",
+    "reference_answer": "The generated ConfigMaps and Secrets have a content hash suffix appended. This ensures that a new ConfigMap or Secret is generated when the contents are changed. To disable this behavior, one can use generatorOptions with disableNameSuffixHash set to true.",
+    "relevant_doc_ids": [
+      "content/en/docs/tasks/manage-kubernetes-objects/kustomization.md"
+    ]
+  },
+  {
+    "id": "version-sensitive-023",
+    "question": "In Kubernetes v1.16, what is the required configuration for the `service` stanza in the `webhookClientConfig` when using a conversion webhook?",
+    "reference_answer": "The service namespace and name are required. The port is optional and defaults to 443. The path is optional and defaults to \"/\".",
+    "relevant_doc_ids": [
+      "content/en/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definition-versioning.md"
+    ]
+  },
+  {
+    "id": "version-sensitive-024",
+    "question": "How can pods be removed from a ReplicationController's target set in the documented Kubernetes version?",
+    "reference_answer": "Pods may be removed from a ReplicationController's target set by changing their labels. This technique may be used to remove pods from service for debugging and data recovery. Pods that are removed in this way will be replaced automatically (assuming that the number of replicas is not also changed).",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/workloads/controllers/replicationcontroller.md"
+    ]
+  },
+  {
+    "id": "version-sensitive-025",
+    "question": "What is the supported API version for kubeadm configuration validation in this version of kubeadm?",
+    "reference_answer": "kubeadm.k8s.io/v1beta4",
+    "relevant_doc_ids": [
+      "content/en/docs/reference/setup-tools/kubeadm/generated/kubeadm_config/kubeadm_config_validate.md"
+    ]
+  },
+  {
+    "id": "version-sensitive-026",
+    "question": "How can administrators automatically label GPU enabled nodes in Kubernetes using Node Feature Discovery (NFD)?",
+    "reference_answer": "As an administrator, you can automatically discover and label all your GPU enabled nodes by deploying Kubernetes Node Feature Discovery (NFD). NFD detects the hardware features that are available on each node in a Kubernetes cluster. Typically, NFD is configured to advertise those features as node labels, but NFD can also add extended resources, annotations, and node taints. By default NFD create the feature labels for the detected features.",
+    "relevant_doc_ids": [
+      "content/en/docs/tasks/manage-gpus/scheduling-gpus.md"
+    ]
+  },
+  {
+    "id": "version-sensitive-027",
+    "question": "What is the correct HTTP request method and API version for creating a ServiceCIDR in Kubernetes as of v1beta1?",
+    "reference_answer": "POST /apis/networking.k8s.io/v1beta1/servicecidrs",
+    "relevant_doc_ids": [
+      "content/en/docs/reference/kubernetes-api/cluster-resources/service-cidr-v1beta1.md"
+    ]
+  },
+  {
+    "id": "version-sensitive-028",
+    "question": "What is the required field in the `AuthorizationConfiguration` for the `apiserver.k8s.io/v1alpha1` API version?",
+    "reference_answer": "The required field is `authorizers`, which is an ordered list of authorizers to authorize requests against.",
+    "relevant_doc_ids": [
+      "content/en/docs/reference/config-api/apiserver-config.v1alpha1.md"
+    ]
+  },
+  {
+    "id": "version-sensitive-029",
+    "question": "What is the valid value for the `k8s.io/deprecated` annotation in Kubernetes, and what does it indicate?",
+    "reference_answer": "The value must be 'true' or 'false'. The value 'true' indicates that the request used a deprecated API version.",
+    "relevant_doc_ids": [
+      "content/en/docs/reference/labels-annotations-taints/audit-annotations.md"
+    ]
+  },
+  {
+    "id": "version-sensitive-030",
+    "question": "What happens when you set the `.spec.internalTrafficPolicy` of a Service to `Local` in this version of Kubernetes?",
+    "reference_answer": "When you set the `.spec.internalTrafficPolicy` to `Local`, kube-proxy only uses node local endpoints for cluster internal traffic. For pods on nodes with no endpoints for a given Service, the Service behaves as if it has zero endpoints for Pods on this node, even if the service does have endpoints on other nodes.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/services-networking/service-traffic-policy.md"
+    ]
+  },
+  {
+    "id": "version-sensitive-031",
+    "question": "What optional fields were introduced in the `topologySpreadConstraints` for Pods as of Kubernetes version 1.26?",
+    "reference_answer": "nodeAffinityPolicy and nodeTaintsPolicy are optional fields that were introduced as beta features since v1.26.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/scheduling-eviction/topology-spread-constraints.md"
+    ]
+  },
+  {
+    "id": "version-sensitive-032",
+    "question": "What happens if the `ingressClassName` is omitted in the Ingress resource?",
+    "reference_answer": "If the `ingressClassName` is omitted, a default Ingress class should be defined.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/services-networking/ingress.md"
+    ]
+  },
+  {
+    "id": "version-sensitive-033",
+    "question": "In which version of Kubernetes was the VolumeAttributesClass introduced, and what is the behavior regarding the immutability of the parameters field?",
+    "reference_answer": "The VolumeAttributesClass was introduced in apiVersion storage.k8s.io/v1beta1. The parameters field is immutable, meaning that to change the parameters, a new VolumeAttributesClass must be created with the new parameters.",
+    "relevant_doc_ids": [
+      "content/en/docs/reference/kubernetes-api/config-and-storage-resources/volume-attributes-class-v1beta1.md"
+    ]
+  },
+  {
+    "id": "version-sensitive-034",
+    "question": "What is the HTTP method used to partially update a ServiceCIDR in Kubernetes v1beta1?",
+    "reference_answer": "PATCH /apis/networking.k8s.io/v1beta1/servicecidrs/{name}",
+    "relevant_doc_ids": [
+      "content/en/docs/reference/kubernetes-api/cluster-resources/service-cidr-v1beta1.md"
+    ]
+  },
+  {
+    "id": "version-sensitive-035",
+    "question": "What attribute is used to specify the class of a Persistent Volume (PV) in this Kubernetes version?",
+    "reference_answer": "The `storageClassName` attribute is used to specify the class of a Persistent Volume (PV).",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/storage/persistent-volumes.md"
+    ]
+  },
+  {
+    "id": "version-sensitive-036",
+    "question": "What is the apiVersion used for the Deployment object in the provided base/deployment.yaml manifest?",
+    "reference_answer": "apps/v1",
+    "relevant_doc_ids": [
+      "content/en/docs/tasks/manage-kubernetes-objects/kustomization.md"
+    ]
+  },
+  {
+    "id": "version-sensitive-037",
+    "question": "In the given Pod specification, what is the mount path and the read-only state of the volume mounted from the host?",
+    "reference_answer": "The mount path is /foo and the read-only state is true.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/storage/volumes.md"
+    ]
+  },
+  {
+    "id": "version-sensitive-038",
+    "question": "What must be added to the `VolumeSnapshotContent` to allow users to create a `PersistentVolumeClaim` from an existing `VolumeSnapshot` with a different volume mode than the source?",
+    "reference_answer": "The annotation `snapshot.storage.kubernetes.io/allow-volume-mode-change: \"true\"` needs to be added to the `VolumeSnapshotContent` that corresponds to the `VolumeSnapshot`.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/storage/volume-snapshots.md"
+    ]
+  }
+]

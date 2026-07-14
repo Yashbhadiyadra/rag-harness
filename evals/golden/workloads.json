@@ -62,5 +62,109 @@
     "relevant_doc_ids": [
       "content/en/docs/concepts/workloads/controllers/replicaset.md"
     ]
+  },
+  {
+    "id": "workloads-007",
+    "question": "What are the common ways to use ConfigMaps in Kubernetes?",
+    "reference_answer": "The most common way to use ConfigMaps is to configure settings for containers running in a Pod in the same namespace. You can also use a ConfigMap separately.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/configuration/configmap.md"
+    ]
+  },
+  {
+    "id": "workloads-008",
+    "question": "How does a DaemonSet ensure that Pods are scheduled on eligible nodes?",
+    "reference_answer": "A DaemonSet can be used to ensure that all eligible nodes run a copy of a Pod. The DaemonSet controller creates a Pod for each eligible node and adds the `spec.affinity.nodeAffinity` field of the Pod to match the target host. After the Pod is created, the default scheduler typically takes over and then binds the Pod to the target host by setting the `.spec.nodeName` field.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/workloads/controllers/daemonset.md"
+    ]
+  },
+  {
+    "id": "workloads-009",
+    "question": "How are Pods deployed and terminated in a StatefulSet?",
+    "reference_answer": "For a StatefulSet with N replicas, Pods are created sequentially in order from {0..N-1} and are terminated in reverse order from {N-1..0}.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/workloads/controllers/statefulset.md"
+    ]
+  },
+  {
+    "id": "workloads-010",
+    "question": "What happens when I use the `kubectl delete` command with `--grace-period=0` and `--force`?",
+    "reference_answer": "Setting the grace period to `0` forcibly and immediately deletes the Pod from the API server. The API server does not wait for confirmation from the kubelet that the Pod has been terminated on the node it was running on, and the resource may continue to run on the cluster indefinitely.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/workloads/pods/pod-lifecycle.md"
+    ]
+  },
+  {
+    "id": "workloads-011",
+    "question": "What are some uses for Secrets in Kubernetes?",
+    "reference_answer": "You can use Secrets for purposes such as setting environment variables for a container, providing credentials such as SSH keys or passwords to Pods, and allowing the kubelet to pull container images from private registries.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/configuration/secret.md"
+    ]
+  },
+  {
+    "id": "workloads-012",
+    "question": "What is the HTTP request format to get the status of a specific PriorityLevelConfiguration?",
+    "reference_answer": "GET /apis/flowcontrol.apiserver.k8s.io/v1/prioritylevelconfigurations/{name}/status",
+    "relevant_doc_ids": [
+      "content/en/docs/reference/kubernetes-api/policy-resources/priority-level-configuration-v1.md"
+    ]
+  },
+  {
+    "id": "workloads-013",
+    "question": "What is required in the .spec.template of a ReplicaSet manifest?",
+    "reference_answer": "The .spec.template is a pod template which is also required to have labels in place.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/workloads/controllers/replicaset.md"
+    ]
+  },
+  {
+    "id": "workloads-014",
+    "question": "What are the required fields for the `.spec` in a Deployment?",
+    "reference_answer": "The `.spec.template` and `.spec.selector` are the only required fields of the `.spec.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/workloads/controllers/deployment.md"
+    ]
+  },
+  {
+    "id": "workloads-015",
+    "question": "What is the HTTP request method and endpoint for deleting a ValidatingWebhookConfiguration in Kubernetes?",
+    "reference_answer": "DELETE /apis/admissionregistration.k8s.io/v1/validatingwebhookconfigurations/{name}",
+    "relevant_doc_ids": [
+      "content/en/docs/reference/kubernetes-api/extend-resources/validating-webhook-configuration-v1.md"
+    ]
+  },
+  {
+    "id": "workloads-016",
+    "question": "What HTTP request method is used to update a ValidatingWebhookConfiguration?",
+    "reference_answer": "PUT /apis/admissionregistration.k8s.io/v1/validatingwebhookconfigurations/{name}",
+    "relevant_doc_ids": [
+      "content/en/docs/reference/kubernetes-api/extend-resources/validating-webhook-configuration-v1.md"
+    ]
+  },
+  {
+    "id": "workloads-017",
+    "question": "How can I scale Indexed Jobs in Kubernetes?",
+    "reference_answer": "You can scale Indexed Jobs up or down by mutating both `.spec.parallelism` and `.spec.completions` together such that `.spec.parallelism == .spec.completions`. When scaling down, Kubernetes removes the Pods with higher indexes.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/workloads/controllers/job.md"
+    ]
+  },
+  {
+    "id": "workloads-018",
+    "question": "What happens if I try to set a schedule with `TZ` or `CRON_TZ` in Kubernetes 1.29?",
+    "reference_answer": "Kubernetes will fail to create the resource with a validation error.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/workloads/controllers/cron-jobs.md"
+    ]
+  },
+  {
+    "id": "workloads-019",
+    "question": "Why is it rare to create individual Pods directly in Kubernetes?",
+    "reference_answer": "You'll rarely create individual Pods directly in Kubernetes\u2014even singleton Pods. This is because Pods are designed as relatively ephemeral, disposable entities.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/workloads/pods/_index.md"
+    ]
   }
 ]

@@ -39,5 +39,69 @@
     "relevant_doc_ids": [
       "content/en/docs/concepts/storage/persistent-volumes.md"
     ]
+  },
+  {
+    "id": "storage-006",
+    "question": "What determines which CSI volume plugin is used for provisioning VolumeSnapshots in a volume snapshot class?",
+    "reference_answer": "Volume snapshot classes have a driver that determines what CSI volume plugin is used for provisioning VolumeSnapshots.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/storage/volume-snapshot-classes.md"
+    ]
+  },
+  {
+    "id": "storage-007",
+    "question": "What is the HTTP request format to get the status of a PersistentVolumeClaim?",
+    "reference_answer": "GET /api/v1/namespaces/{namespace}/persistentvolumeclaims/{name}/status",
+    "relevant_doc_ids": [
+      "content/en/docs/reference/kubernetes-api/config-and-storage-resources/persistent-volume-claim-v1.md"
+    ]
+  },
+  {
+    "id": "storage-008",
+    "question": "What happens if I specify mount options in a StorageClass but the volume plugin does not support them?",
+    "reference_answer": "If the volume plugin does not support mount options but mount options are specified, provisioning will fail.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/storage/storage-classes.md"
+    ]
+  },
+  {
+    "id": "storage-009",
+    "question": "What is the HTTP request method and endpoint for partially updating a StorageClass in Kubernetes?",
+    "reference_answer": "PATCH /apis/storage.k8s.io/v1/storageclasses/{name}",
+    "relevant_doc_ids": [
+      "content/en/docs/reference/kubernetes-api/config-and-storage-resources/storage-class-v1.md"
+    ]
+  },
+  {
+    "id": "storage-010",
+    "question": "What are the effects of using the 'WaitForFirstConsumer' volume binding mode?",
+    "reference_answer": "The 'WaitForFirstConsumer' mode delays the binding and provisioning of a PersistentVolume until a Pod using the PersistentVolumeClaim is created, allowing PersistentVolumes to be selected or provisioned based on the Pod's scheduling constraints.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/storage/storage-classes.md"
+    ]
+  },
+  {
+    "id": "storage-011",
+    "question": "What does the CSINode object hold information about?",
+    "reference_answer": "CSINode holds information about all CSI drivers installed on a node.",
+    "relevant_doc_ids": [
+      "content/en/docs/reference/kubernetes-api/config-and-storage-resources/csi-node-v1.md"
+    ]
+  },
+  {
+    "id": "storage-012",
+    "question": "How can I select ClusterTrustBundles when using the clusterTrustBundle projected volume source?",
+    "reference_answer": "To select by name, use the `name` field to designate a single ClusterTrustBundle object. To select by signer name, use the `signerName` field (and optionally the `labelSelector` field) to designate a set of ClusterTrustBundle objects that use the given signer name.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/storage/projected-volumes.md"
+    ]
+  },
+  {
+    "id": "storage-013",
+    "question": "What is the role of the `StorageClass` API object in dynamic volume provisioning?",
+    "reference_answer": "The implementation of dynamic volume provisioning is based on the API object `StorageClass` from the API group `storage.k8s.io`. A cluster administrator can define as many `StorageClass` objects as needed, each specifying a *volume plugin* (aka *provisioner*) that provisions a volume and the set of parameters to pass to that provisioner when provisioning.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/storage/dynamic-provisioning.md"
+    ]
   }
 ]

@@ -46,5 +46,117 @@
     "relevant_doc_ids": [
       "content/en/docs/concepts/cluster-administration/networking.md"
     ]
+  },
+  {
+    "id": "networking-007",
+    "question": "What are the steps in the request flow when using a Gateway implemented as a reverse proxy?",
+    "reference_answer": "1. The client starts to prepare an HTTP request for the URL `http://www.example.com`. 2. The client's DNS resolver queries for the destination name and learns a mapping to one or more IP addresses associated with the Gateway. 3. The client sends a request to the Gateway IP address; the reverse proxy receives the HTTP request and uses the Host: header to match a configuration that was derived from the Gateway and attached HTTPRoute. 4. Optionally, the reverse proxy can perform request header and/or path matching based on match rules of the HTTPRoute. 5. Optionally, the reverse proxy can modify the request; for example, to add or remove headers, based on filter rules of the HTTPRoute. 6. Lastly, the reverse proxy forwards the request to one or more backends.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/services-networking/gateway.md"
+    ]
+  },
+  {
+    "id": "networking-008",
+    "question": "What is the purpose of the `appProtocol` field in a Kubernetes Service?",
+    "reference_answer": "The `appProtocol` field provides a way to specify an application protocol for each Service port, used as a hint for implementations to offer richer behavior for protocols that they understand.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/services-networking/service.md"
+    ]
+  },
+  {
+    "id": "networking-009",
+    "question": "What is a Resource backend in the context of an Ingress object?",
+    "reference_answer": "A `Resource` backend is an ObjectRef to another Kubernetes resource within the same namespace as the Ingress object. A `Resource` is a mutually exclusive setting with Service, and will fail validation if both are specified.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/services-networking/ingress.md"
+    ]
+  },
+  {
+    "id": "networking-010",
+    "question": "What IP address management (IPAM) options are supported on Windows?",
+    "reference_answer": "The following IPAM options are supported on Windows: host-local, azure-vnet-ipam (for azure-cni only), Windows Server IPAM (fallback option if no IPAM is set).",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/services-networking/windows-networking.md"
+    ]
+  },
+  {
+    "id": "networking-011",
+    "question": "What happens to a pod affected by a NetworkPolicy if it is created before the network plugin has handled the NetworkPolicy?",
+    "reference_answer": "That pod may be started unprotected, and isolation rules will be applied when the NetworkPolicy handling is completed.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/services-networking/network-policies.md"
+    ]
+  },
+  {
+    "id": "networking-012",
+    "question": "What are the required fields for an Ingress resource?",
+    "reference_answer": "An Ingress needs `apiVersion`, `kind`, `metadata` and `spec` fields.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/services-networking/ingress.md"
+    ]
+  },
+  {
+    "id": "networking-013",
+    "question": "What are some limitations of the NetworkPolicy API in Kubernetes?",
+    "reference_answer": "As of Kubernetes {{< skew currentVersion >}}, the following functionality does not exist in the NetworkPolicy API: forcing internal cluster traffic through a common gateway, anything TLS related, node specific policies, targeting services by name, creation or management of 'Policy requests', default policies applied to all namespaces or pods, advanced policy querying and reachability tooling, logging network security events, explicitly denying policies, and preventing loopback or incoming host traffic.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/services-networking/network-policies.md"
+    ]
+  },
+  {
+    "id": "networking-014",
+    "question": "What is a Service in Kubernetes and how can it be defined?",
+    "reference_answer": "A Service is an object that you can create, view or modify using the Kubernetes API. You can define a Service using a YAML manifest, specifying its metadata, selector, and ports.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/services-networking/service.md"
+    ]
+  },
+  {
+    "id": "networking-015",
+    "question": "Who typically creates and manages EndpointSlice objects in Kubernetes?",
+    "reference_answer": "Most often, the control plane (specifically, the endpoint slice controller) creates and manages EndpointSlice objects.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/services-networking/endpoint-slices.md"
+    ]
+  },
+  {
+    "id": "networking-016",
+    "question": "What are some strategies to mitigate overloaded endpoints when using the PreferClose heuristic in traffic distribution?",
+    "reference_answer": "Consider using Pod Topology Spread Constraints to distribute your pods more evenly across zones, or create a separate Deployment for each zone to allow workloads to scale independently.",
+    "relevant_doc_ids": [
+      "content/en/docs/reference/networking/virtual-ips.md"
+    ]
+  },
+  {
+    "id": "networking-017",
+    "question": "What does the `.spec.trafficDistribution` field do in a Kubernetes Service?",
+    "reference_answer": "The `.spec.trafficDistribution` field provides a way to influence traffic routing within a Kubernetes Service by expressing preferences, such as routing to topologically closer endpoints, which can help optimize for performance, cost, or reliability.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/services-networking/service.md"
+    ]
+  },
+  {
+    "id": "networking-018",
+    "question": "What was the method for specifying Ingress classes before Kubernetes 1.18?",
+    "reference_answer": "Ingress classes were specified with a `kubernetes.io/ingress.class` annotation on the Ingress.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/services-networking/ingress.md"
+    ]
+  },
+  {
+    "id": "networking-019",
+    "question": "When is the topology-aware routing feature not recommended?",
+    "reference_answer": "This feature is not recommended when incoming traffic is expected to originate from a single zone.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/services-networking/topology-aware-routing.md"
+    ]
+  },
+  {
+    "id": "networking-020",
+    "question": "How are Gateway API resources implemented in Kubernetes?",
+    "reference_answer": "Instead of Gateway API resources being natively implemented by Kubernetes, the specifications are defined as Custom Resources supported by a wide range of implementations.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/services-networking/gateway.md"
+    ]
   }
 ]
