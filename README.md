@@ -389,6 +389,7 @@ All non-trivial decisions are captured as Architecture Decision Records in
 - [ADR-0013](docs/adr/ADR-0013-api-security-hardening.md): API security hardening baseline
 - [ADR-0014](docs/adr/ADR-0014-judge-reliability-audit.md): Judge reliability audit
 - [ADR-0015](docs/adr/ADR-0015-retrieved-context-injection-hardening.md): Retrieved-context injection hardening
+- [ADR-0016](docs/adr/ADR-0016-chunk-level-citations.md): Chunk-level inline citations
 
 ## Research foundations
 
