@@ -1,0 +1,74 @@
+[
+  {
+    "id": "multihop-001",
+    "question": "How does an Ingress route external HTTP traffic to your Pods, and what must exist behind the Ingress for that routing to work?",
+    "reference_answer": "An Ingress maps incoming HTTP/HTTPS traffic to different backends based on rules you define (for example by host or URL path). Each rule's backend is a combination of a Service name and port, so the Ingress does not talk to Pods directly - it forwards to a Service, which in turn selects the Pods and load-balances across them. A Service (typically of type ClusterIP) must therefore exist behind the Ingress; the Ingress resource only defines routing and needs an Ingress controller running to fulfil it.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/services-networking/ingress.md",
+      "content/en/docs/concepts/services-networking/service.md"
+    ]
+  },
+  {
+    "id": "multihop-002",
+    "question": "When you change a Deployment's pod template, how does it use ReplicaSets to carry out the rollout?",
+    "reference_answer": "A Deployment does not manage Pods directly; it manages ReplicaSets. When you update the Deployment's PodTemplateSpec, the Deployment controller creates a new ReplicaSet and gradually moves Pods from the old ReplicaSet to the new one at a controlled rate, so the application stays available during the change. Each new ReplicaSet corresponds to a new revision of the Deployment, which is what makes rollbacks possible. You should not manage the ReplicaSets owned by a Deployment yourself.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/workloads/controllers/deployment.md",
+      "content/en/docs/concepts/workloads/controllers/replicaset.md"
+    ]
+  },
+  {
+    "id": "multihop-003",
+    "question": "How does a StatefulSet give each of its replicas stable, persistent storage that survives rescheduling?",
+    "reference_answer": "A StatefulSet uses volumeClaimTemplates: for each replica it creates a PersistentVolumeClaim, which is bound to a PersistentVolume (usually dynamically provisioned through a StorageClass). Because the PVC is tied to the Pod's stable identity, the same PersistentVolume is re-attached when the Pod is rescheduled, so the replica keeps its data. The PersistentVolume's lifecycle is independent of the Pod, which is what makes the storage durable across restarts.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/workloads/controllers/statefulset.md",
+      "content/en/docs/concepts/storage/persistent-volumes.md"
+    ]
+  },
+  {
+    "id": "multihop-004",
+    "question": "How does a DaemonSet make sure its Pod runs on every node, including nodes that carry taints?",
+    "reference_answer": "A DaemonSet ensures one copy of its Pod runs on each matching node; the DaemonSet controller creates the Pods and honours nodeAffinity to target hosts. To reach nodes that would normally repel Pods, the controller automatically adds a set of tolerations to DaemonSet Pods - for example for node.kubernetes.io/not-ready and unreachable taints with the NoExecute effect - so the Pods can be scheduled onto and stay running on nodes that are not ready or are under pressure, rather than being evicted. Node taints and the DaemonSet's tolerations together decide where the Pods actually land.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/workloads/controllers/daemonset.md",
+      "content/en/docs/reference/labels-annotations-taints/_index.md"
+    ]
+  },
+  {
+    "id": "multihop-005",
+    "question": "When a PersistentVolumeClaim triggers dynamic provisioning, how is the resulting PersistentVolume's reclaim policy determined?",
+    "reference_answer": "When a PVC asks for storage that must be dynamically provisioned, the StorageClass named by the claim supplies the provisioner, parameters, and reclaimPolicy used to create the PersistentVolume. The StorageClass's reclaimPolicy (Delete or Retain) is therefore inherited by the dynamically provisioned PV and controls what happens to the underlying storage when the PVC is deleted: Delete removes the PV and its backing volume, while Retain keeps them for manual reclamation. Dynamically provisioned volumes default to Delete unless the StorageClass says otherwise.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/storage/persistent-volumes.md",
+      "content/en/docs/concepts/storage/storage-classes.md"
+    ]
+  },
+  {
+    "id": "multihop-006",
+    "question": "If Pods are exposed through a Service but are also selected by a NetworkPolicy, does reaching them through the Service bypass the policy?",
+    "reference_answer": "No. A Service provides a stable virtual IP and load-balances to the Pods it selects, but it does not change which connections are allowed. A NetworkPolicy applies to the Pods it selects with a podSelector: once a Pod is isolated for a direction (because some policy selects it and lists that direction in policyTypes), only connections explicitly allowed by a policy are permitted, regardless of whether the traffic arrived directly or via a Service. So the policy is enforced at the destination Pods; routing through a Service does not exempt traffic from it.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/services-networking/network-policies.md",
+      "content/en/docs/concepts/services-networking/service.md"
+    ]
+  },
+  {
+    "id": "multihop-007",
+    "question": "How does a Job know it is complete, in terms of the lifecycle of the Pods it creates?",
+    "reference_answer": "A Job creates one or more Pods to run a task and watches their lifecycle. As each Pod finishes successfully and reaches the Succeeded phase, the Job records it as a successful completion. When the number of successful completions reaches the Job's .spec.completions target (running up to .spec.parallelism Pods at once), the Job itself is considered complete and stops creating new Pods. Pods that fail may be retried according to the Job's backoff settings; completion is tracked from the Succeeded phase of the Pods, not merely from their creation.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/workloads/controllers/job.md",
+      "content/en/docs/concepts/workloads/pods/pod-lifecycle.md"
+    ]
+  },
+  {
+    "id": "multihop-008",
+    "question": "What is the difference between a Secret and a ConfigMap, and how does a Pod consume each of them?",
+    "reference_answer": "A ConfigMap holds non-confidential configuration data as key-value pairs, while a Secret holds a small amount of sensitive data such as passwords or tokens; Secrets are similar to ConfigMaps but are intended for confidential values and are handled more carefully. A Pod consumes either one in the same two ways: by exposing the keys as container environment variables, or by mounting the object as files in a volume. Using a Secret signals that the data is sensitive and lets Kubernetes avoid writing it to durable storage unnecessarily, but the consumption mechanisms (env vars or mounted files) are the same as for a ConfigMap.",
+    "relevant_doc_ids": [
+      "content/en/docs/concepts/configuration/secret.md",
+      "content/en/docs/concepts/configuration/configmap.md"
+    ]
+  }
+]
