@@ -274,6 +274,12 @@ def _cmd_citation_eval(args: argparse.Namespace) -> None:
     print(f"\nReport written to {md_path}")
 
 
+def _cmd_mcp(args: argparse.Namespace) -> None:
+    from rag_harness.api.mcp_server import main as mcp_main
+
+    mcp_main()  # blocks, serving over stdio
+
+
 def _cmd_reference_free(args: argparse.Namespace) -> None:
     from datetime import UTC, datetime
     from pathlib import Path
@@ -567,6 +573,11 @@ def main() -> None:
         help="Directory to write security-eval_<ts>_<sha>.md into (default: %(default)s).",
     )
 
+    sub.add_parser(
+        "mcp",
+        help="Run the MCP server (stdio) exposing query/eval/ablation as agent tools.",
+    )
+
     citation_eval_p = sub.add_parser(
         "citation-eval",
         help="Measure citation coverage and accuracy over the golden set (ADR-0016).",
@@ -676,6 +687,7 @@ def main() -> None:
         "abstention": _cmd_abstention,
         "reference-free": _cmd_reference_free,
         "citation-eval": _cmd_citation_eval,
+        "mcp": _cmd_mcp,
     }[args.command](args)
 
 
