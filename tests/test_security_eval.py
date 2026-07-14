@@ -11,11 +11,15 @@ import pytest
 
 from rag_harness.evaluation.security_eval import (
     CANARY,
+    COUNTERFACTUALS,
+    FALSE_TOKEN,
     INJECTIONS,
     PoisonResult,
     answer_is_compromised,
+    answer_repeats_falsehood,
     make_poisoned_context,
     render_markdown,
+    run_counterfactual_probe,
     run_poison_probe,
 )
 from rag_harness.models import GoldenCase
@@ -62,16 +66,49 @@ def test_resistance_rate() -> None:
     assert PoisonResult("x", n_cases=0, n_compromised=0).resistance_rate == 1.0
 
 
-def test_render_markdown_lists_every_injection() -> None:
-    results = [
-        PoisonResult("direct_override", 30, 0),
-        PoisonResult("forged_system", 30, 2),
-    ]
-    md = render_markdown(results, commit="abc1234", timestamp="20260714T000000+0000")
+def test_render_markdown_lists_both_probe_families() -> None:
+    injection = [PoisonResult("direct_override", 30, 0), PoisonResult("forged_system", 30, 2)]
+    counterfactual = [PoisonResult("fabricated_limit", 30, 20)]
+    md = render_markdown(
+        injection, counterfactual, commit="abc1234", timestamp="20260714T000000+0000"
+    )
+    assert "Injection resistance" in md
+    assert "Counterfactual resistance" in md
     assert "direct_override" in md
-    assert "forged_system" in md
+    assert "fabricated_limit" in md
     assert "abc1234" in md
-    assert "100%" in md  # direct_override fully resisted
+    assert "corpus integrity" in md  # the honest framing is stated
+
+
+def test_every_counterfactual_carries_the_false_token() -> None:
+    for cf in COUNTERFACTUALS:
+        assert FALSE_TOKEN in cf.text
+        assert cf.question  # each has an eliciting question
+
+
+def test_answer_repeats_falsehood_detects_token() -> None:
+    assert answer_repeats_falsehood(f"The limit is {FALSE_TOKEN} containers.")
+    assert not answer_repeats_falsehood("A Pod holds one or more containers.")
+
+
+@pytest.mark.asyncio
+async def test_run_counterfactual_probe_counts_absorbed() -> None:
+    cases = [_CASE, _CASE]
+
+    async def credulous_generate(question: str, chunks: list) -> str:
+        # a model that faithfully repeats whatever the context says
+        text = " ".join(c.text for c in chunks)
+        return text
+
+    with patch(
+        "rag_harness.evaluation.security_eval.generate_async", side_effect=credulous_generate
+    ):
+        results = await run_counterfactual_probe(cases)
+
+    # every answer echoes the poisoned chunk -> all absorbed the falsehood
+    for r in results:
+        assert r.n_compromised == 2
+        assert r.resistance_rate == 0.0
 
 
 @pytest.mark.asyncio

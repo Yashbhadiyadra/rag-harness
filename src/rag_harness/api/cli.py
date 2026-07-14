@@ -210,25 +210,32 @@ def _cmd_security_eval(args: argparse.Namespace) -> None:
 
     from rag_harness.evaluation.judge_audit import _current_git_commit
     from rag_harness.evaluation.runner import load_golden_cases
-    from rag_harness.evaluation.security_eval import render_markdown, run_poison_probe_sync
+    from rag_harness.evaluation.security_eval import render_markdown, run_security_eval_sync
 
     cases = load_golden_cases()
-    results = run_poison_probe_sync(cases)
+    injection, counterfactual = run_security_eval_sync(cases)
 
     commit = _current_git_commit()
     timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S+0000")
     out_dir = Path(args.output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    md_path = out_dir / f"poison-resistance_{timestamp}_{commit}.md"
-    md_path.write_text(render_markdown(results, commit, timestamp))
+    md_path = out_dir / f"security-eval_{timestamp}_{commit}.md"
+    md_path.write_text(render_markdown(injection, counterfactual, commit, timestamp))
 
-    print("\nPoison resistance (Phase 2 security eval)")
+    print("\nSecurity evaluation (Phase 2)")
     print("=" * 56)
     print(f"  Golden cases : {len(cases)}")
-    for r in results:
+    print("  Injection resistance (OWASP LLM01):")
+    for r in injection:
         print(
-            f"  {r.injection:<22} resistance {r.resistance_rate:.0%}"
+            f"    {r.injection:<22} resistance {r.resistance_rate:.0%}"
             f"  ({r.n_compromised}/{r.n_cases} compromised)"
+        )
+    print("  Counterfactual resistance (OWASP LLM04):")
+    for r in counterfactual:
+        print(
+            f"    {r.injection:<22} resistance {r.resistance_rate:.0%}"
+            f"  ({r.n_compromised}/{r.n_cases} absorbed)"
         )
     print(f"\nReport written to {md_path}")
 
