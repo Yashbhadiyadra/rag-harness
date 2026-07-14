@@ -140,6 +140,117 @@ def test_run_eval_passes_when_above_thresholds(tmp_path: Path) -> None:
     assert summary.mean_context_precision == 0.8
 
 
+def test_run_eval_reports_negative_rejection(tmp_path: Path) -> None:
+    # One answerable case and one genuinely unanswerable case (reference is the
+    # refusal). The generator is stubbed to refuse on both, so the answerable
+    # case scores poorly but the unanswerable one is a correct abstention.
+    data = [
+        {
+            "id": "answerable-001",
+            "question": "What is RBAC?",
+            "reference_answer": "Role-Based Access Control.",
+            "relevant_doc_ids": ["content/en/docs/security/rbac.md"],
+        },
+        {
+            "id": "unanswerable-001",
+            "question": "What is the airspeed of an unladen swallow?",
+            "reference_answer": (
+                "I do not have enough information in the provided context to answer this question."
+            ),
+            "relevant_doc_ids": [],
+        },
+    ]
+    (tmp_path / "cases.json").write_text(json.dumps(data))
+
+    mock_retriever = MagicMock()
+    mock_retriever.retrieve_async = AsyncMock(
+        return_value=[_make_chunk("content/en/docs/security/rbac.md")]
+    )
+
+    with (
+        patch(
+            "rag_harness.evaluation.runner.generate_async",
+            new_callable=AsyncMock,
+            return_value="I do not have enough information in the provided context.",
+        ),
+        patch(
+            "rag_harness.evaluation.runner.faithfulness_async",
+            new_callable=AsyncMock,
+            return_value=0.9,
+        ),
+        patch(
+            "rag_harness.evaluation.runner.correctness_async",
+            new_callable=AsyncMock,
+            return_value=0.5,
+        ),
+        patch(
+            "rag_harness.evaluation.runner.answer_relevancy_async",
+            new_callable=AsyncMock,
+            return_value=0.5,
+        ),
+        patch(
+            "rag_harness.evaluation.runner.context_precision_async",
+            new_callable=AsyncMock,
+            return_value=0.5,
+        ),
+    ):
+        summary = asyncio.run(run_eval(mock_retriever, golden_dir=tmp_path))
+
+    # Only the one unanswerable case counts; the generator refused it correctly.
+    assert summary.n_unanswerable == 1
+    assert summary.abstention_rate == 1.0
+
+
+def test_run_eval_negative_rejection_defaults_when_all_answerable(tmp_path: Path) -> None:
+    data = [
+        {
+            "id": "answerable-001",
+            "question": "What is RBAC?",
+            "reference_answer": "Role-Based Access Control.",
+            "relevant_doc_ids": ["content/en/docs/security/rbac.md"],
+        }
+    ]
+    (tmp_path / "cases.json").write_text(json.dumps(data))
+
+    mock_retriever = MagicMock()
+    mock_retriever.retrieve_async = AsyncMock(
+        return_value=[_make_chunk("content/en/docs/security/rbac.md")]
+    )
+
+    with (
+        patch(
+            "rag_harness.evaluation.runner.generate_async",
+            new_callable=AsyncMock,
+            return_value="Role-Based Access Control.",
+        ),
+        patch(
+            "rag_harness.evaluation.runner.faithfulness_async",
+            new_callable=AsyncMock,
+            return_value=0.95,
+        ),
+        patch(
+            "rag_harness.evaluation.runner.correctness_async",
+            new_callable=AsyncMock,
+            return_value=0.90,
+        ),
+        patch(
+            "rag_harness.evaluation.runner.answer_relevancy_async",
+            new_callable=AsyncMock,
+            return_value=0.9,
+        ),
+        patch(
+            "rag_harness.evaluation.runner.context_precision_async",
+            new_callable=AsyncMock,
+            return_value=0.8,
+        ),
+    ):
+        summary = asyncio.run(run_eval(mock_retriever, golden_dir=tmp_path))
+
+    # No unanswerable cases in the set: rate defaults to 1.0, count is 0.
+    assert summary.n_unanswerable == 0
+    assert summary.abstention_rate == 1.0
+
+
 def test_run_eval_fails_when_below_threshold(tmp_path: Path) -> None:
     data = [
         {

@@ -78,6 +78,11 @@ def _cmd_eval(args: argparse.Namespace) -> None:
     print(f"  Faithfulness       : {summary.mean_faithfulness:.3f}")
     print(f"  Correctness        : {summary.mean_correctness:.3f}")
     print(f"  Answer Relevancy   : {summary.mean_answer_relevancy:.3f}")
+    if summary.n_unanswerable:
+        print(
+            f"  Negative Rejection : {summary.abstention_rate:.3f} "
+            f"({summary.n_unanswerable} unanswerable cases)"
+        )
     print("  " + "-" * 40)
     print(f"  Latency p50        : {summary.latency_p50_ms:>7.0f} ms")
     print(f"  Latency p95        : {summary.latency_p95_ms:>7.0f} ms")

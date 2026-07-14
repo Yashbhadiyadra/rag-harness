@@ -42,7 +42,10 @@ the metrics page.
 - **Answer quality** - context recall, precision, faithfulness, correctness,
   and answer relevancy, scored per failure mode by an LLM judge, with an
   opt-in corrective-retry loop and bootstrap 95% confidence intervals on every
-  comparison ([ADR-0011](docs/adr/ADR-0011-statistical-significance.md)).
+  comparison ([ADR-0011](docs/adr/ADR-0011-statistical-significance.md)). The
+  same run also reports negative rejection - the fraction of genuinely
+  unanswerable golden cases the system refused instead of improvising - as a
+  headline number alongside quality.
   `python -m rag_harness ablation`
 - **Judge reliability** - the judge is validated before its scores are
   trusted. A three-probe audit (calibration on right answers, near-gate noise,

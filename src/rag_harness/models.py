@@ -65,3 +65,9 @@ class EvalSummary(BaseModel):
     total_cost_usd: float = 0.0
     total_input_tokens: int = 0
     total_output_tokens: int = 0
+    # Negative rejection (added Phase 4): of the golden cases that are
+    # genuinely unanswerable (reference answer is the refusal), the fraction
+    # the system correctly refused instead of improvising. Headline
+    # reliability metric - answers when it should, abstains when it must.
+    n_unanswerable: int = 0
+    abstention_rate: float = 1.0

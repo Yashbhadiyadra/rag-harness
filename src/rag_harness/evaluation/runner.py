@@ -197,6 +197,21 @@ async def run_eval(
     mean_correct = sum(r.correctness for r in results) / n
     mean_relevancy = sum(r.answer_relevancy for r in results) / n
 
+    # Negative rejection: a case is genuinely unanswerable when its reference
+    # answer is itself the refusal. On those, correct behaviour is to refuse,
+    # not improvise. Reported as a first-class reliability number.
+    from rag_harness.evaluation.abstention_eval import is_abstention
+
+    unanswerable = [
+        r for c, r in zip(cases, results, strict=True) if is_abstention(c.reference_answer)
+    ]
+    n_unanswerable = len(unanswerable)
+    abstention_rate = (
+        sum(1 for r in unanswerable if is_abstention(r.generated_answer)) / n_unanswerable
+        if n_unanswerable
+        else 1.0
+    )
+
     latencies = [r.latency_ms for r in results]
 
     passed = (
@@ -218,6 +233,8 @@ async def run_eval(
         total_input_tokens=sum(r.input_tokens for r in results),
         total_output_tokens=sum(r.output_tokens for r in results),
         passed=passed,
+        n_unanswerable=n_unanswerable,
+        abstention_rate=abstention_rate,
     )
 
     logger.info(
@@ -259,6 +276,8 @@ def export_results(summary: EvalSummary, output: Path) -> None:
                     "total_cost_usd": summary.total_cost_usd,
                     "total_input_tokens": summary.total_input_tokens,
                     "total_output_tokens": summary.total_output_tokens,
+                    "n_unanswerable": summary.n_unanswerable,
+                    "abstention_rate": summary.abstention_rate,
                     "passed": summary.passed,
                     "results": [r.model_dump() for r in summary.results],
                 },
