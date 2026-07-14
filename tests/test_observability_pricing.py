@@ -19,6 +19,13 @@ def test_price_zero_tokens_is_zero() -> None:
     assert price("gpt-4o-mini", 0, 0) == 0.0
 
 
+def test_price_gpt_4o_is_priced() -> None:
+    # gpt-4o: 1M input × $2.50 + 1M output × $10.00 = $12.50 (used by the
+    # judge selection matrix - an unpriced judge would report a false $0).
+    assert price("gpt-4o", 1_000_000, 1_000_000) == 12.50
+    assert "gpt-4o" in MODEL_RATES
+
+
 def test_price_fractional_tokens() -> None:
     # 150 input tokens on gpt-4o-mini = 150 / 1e6 × 0.15 = 2.25e-5
     result = price("gpt-4o-mini", 150, 0)
