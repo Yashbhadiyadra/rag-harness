@@ -39,11 +39,27 @@ modes).
   passages found by different sub-queries.
 - Cost: decomposition adds one LLM call per query plus one retrieval per
   sub-query. It is opt-in via strategy selection, not the default.
-- The single-hop golden set does not exercise decomposition's advantage
-  (most questions decompose to themselves), so a fair measurement needs
-  multi-hop cases. Those are drafted through the existing golden
-  expansion + human review pipeline (Phase 3 task 4), not hand-written,
-  and the ablation is re-run once they land. Until then, decompose is
-  expected to roughly match its base retriever on the single-hop set -
-  the point is that it does not regress there while adding multi-hop
-  capability.
+- The single-hop golden set does not fully exercise decomposition's
+  advantage (most questions decompose to themselves), so a fair
+  measurement of the multi-hop gain needs multi-hop cases. Those are
+  drafted through the existing golden expansion + human review pipeline
+  (Phase 3 task 4), not hand-written, and the full 12-config ablation is
+  re-run once they land.
+
+Focused ablation (dense vs decompose, baseline mode, 30 single-hop
+cases, cache on):
+
+| Strategy | Recall | Faithfulness | Correctness | Relevancy | Cost |
+|---|---|---|---|---|---|
+| dense | 0.767 | 0.927 | 0.798 | 0.867 | 0.0123 |
+| decompose | 0.817 | 0.927 | 0.832 | 0.933 | 0.0257 |
+
+Even without multi-hop cases, decompose beats the current default on
+every quality metric (recall +0.050, correctness +0.034, relevancy
++0.066) at roughly 2x the cost. Caveat: decompose wraps HybridRetriever
+while `dense` is plain dense, so part of the gain is hybrid-vs-dense,
+not decomposition alone; the honest isolated comparison (decompose vs
+hybrid) and the multi-hop advantage both land with the full ablation on
+the expanded golden set. The takeaway that holds now: decompose does not
+regress on single-hop questions and improves over the default, so
+enabling it is safe.
