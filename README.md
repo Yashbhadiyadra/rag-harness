@@ -9,7 +9,10 @@ measures answer quality across each failure mode, **validates the LLM judge
 that does the scoring before trusting it**, **red-teams its own corpus** for
 prompt injection and data poisoning, and gates every change on the numbers
 with bootstrap confidence intervals. Every claim below links to the ADR and
-the measured result behind it.
+the measured result behind it. The Kubernetes docs are the flagship corpus,
+but ingestion is corpus-agnostic: point `CORPUS_*` at any markdown docs repo
+and the same reliability machinery applies
+([ADR-0019](docs/adr/ADR-0019-bring-your-own-corpus.md)).
 
 ## Why
 
@@ -430,6 +433,7 @@ All non-trivial decisions are captured as Architecture Decision Records in
 - [ADR-0016](docs/adr/ADR-0016-chunk-level-citations.md): Chunk-level inline citations
 - [ADR-0017](docs/adr/ADR-0017-query-decomposition.md): Query decomposition retrieval strategy
 - [ADR-0018](docs/adr/ADR-0018-otel-genai-conventions.md): OpenTelemetry GenAI semantic conventions
+- [ADR-0019](docs/adr/ADR-0019-bring-your-own-corpus.md): Bring-your-own-corpus ingestion
 
 ## Research foundations
 
