@@ -31,6 +31,7 @@ from rag_harness.api.middleware.daily_cap import DailyCapMiddleware
 from rag_harness.api.middleware.kill_switch import KillSwitchMiddleware
 from rag_harness.api.middleware.security_headers import SecurityHeadersMiddleware
 from rag_harness.config import settings
+from rag_harness.generation.citations import cited_chunk_indices
 from rag_harness.generation.corrective import NO_INFO_MESSAGE, corrective_generate_async
 from rag_harness.generation.generator import generate_async
 from rag_harness.logging_setup import configure_logging
@@ -145,6 +146,19 @@ class Source(BaseModel):
     heading_path: list[str]
 
 
+class Citation(BaseModel):
+    """A passage the answer cited inline, tied to its marker.
+
+    ``marker`` is the 1-based number the answer used (e.g. ``[1]``), so a
+    client can link a specific claim to the exact chunk it came from -
+    chunk-level attribution, not just the file-level list in ``sources``.
+    """
+
+    marker: int
+    source_file: str
+    heading_path: list[str]
+
+
 class QueryResponse(BaseModel):
     """Response body returned by POST /query.
 
@@ -157,6 +171,7 @@ class QueryResponse(BaseModel):
     question: str
     answer: str
     sources: list[Source]
+    citations: list[Citation] = Field(default_factory=list)
     trace: list[TraceSpan] = Field(default_factory=list)
     cost_usd: float = 0.0
     latency_ms: float = 0.0
@@ -247,11 +262,23 @@ async def query(request: Request, body: QueryRequest) -> QueryResponse:
         cost_usd += usage.estimated_cost_usd
 
     sources = [Source(source_file=c.source_file, heading_path=c.heading_path) for c in chunks]
-    logger.info("query answered - %d sources used, corrective=%s", len(sources), use_corrective)
+    cited_markers = set(cited_chunk_indices(answer))
+    citations = [
+        Citation(marker=i, source_file=c.source_file, heading_path=c.heading_path)
+        for i, c in enumerate(chunks, start=1)
+        if i in cited_markers
+    ]
+    logger.info(
+        "query answered - %d sources, %d cited, corrective=%s",
+        len(sources),
+        len(citations),
+        use_corrective,
+    )
     return QueryResponse(
         question=body.question,
         answer=answer,
         sources=sources,
+        citations=citations,
         trace=span_list,
         cost_usd=cost_usd,
         latency_ms=latency_seconds * 1000.0,

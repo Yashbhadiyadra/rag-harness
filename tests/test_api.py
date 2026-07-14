@@ -93,6 +93,32 @@ def test_query_returns_answer_and_sources() -> None:
     assert len(body["sources"]) == 1
     assert body["sources"][0]["source_file"] == "content/en/docs/security/rbac.md"
     assert body["sources"][0]["heading_path"] == ["Security", "RBAC"]
+    # answer has no inline marker, so no chunk-level citations
+    assert body["citations"] == []
+
+
+def test_query_returns_chunk_level_citations() -> None:
+    c1 = _make_chunk("content/en/docs/a.md", ["A"])
+    c2 = _make_chunk("content/en/docs/b.md", ["B"])
+
+    mock_retriever = MagicMock()
+    mock_retriever.retrieve_async = AsyncMock(return_value=[c1, c2])
+
+    with (
+        patch("rag_harness.api.server._get_retriever", return_value=mock_retriever),
+        patch(
+            "rag_harness.api.server.generate_async",
+            new_callable=AsyncMock,
+            return_value="First fact [1]. Second fact [2]. More on the first [1].",
+        ),
+    ):
+        response = client.post("/query", json={"question": "q?"})
+
+    body = response.json()
+    citations = body["citations"]
+    assert [c["marker"] for c in citations] == [1, 2]
+    assert citations[0]["source_file"] == "content/en/docs/a.md"
+    assert citations[1]["source_file"] == "content/en/docs/b.md"
 
 
 def test_query_response_includes_trace_cost_and_latency() -> None:
