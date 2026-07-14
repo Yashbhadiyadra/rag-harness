@@ -146,7 +146,7 @@ def _cmd_judge_audit(args: argparse.Namespace) -> None:
     if args.judge_model:
         settings.generation_model = args.judge_model
 
-    report = run_audit_sync(retest=args.retest, scales=args.scales)
+    report = run_audit_sync(retest=args.retest, scales=args.scales, kappa=args.kappa)
     md_path = write_report(report, out_dir=Path(args.output_dir))
 
     print("\nJudge reliability audit (ADR-0014)")
@@ -175,6 +175,13 @@ def _cmd_judge_audit(args: argparse.Namespace) -> None:
             f"\n  scale-format · {sc.metric} - mean divergence "
             f"{sc.mean_abs_divergence:.3f} (signed {sc.signed_mean_divergence:+.3f}), "
             f"flips {sc.flip_rate:.0%}"
+        )
+    if report.kappa:
+        k = report.kappa
+        print(
+            f"\n  kappa vs ground truth - Cohen's kappa {k.kappa:.3f} "
+            f"(raw agreement {k.raw_agreement:.3f}, {k.false_accepts} false-accept, "
+            f"{k.false_rejects} false-reject)"
         )
     print(f"\nReport written to {md_path}")
 
@@ -560,6 +567,14 @@ def main() -> None:
             "Run the scale-format sensitivity check: score the boundary "
             "answers on a numeric [0,1] and an A-E letter scale and report "
             "their divergence (ADR-0014)."
+        ),
+    )
+    judge_audit_p.add_argument(
+        "--kappa",
+        action="store_true",
+        help=(
+            "Report Cohen's kappa agreement of the judge's gate verdict with a "
+            "known-correct/known-incorrect ground truth (ADR-0014)."
         ),
     )
 

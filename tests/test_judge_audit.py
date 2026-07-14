@@ -17,6 +17,7 @@ from rag_harness.evaluation.judge_audit import (
     ShiftStats,
     cohens_kappa,
     cross_pair_answers,
+    kappa_stats,
     matrix_row,
     prompt_hash,
     render_markdown,
@@ -308,6 +309,53 @@ def test_kappa_rejects_bad_input() -> None:
         cohens_kappa([True], [True, False])
     with pytest.raises(ValueError):
         cohens_kappa([], [])
+
+
+# --- Kappa vs ground truth -----------------------------------------------
+
+
+def test_kappa_stats_perfect_judge() -> None:
+    # correct answers all pass (>=0.82), wrong answers all fail
+    r = kappa_stats([1.0, 0.9, 0.95], [0.0, 0.1, 0.05], threshold=0.82)
+    assert r.kappa == pytest.approx(1.0)
+    assert r.raw_agreement == pytest.approx(1.0)
+    assert r.false_accepts == 0
+    assert r.false_rejects == 0
+    assert r.n_known_correct == 3 and r.n_known_incorrect == 3
+
+
+def test_kappa_stats_counts_errors() -> None:
+    # one known-correct fails (0.5 < 0.82), one known-incorrect passes (0.9)
+    r = kappa_stats([1.0, 0.5], [0.9, 0.1], threshold=0.82)
+    assert r.false_rejects == 1
+    assert r.false_accepts == 1
+    assert r.kappa < 1.0
+
+
+def test_kappa_stats_rejects_empty() -> None:
+    with pytest.raises(ValueError):
+        kappa_stats([], [0.1], threshold=0.82)
+    with pytest.raises(ValueError):
+        kappa_stats([0.9], [], threshold=0.82)
+
+
+@pytest.mark.asyncio
+async def test_run_audit_kappa_uses_references_and_cross_pairs() -> None:
+    cases = [
+        GoldenCase(id="t-1", question="q1", reference_answer="ref one", relevant_doc_ids=[]),
+        GoldenCase(id="t-2", question="q2", reference_answer="ref two", relevant_doc_ids=[]),
+    ]
+
+    async def fake_score(metric: str, case: GoldenCase, answer: str) -> float:
+        # a perfect judge: own reference correct, other reference wrong
+        return 1.0 if answer == case.reference_answer else 0.0
+
+    with patch("rag_harness.evaluation.judge_audit._score_case", side_effect=fake_score):
+        report = await run_audit(cases=cases, probes=(), kappa=True)
+
+    assert report.kappa is not None
+    assert report.kappa.kappa == pytest.approx(1.0)
+    assert report.kappa.false_accepts == 0
 
 
 # --- Provenance and rendering ---------------------------------------------

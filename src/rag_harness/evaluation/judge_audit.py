@@ -305,6 +305,50 @@ def scale_stats(
 
 
 @dataclass
+class KappaResult:
+    """Chance-corrected agreement between the judge and a known ground truth.
+
+    The judge classifies each answer pass/fail at the correctness gate. Ground
+    truth is constructed and objective: golden reference answers are
+    known-correct, cross-paired answers are known-incorrect. kappa is the
+    honest agreement number; raw_agreement is shown alongside to make the
+    overstatement concrete (arXiv:2606.19544). Human-labeled correctness is a
+    future refinement; these labels are exact by construction.
+    """
+
+    n_known_correct: int
+    n_known_incorrect: int
+    kappa: float
+    raw_agreement: float
+    false_accepts: int  # known-incorrect answers the judge passed
+    false_rejects: int  # known-correct answers the judge failed
+
+
+def kappa_stats(
+    correct_scores: list[float], incorrect_scores: list[float], threshold: float
+) -> KappaResult:
+    """Chance-corrected agreement of the judge's gate verdict with ground truth.
+
+    ``correct_scores`` are the judge's correctness scores on known-correct
+    answers, ``incorrect_scores`` on known-incorrect ones. The judge "passes"
+    an answer when its score is at or above ``threshold``.
+    """
+    if not correct_scores or not incorrect_scores:
+        raise ValueError("need both known-correct and known-incorrect scores")
+    judge = [s >= threshold for s in correct_scores] + [s >= threshold for s in incorrect_scores]
+    truth = [True] * len(correct_scores) + [False] * len(incorrect_scores)
+    raw = sum(1 for j, t in zip(judge, truth, strict=True) if j == t) / len(truth)
+    return KappaResult(
+        n_known_correct=len(correct_scores),
+        n_known_incorrect=len(incorrect_scores),
+        kappa=cohens_kappa(judge, truth),
+        raw_agreement=raw,
+        false_accepts=sum(1 for s in incorrect_scores if s >= threshold),
+        false_rejects=sum(1 for s in correct_scores if s < threshold),
+    )
+
+
+@dataclass
 class AuditReport:
     """Full result of one judge-reliability audit run."""
 
@@ -316,6 +360,7 @@ class AuditReport:
     probes: list[ProbeResult] = field(default_factory=list)
     stability: list[StabilityResult] = field(default_factory=list)
     scales: list[ScaleResult] = field(default_factory=list)
+    kappa: KappaResult | None = None
 
 
 async def _score_case(metric: str, case: GoldenCase, answer: str) -> float:
@@ -409,11 +454,30 @@ async def run_scale_check(cases: list[GoldenCase], metric: str = "correctness") 
     return scale_stats(numeric, letter, threshold, metric)
 
 
+async def run_kappa_check(cases: list[GoldenCase]) -> KappaResult:
+    """Chance-corrected agreement of the judge with a known correctness truth.
+
+    Known-correct = each golden reference answered as itself. Known-incorrect
+    = each case answered with another case's reference (cross-paired, fluent
+    but wrong). The judge's correctness gate verdict is compared to this exact
+    ground truth via Cohen's kappa - the validation the literature demands,
+    which no incumbent eval tool reports.
+    """
+    threshold = _METRIC_THRESHOLDS["correctness"]
+    correct = [await _score_case("correctness", c, c.reference_answer) for c in cases]
+    wrong_answers = cross_pair_answers(cases)
+    incorrect = [
+        await _score_case("correctness", c, a) for c, a in zip(cases, wrong_answers, strict=True)
+    ]
+    return kappa_stats(correct, incorrect, threshold)
+
+
 async def run_audit(
     cases: list[GoldenCase] | None = None,
     probes: tuple[str, ...] = ("ceiling", "boundary", "discrimination"),
     retest: int = 0,
     scales: bool = False,
+    kappa: bool = False,
 ) -> AuditReport:
     """Run the judge audit over the golden set.
 
@@ -493,6 +557,16 @@ async def run_audit(
             report.scales[-1].mean_abs_divergence,
             report.scales[-1].signed_mean_divergence,
             report.scales[-1].flip_rate * 100,
+        )
+
+    if kappa:
+        report.kappa = await run_kappa_check(cases)
+        logger.info(
+            "audit kappa: %.3f (raw agreement %.3f, %d false-accept, %d false-reject)",
+            report.kappa.kappa,
+            report.kappa.raw_agreement,
+            report.kappa.false_accepts,
+            report.kappa.false_rejects,
         )
     return report
 
@@ -575,6 +649,26 @@ def render_markdown(report: AuditReport) -> str:
                 f"| {sc.signed_mean_divergence:+.3f} | {sc.flip_rate:.0%} |"
             )
         lines.append("")
+    if report.kappa:
+        k = report.kappa
+        lines.append("## judge-vs-truth agreement (Cohen's kappa)")
+        lines.append("")
+        lines.append(
+            "The judge's correctness gate verdict vs a known ground truth: "
+            f"{k.n_known_correct} known-correct answers (golden references) and "
+            f"{k.n_known_incorrect} known-incorrect (cross-paired). kappa is "
+            "chance-corrected; raw agreement is shown to make the gap concrete. "
+            "Ground truth is exact by construction; human-labeled correctness "
+            "is a future refinement."
+        )
+        lines.append("")
+        lines.append("| Cohen's kappa | Raw agreement | False accepts | False rejects |")
+        lines.append("|---|---|---|---|")
+        lines.append(
+            f"| **{k.kappa:.3f}** | {k.raw_agreement:.3f} "
+            f"| {k.false_accepts}/{k.n_known_incorrect} | {k.false_rejects}/{k.n_known_correct} |"
+        )
+        lines.append("")
     return "\n".join(lines)
 
 
@@ -603,6 +697,7 @@ def write_report(report: AuditReport, out_dir: Path | None = None) -> Path:
         ],
         "stability": [vars(st) for st in report.stability],
         "scales": [vars(sc) for sc in report.scales],
+        "kappa": vars(report.kappa) if report.kappa else None,
     }
     (out_dir / f"{stem}.json").write_text(json.dumps(payload, indent=2))
     return md_path
@@ -613,9 +708,12 @@ def run_audit_sync(
     probes: tuple[str, ...] = ("ceiling", "boundary", "discrimination"),
     retest: int = 0,
     scales: bool = False,
+    kappa: bool = False,
 ) -> AuditReport:
     """Sync facade for the CLI."""
-    return asyncio.run(run_audit(cases=cases, probes=probes, retest=retest, scales=scales))
+    return asyncio.run(
+        run_audit(cases=cases, probes=probes, retest=retest, scales=scales, kappa=kappa)
+    )
 
 
 # --- Judge selection matrix ----------------------------------------------
