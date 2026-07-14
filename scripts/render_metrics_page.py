@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import argparse
 import html
+import json
 import sys
 from collections import defaultdict
 from collections.abc import Callable
@@ -43,6 +44,7 @@ from rag_harness.evaluation.history import HistoryEntry, load_history
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_HISTORY_PATH = REPO_ROOT / "evals" / "history" / "runs.jsonl"
 DEFAULT_OUTPUT_PATH = REPO_ROOT / "docs" / "metrics" / "index.html"
+DEFAULT_EXPERIMENTS_DIR = REPO_ROOT / "evals" / "experiments"
 
 # Production defaults come from rag_harness.config.Settings. Duplicated
 # here so the metrics-page script does not require OPENAI_API_KEY at
@@ -475,6 +477,123 @@ def _scatter_section(entries: list[HistoryEntry]) -> str:
     )
 
 
+def _latest_experiment(experiments_dir: Path, prefix: str) -> dict | None:
+    """Load the newest ``<prefix>_*.json`` from the experiments directory."""
+    files = sorted(experiments_dir.glob(f"{prefix}_*.json"))
+    if not files:
+        return None
+    try:
+        return json.loads(files[-1].read_text())
+    except (json.JSONDecodeError, OSError):
+        return None
+
+
+def _judge_reliability_section(audit: dict | None, matrix: dict | None) -> str:
+    """Render the judge-reliability report (ADR-0014).
+
+    Publishes what no incumbent eval tool does: the evidence that the
+    judge behind every score was itself validated. Reads the latest
+    judge-audit and judge-matrix experiment files; renders nothing if
+    neither exists.
+    """
+    if not audit and not matrix:
+        return ""
+
+    blocks: list[str] = []
+
+    if audit:
+        probes = {(p["probe"], p["metric"]): p for p in audit.get("probes", [])}
+        ceiling = probes.get(("ceiling", "correctness"))
+        boundary = probes.get(("boundary", "correctness"))
+        discrimination = probes.get(("discrimination", "correctness"))
+
+        headline_bits = []
+        if ceiling:
+            headline_bits.append(
+                f"<dt>Calibration (right answer)</dt><dd>{ceiling['base_mean']:.3f}</dd>"
+            )
+        if discrimination:
+            headline_bits.append(
+                "<dt>False-accept (wrong answer)</dt>"
+                f"<dd>{_fmt_pct(discrimination['base_pass_rate'])}</dd>"
+            )
+        model = html.escape(str(audit.get("judge_model", "?")))
+        n = audit.get("n_cases", "?")
+        blocks.append(
+            f'<dl class="grid"><dt>Judge model</dt><dd><code>{model}</code></dd>'
+            f"<dt>Golden cases</dt><dd>{n}</dd>{''.join(headline_bits)}</dl>"
+        )
+
+        if boundary and boundary.get("shifts"):
+            rows = "".join(
+                f"<tr><td>{html.escape(s['perturbation'])}</td>"
+                f'<td class="num">{s["mean_abs_shift"]:.3f}</td>'
+                f'<td class="num">{_signed(s.get("signed_mean_shift", 0.0), lambda v: f"{v:.3f}")}</td>'
+                f'<td class="num">{_fmt_pct(s["flip_rate"])}</td></tr>'
+                for s in boundary["shifts"]
+            )
+            blocks.append(
+                "<h3>Near-gate noise (boundary probe)</h3>"
+                '<p class="muted">Partial answers scored near the gate, then '
+                "perturbed without changing meaning. Any shift or verdict flip "
+                "is judge noise, not answer quality.</p>"
+                '<div class="table-wrap"><table class="ablation">'
+                "<thead><tr><th>Perturbation</th><th>Mean shift</th>"
+                "<th>Signed</th><th>Verdict flips</th></tr></thead>"
+                f"<tbody>{rows}</tbody></table></div>"
+            )
+
+        scales = audit.get("scales") or []
+        stability = audit.get("stability") or []
+        extra = []
+        for sc in scales:
+            extra.append(
+                f"numeric vs A-E scale diverges {sc['mean_abs_divergence']:.3f} "
+                f"and flips {_fmt_pct(sc['flip_rate'])} of verdicts"
+            )
+        for st in stability:
+            extra.append(
+                f"re-judging the same answers {st['repeats']}x leaves "
+                f"{st['n_unstable_cases']}/{st['n_cases']} cases unstable "
+                f"(max range {st['max_within_case_range']:.3f})"
+            )
+        if extra:
+            items = "".join(f"<li>{html.escape(e)}</li>" for e in extra)
+            blocks.append(f"<h3>Other noise sources</h3><ul>{items}</ul>")
+
+    if matrix and matrix.get("rows"):
+        rows = "".join(
+            f"<tr><td><code>{html.escape(r['model'])}</code></td>"
+            f'<td class="num">{r["ceiling_correctness"]:.3f}</td>'
+            f'<td class="num">{_fmt_pct(r["boundary_worst_flip_rate"])}</td>'
+            f'<td class="num">{_fmt_pct(r["discrimination_false_accept"])}</td>'
+            f'<td class="num">{_fmt_cost(r["cost_usd"])}</td></tr>'
+            for r in matrix["rows"]
+        )
+        blocks.append(
+            "<h3>Judge selection matrix</h3>"
+            '<p class="muted">Same audit under each candidate judge. Lower '
+            "flip rate and false-accept are better; cost is one full audit.</p>"
+            '<div class="table-wrap"><table class="ablation">'
+            "<thead><tr><th>Judge model</th><th>Calibration</th>"
+            "<th>Worst near-gate flip</th><th>False-accept</th><th>Cost</th>"
+            "</tr></thead>"
+            f"<tbody>{rows}</tbody></table></div>"
+        )
+
+    return (
+        '<section class="card">'
+        "<h2>Judge reliability</h2>"
+        '<p class="muted">Every score on this page comes from an LLM judge. '
+        "This section is the evidence that judge was validated before being "
+        "trusted (ADR-0014): calibrated on correct answers, discriminating on "
+        "wrong ones, and noisy only near the gate - which is why gate "
+        "decisions use bootstrap confidence intervals, never a single score.</p>"
+        f"{''.join(blocks)}"
+        "</section>"
+    )
+
+
 # --- Page assembly ----------------------------------------------------
 
 
@@ -555,6 +674,8 @@ def render_page(
     generated_at: datetime,
     source_path: str = "evals/history/runs.jsonl",
     seed: int | None = None,
+    judge_audit: dict | None = None,
+    judge_matrix: dict | None = None,
 ) -> str:
     """Return the full HTML for the metrics page.
 
@@ -573,6 +694,7 @@ def render_page(
             + _ablation_table(entries, seed=seed)
             + _scatter_section(entries)
             + _corrective_delta_panel(entries, seed=seed)
+            + _judge_reliability_section(judge_audit, judge_matrix)
         )
 
     footer = (
@@ -625,7 +747,11 @@ def main(argv: list[str] | None = None) -> int:
 
     entries = load_history(args.history)
     now = datetime.now(UTC)
-    html_str = render_page(entries, now)
+    judge_audit = _latest_experiment(DEFAULT_EXPERIMENTS_DIR, "judge-audit")
+    judge_matrix = _latest_experiment(DEFAULT_EXPERIMENTS_DIR, "judge-matrix")
+    html_str = render_page(
+        entries, now, judge_audit=judge_audit, judge_matrix=judge_matrix
+    )
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(html_str, encoding="utf-8")

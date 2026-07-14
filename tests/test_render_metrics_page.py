@@ -7,9 +7,85 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
-from scripts.render_metrics_page import main, render_page
+from scripts.render_metrics_page import (
+    _judge_reliability_section,
+    main,
+    render_page,
+)
 
 from rag_harness.evaluation.history import HistoryEntry
+
+_AUDIT_FIXTURE = {
+    "judge_model": "gpt-4o-mini",
+    "n_cases": 30,
+    "probes": [
+        {"probe": "ceiling", "metric": "correctness", "base_mean": 1.0, "base_pass_rate": 1.0},
+        {
+            "probe": "boundary",
+            "metric": "correctness",
+            "base_mean": 0.74,
+            "base_pass_rate": 0.30,
+            "shifts": [
+                {
+                    "perturbation": "whitespace",
+                    "mean_abs_shift": 0.067,
+                    "signed_mean_shift": -0.053,
+                    "flip_rate": 0.10,
+                },
+                {
+                    "perturbation": "verbose_pad",
+                    "mean_abs_shift": 0.18,
+                    "signed_mean_shift": -0.18,
+                    "flip_rate": 0.23,
+                },
+            ],
+        },
+        {
+            "probe": "discrimination",
+            "metric": "correctness",
+            "base_mean": 0.027,
+            "base_pass_rate": 0.0,
+        },
+    ],
+    "stability": [
+        {
+            "metric": "correctness",
+            "repeats": 5,
+            "n_cases": 30,
+            "mean_variance": 0.0011,
+            "max_within_case_range": 0.25,
+            "n_unstable_cases": 5,
+        }
+    ],
+    "scales": [
+        {
+            "metric": "correctness",
+            "n_cases": 30,
+            "mean_abs_divergence": 0.09,
+            "signed_mean_divergence": -0.057,
+            "flip_rate": 0.23,
+        }
+    ],
+}
+
+_MATRIX_FIXTURE = {
+    "rows": [
+        {
+            "model": "gpt-4o-mini",
+            "ceiling_correctness": 1.0,
+            "boundary_worst_flip_rate": 0.23,
+            "discrimination_false_accept": 0.0,
+            "cost_usd": 0.0288,
+        },
+        {
+            "model": "gpt-4o",
+            "ceiling_correctness": 1.0,
+            "boundary_worst_flip_rate": 0.13,
+            "discrimination_false_accept": 0.0,
+            "cost_usd": 0.4799,
+        },
+    ],
+}
 
 # Deterministic timestamp used across tests
 _FIXED_NOW = datetime(2026, 7, 5, 12, 0, 0, tzinfo=UTC)
@@ -146,6 +222,46 @@ def test_headline_shows_production_config(
 
 
 # --- Ablation table ---------------------------------------------------
+
+
+def test_judge_section_empty_without_data() -> None:
+    assert _judge_reliability_section(None, None) == ""
+
+
+def test_judge_section_renders_probes_and_matrix() -> None:
+    html_str = _judge_reliability_section(_AUDIT_FIXTURE, _MATRIX_FIXTURE)
+    assert "Judge reliability" in html_str
+    assert "gpt-4o-mini" in html_str
+    # calibration and false-accept headline numbers
+    assert "1.000" in html_str
+    # boundary noise table includes verbose_pad
+    assert "verbose_pad" in html_str
+    # scale + stability noise sources summarised
+    assert "A-E scale" in html_str
+    assert "unstable" in html_str
+    # matrix lists both judges
+    assert "gpt-4o" in html_str
+    assert "Judge selection matrix" in html_str
+
+
+def test_judge_section_renders_with_audit_only() -> None:
+    html_str = _judge_reliability_section(_AUDIT_FIXTURE, None)
+    assert "Judge reliability" in html_str
+    assert "Judge selection matrix" not in html_str
+
+
+def test_render_page_includes_judge_section_when_provided(
+    synthetic_history: list[HistoryEntry],
+) -> None:
+    html_str = render_page(
+        synthetic_history,
+        _FIXED_NOW,
+        judge_audit=_AUDIT_FIXTURE,
+        judge_matrix=_MATRIX_FIXTURE,
+    )
+    assert "Judge reliability" in html_str
+    # still self-contained and JS-free with the new section
+    assert "<script" not in html_str
 
 
 def test_ablation_table_has_row_per_combo(
