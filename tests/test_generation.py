@@ -81,3 +81,23 @@ def test_generate_records_usage_inside_collect_block() -> None:
     assert len(usage_list) == 1
     assert usage_list[0].input_tokens == 42
     assert usage_list[0].output_tokens == 7
+
+
+def test_generate_sets_genai_span_attributes() -> None:
+    chunks = [_make_chunk("Content.")]
+    mock_response = MagicMock()
+    mock_response.choices[0].message.content = "Answer."
+    mock_response.usage = MagicMock(prompt_tokens=42, completion_tokens=7)
+
+    with (
+        patch("rag_harness.generation.generator._client", _mock_client_returning(mock_response)),
+        patch("rag_harness.generation.generator.set_current_genai_attributes") as mock_semconv,
+    ):
+        generate("Q?", chunks)
+
+    # The LLM boundary annotates the active span with GenAI attributes,
+    # including the real token counts from the response.
+    mock_semconv.assert_called_once()
+    args = mock_semconv.call_args.args
+    assert args[0] == "chat"
+    assert args[2] == 42 and args[3] == 7

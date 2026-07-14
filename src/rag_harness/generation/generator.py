@@ -10,6 +10,7 @@ import logging
 
 from rag_harness.config import settings
 from rag_harness.models import Chunk
+from rag_harness.observability.semconv import set_current_genai_attributes
 from rag_harness.observability.usage import TokenUsage, record_usage
 from rag_harness.openai_client import build_async_client
 
@@ -70,7 +71,13 @@ async def generate_async(query: str, chunks: list[Chunk]) -> str:
         ],
         temperature=0,  # deterministic output - important for reproducible eval
     )
-    record_usage(TokenUsage.from_openai(settings.generation_model, response))
+    usage = TokenUsage.from_openai(settings.generation_model, response)
+    record_usage(usage)
+    # Annotate the active trace span with OpenTelemetry GenAI attributes so
+    # the generation call is queryable by standard names in any OTEL backend.
+    set_current_genai_attributes(
+        "chat", settings.generation_model, usage.input_tokens, usage.output_tokens
+    )
 
     answer = response.choices[0].message.content or ""
     logger.debug("generated answer (%d chars) for query: %.60s...", len(answer), query)

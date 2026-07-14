@@ -429,6 +429,7 @@ All non-trivial decisions are captured as Architecture Decision Records in
 - [ADR-0015](docs/adr/ADR-0015-retrieved-context-injection-hardening.md): Retrieved-context injection hardening
 - [ADR-0016](docs/adr/ADR-0016-chunk-level-citations.md): Chunk-level inline citations
 - [ADR-0017](docs/adr/ADR-0017-query-decomposition.md): Query decomposition retrieval strategy
+- [ADR-0018](docs/adr/ADR-0018-otel-genai-conventions.md): OpenTelemetry GenAI semantic conventions
 
 ## Research foundations
 
