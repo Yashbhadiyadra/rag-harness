@@ -151,6 +151,29 @@ def test_run_ablation_respects_explicit_strategies_and_modes() -> None:
     assert mock_run_eval.call_count == 2
 
 
+def test_run_ablation_threads_case_filter_to_run_eval() -> None:
+    dummy_summary = _make_summary([_make_result("c1", relevancy=0.9, correctness=0.9)])
+
+    with (
+        patch("rag_harness.evaluation.ablation.build_retriever", return_value=MagicMock()),
+        patch(
+            "rag_harness.evaluation.ablation.run_eval",
+            new_callable=AsyncMock,
+            return_value=dummy_summary,
+        ) as mock_run_eval,
+    ):
+        asyncio.run(
+            run_ablation(
+                strategies=["dense"],
+                corrective_modes=[False],
+                case_filter=["multihop-001", "multihop-002"],
+            )
+        )
+
+    # Every configuration must receive the slice so all rows are comparable.
+    assert mock_run_eval.call_args.kwargs["case_filter"] == ["multihop-001", "multihop-002"]
+
+
 def test_run_ablation_skips_unknown_strategy() -> None:
     dummy_summary = _make_summary([_make_result("c1", relevancy=0.9, correctness=0.9)])
 

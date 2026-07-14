@@ -89,6 +89,7 @@ async def run_ablation(
     strategies: list[str] | None = None,
     corrective_modes: list[bool] | None = None,
     golden_dir: Path | None = None,
+    case_filter: list[str] | None = None,
 ) -> list[AblationRun]:
     """Run the eval suite across every requested configuration.
 
@@ -96,6 +97,11 @@ async def run_ablation(
     configuration that raises does not abort the whole run - the exception
     is logged and the remaining configurations proceed. Configurations that
     succeed are returned in strategy-then-corrective order.
+
+    When *case_filter* is a non-empty list of golden case ids, every
+    configuration is evaluated on just that subset. Used to measure a slice
+    (e.g. the multi-hop cases) where a strategy is expected to differ from the
+    single-hop baseline.
     """
     strats = strategies if strategies is not None else _STRATEGY_ORDER
     modes = corrective_modes if corrective_modes is not None else [False, True]
@@ -119,6 +125,7 @@ async def run_ablation(
                     # Ablation writes its own history entry per config, so
                     # skip the run_eval-side write to avoid double records.
                     record_history=False,
+                    case_filter=case_filter,
                 )
                 record_run(summary, strategy=strategy, corrective=corrective)
             except Exception as e:

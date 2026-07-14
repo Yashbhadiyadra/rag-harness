@@ -63,3 +63,36 @@ hybrid) and the multi-hop advantage both land with the full ablation on
 the expanded golden set. The takeaway that holds now: decompose does not
 regress on single-hop questions and improves over the default, so
 enabling it is safe.
+
+## Multi-hop measurement (2026-07-14, the comparison this ADR deferred)
+
+Once the 8 human-reviewed multi-hop golden cases landed (`multihop-001`
+through `multihop-008`, each requiring two docs), we ran the isolated
+slice: dense vs hybrid vs decompose, baseline mode (no corrective loop),
+cache on, on just those 8 cases.
+
+| Strategy | Recall | Faithfulness | Correctness | Relevancy | Cost |
+|---|---|---|---|---|---|
+| dense | 0.62 | 0.88 | 0.59 | 0.75 | 0.0051 |
+| hybrid | 0.62 | 0.75 | 0.62 | 0.75 | 0.0060 |
+| decompose | 0.69 | 1.00 | 0.73 | 0.88 | 0.0114 |
+
+This closes both questions the single-hop run left open:
+
+1. **Decompose vs hybrid (isolated).** Decompose beats hybrid on
+   correctness (0.73 vs 0.62), faithfulness (1.00 vs 0.75), recall (0.69
+   vs 0.62), and relevancy (0.88 vs 0.75). Since decompose runs *on top
+   of* hybrid, the gain over hybrid is attributable to the decomposition
+   step itself, not just to hybrid retrieval underneath.
+2. **Multi-hop advantage.** The correctness gap over plain dense widens
+   to +0.14 on multi-hop cases (0.73 vs 0.59), versus +0.034 on the
+   single-hop slice - decomposition helps most exactly where a question
+   needs facts from more than one document, which is the mechanism it was
+   built for.
+
+Honest limits: n=8, so these are point estimates without the ADR-0011
+bootstrap CIs; the effect direction is consistent across every metric,
+but the magnitude should be read as indicative, not precise. The slice
+is reproducible via `run_ablation(strategies=[...], corrective_modes=
+[False], case_filter=[multihop ids])`; artifacts in `evals/experiments/
+ablation_multihop_*`.
