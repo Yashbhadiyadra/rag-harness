@@ -240,6 +240,36 @@ def _cmd_security_eval(args: argparse.Namespace) -> None:
     print(f"\nReport written to {md_path}")
 
 
+def _cmd_abstention(args: argparse.Namespace) -> None:
+    from datetime import UTC, datetime
+    from pathlib import Path
+
+    from rag_harness.evaluation.abstention_eval import (
+        render_markdown,
+        run_abstention_probe_sync,
+    )
+    from rag_harness.evaluation.judge_audit import _current_git_commit
+    from rag_harness.evaluation.runner import load_golden_cases
+
+    cases = load_golden_cases()
+    result = run_abstention_probe_sync(cases)
+
+    commit = _current_git_commit()
+    timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S+0000")
+    out_dir = Path(args.output_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    md_path = out_dir / f"abstention_{timestamp}_{commit}.md"
+    md_path.write_text(render_markdown(result, commit, timestamp))
+
+    print("\nAbstention / negative rejection (Phase 2)")
+    print("=" * 56)
+    print(
+        f"  Abstention rate {result.abstention_rate:.0%} "
+        f"({result.n_abstained}/{result.n_questions} correctly refused)"
+    )
+    print(f"\nReport written to {md_path}")
+
+
 def _cmd_ablation(args: argparse.Namespace) -> None:
     from pathlib import Path
 
@@ -424,7 +454,17 @@ def main() -> None:
     security_eval_p.add_argument(
         "--output-dir",
         default="evals/experiments",
-        help="Directory to write poison-resistance_<ts>_<sha>.md into (default: %(default)s).",
+        help="Directory to write security-eval_<ts>_<sha>.md into (default: %(default)s).",
+    )
+
+    abstention_p = sub.add_parser(
+        "abstention",
+        help="Measure negative rejection: does the system refuse out-of-corpus questions?",
+    )
+    abstention_p.add_argument(
+        "--output-dir",
+        default="evals/experiments",
+        help="Directory to write abstention_<ts>_<sha>.md into (default: %(default)s).",
     )
 
     judge_matrix_p = sub.add_parser(
@@ -472,6 +512,7 @@ def main() -> None:
         "judge-audit": _cmd_judge_audit,
         "judge-matrix": _cmd_judge_matrix,
         "security-eval": _cmd_security_eval,
+        "abstention": _cmd_abstention,
     }[args.command](args)
 
 
