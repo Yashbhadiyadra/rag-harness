@@ -240,6 +240,39 @@ def _cmd_security_eval(args: argparse.Namespace) -> None:
     print(f"\nReport written to {md_path}")
 
 
+def _cmd_reference_free(args: argparse.Namespace) -> None:
+    from datetime import UTC, datetime
+    from pathlib import Path
+
+    from rag_harness.evaluation.judge_audit import _current_git_commit
+    from rag_harness.evaluation.reference_free_eval import (
+        render_markdown,
+        run_reference_free_probe_sync,
+    )
+    from rag_harness.evaluation.runner import load_golden_cases
+
+    if not args.no_cache:
+        settings.llm_cache_enabled = True
+
+    cases = load_golden_cases()
+    result = run_reference_free_probe_sync(cases)
+
+    commit = _current_git_commit()
+    timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S+0000")
+    out_dir = Path(args.output_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    md_path = out_dir / f"reference-free_{timestamp}_{commit}.md"
+    md_path.write_text(render_markdown(result, commit, timestamp))
+
+    print("\nReference-free hallucination detection (Phase 2)")
+    print("=" * 56)
+    print(f"  Grounded faithfulness   : {result.mean_faithful_grounded:.3f}")
+    print(f"  Ungrounded faithfulness : {result.mean_faithful_ungrounded:.3f}")
+    print(f"  Separation              : {result.separation:.3f}")
+    print(f"  Detection accuracy      : {result.detection_accuracy:.0%}")
+    print(f"\nReport written to {md_path}")
+
+
 def _cmd_noise_eval(args: argparse.Namespace) -> None:
     from datetime import UTC, datetime
     from pathlib import Path
@@ -498,6 +531,21 @@ def main() -> None:
         help="Directory to write security-eval_<ts>_<sha>.md into (default: %(default)s).",
     )
 
+    reference_free_p = sub.add_parser(
+        "reference-free",
+        help="Measure whether reference-free faithfulness catches ungrounded answers.",
+    )
+    reference_free_p.add_argument(
+        "--output-dir",
+        default="evals/experiments",
+        help="Directory to write reference-free_<ts>_<sha>.md into (default: %(default)s).",
+    )
+    reference_free_p.add_argument(
+        "--no-cache",
+        action="store_true",
+        help="Disable the LLM judge cache (default: on).",
+    )
+
     noise_eval_p = sub.add_parser(
         "noise-eval",
         help="Measure noise robustness: quality degradation as irrelevant chunks are added.",
@@ -570,6 +618,7 @@ def main() -> None:
         "security-eval": _cmd_security_eval,
         "noise-eval": _cmd_noise_eval,
         "abstention": _cmd_abstention,
+        "reference-free": _cmd_reference_free,
     }[args.command](args)
 
 
