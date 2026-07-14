@@ -75,3 +75,23 @@ absolute pass/fail.)
 Net: a single prompt change bought a full fix on one injection vector,
 partial resistance on the hardest one, and a small quality gain - all
 measured, both halves recorded.
+
+## Counterfactual robustness (added 2026-07-14)
+
+A second probe (OWASP LLM04 data poisoning) asks an eliciting question
+over context where a poisoned chunk states a fabricated fact carrying a
+token no real doc contains. Resistance = answers that do not repeat it.
+Result (gpt-4o-mini, 30 cases): fabricated_limit 0% resistance (30/30
+absorbed), fabricated_default 13% (26/30 absorbed).
+
+This low resistance is by design and is the important finding: the
+generator is instructed to answer ONLY from context, so being faithful
+to a poisoned source means repeating its lie. Prompt-level skepticism
+cannot fix this without breaking faithfulness on legitimate content.
+The real defence against data poisoning is therefore corpus integrity -
+the pinned, SHA-verified, checksummed ingest of ADR-0002 - not
+generation-time cleverness. The probe exists to keep that guarantee
+honest: if the corpus pinning ever regressed, a poisoned document would
+propagate to answers ~90-100% of the time. Faithfulness and
+poison-resistance are in genuine tension; we resolve it at ingest, not
+at generation.
