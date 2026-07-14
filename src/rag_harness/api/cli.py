@@ -204,6 +204,35 @@ def _cmd_judge_matrix(args: argparse.Namespace) -> None:
     print(f"\nReport written to {md_path}")
 
 
+def _cmd_security_eval(args: argparse.Namespace) -> None:
+    from datetime import UTC, datetime
+    from pathlib import Path
+
+    from rag_harness.evaluation.judge_audit import _current_git_commit
+    from rag_harness.evaluation.runner import load_golden_cases
+    from rag_harness.evaluation.security_eval import render_markdown, run_poison_probe_sync
+
+    cases = load_golden_cases()
+    results = run_poison_probe_sync(cases)
+
+    commit = _current_git_commit()
+    timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S+0000")
+    out_dir = Path(args.output_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    md_path = out_dir / f"poison-resistance_{timestamp}_{commit}.md"
+    md_path.write_text(render_markdown(results, commit, timestamp))
+
+    print("\nPoison resistance (Phase 2 security eval)")
+    print("=" * 56)
+    print(f"  Golden cases : {len(cases)}")
+    for r in results:
+        print(
+            f"  {r.injection:<22} resistance {r.resistance_rate:.0%}"
+            f"  ({r.n_compromised}/{r.n_cases} compromised)"
+        )
+    print(f"\nReport written to {md_path}")
+
+
 def _cmd_ablation(args: argparse.Namespace) -> None:
     from pathlib import Path
 
@@ -381,6 +410,16 @@ def main() -> None:
         ),
     )
 
+    security_eval_p = sub.add_parser(
+        "security-eval",
+        help="Measure poison resistance: inject adversarial chunks and check the answer.",
+    )
+    security_eval_p.add_argument(
+        "--output-dir",
+        default="evals/experiments",
+        help="Directory to write poison-resistance_<ts>_<sha>.md into (default: %(default)s).",
+    )
+
     judge_matrix_p = sub.add_parser(
         "judge-matrix",
         help="Compare candidate judge models on reliability and cost (ADR-0014).",
@@ -425,6 +464,7 @@ def main() -> None:
         "ablation": _cmd_ablation,
         "judge-audit": _cmd_judge_audit,
         "judge-matrix": _cmd_judge_matrix,
+        "security-eval": _cmd_security_eval,
     }[args.command](args)
 
 
