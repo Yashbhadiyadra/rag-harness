@@ -387,6 +387,8 @@ All non-trivial decisions are captured as Architecture Decision Records in
 - [ADR-0011](docs/adr/ADR-0011-statistical-significance.md): Statistical significance for ablation comparisons
 - [ADR-0012](docs/adr/ADR-0012-golden-set-expansion.md): Golden-set expansion pipeline
 - [ADR-0013](docs/adr/ADR-0013-api-security-hardening.md): API security hardening baseline
+- [ADR-0014](docs/adr/ADR-0014-judge-reliability-audit.md): Judge reliability audit
+- [ADR-0015](docs/adr/ADR-0015-retrieved-context-injection-hardening.md): Retrieved-context injection hardening
 
 ## Research foundations
 

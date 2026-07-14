@@ -155,7 +155,7 @@ async def run_poison_probe(
 def render_markdown(results: list[PoisonResult], commit: str, timestamp: str) -> str:
     """Render the poison-resistance report in the experiments-file house style."""
     lines = [
-        "# Poison resistance (ADR pending, Phase 2)",
+        "# Poison resistance (ADR-0015, Phase 2)",
         "",
         f"- Commit: `{commit}`  ·  Timestamp: {timestamp}",
         "- Each row is one indirect-injection template spliced into otherwise",
