@@ -88,29 +88,47 @@ class Settings(BaseSettings):
     rbi_relevancy_min: float = 0.7  # answer_relevancy above this AND ...
     rbi_correctness_max: float = 0.5  # correctness below this = highlighted failure
 
-    # Per-PR eval gate - small hand-picked subset that runs on every PR to main.
-    # Cheap (~$0.02/PR) but enforces the reliability gate against real LLM calls.
-    # Full suite runs nightly on the eval workflow.
+    # Per-PR eval gate - a representative subset that runs on every PR to main.
+    # Two cases from each of the eight golden categories (16 total), so the
+    # gate exercises topic answers, the refusal path (unanswerable), and
+    # version-sensitive facts. Sized so no single hard case dominates the
+    # mean: at 5 cases one refusal swung correctness by 0.20; at 16 it moves
+    # it by ~0.05, keeping the recalibrated thresholds stable. Cheap
+    # (~$0.06/PR); the full 160-case suite runs nightly.
     eval_pr_subset_ids: list[str] = [
-        "pods-001",
-        "networking-001",
-        "storage-001",
-        "scheduling-001",
         "cluster-001",
+        "cluster-002",
+        "networking-001",
+        "networking-002",
+        "rbac-001",
+        "rbac-002",
+        "scheduling-001",
+        "scheduling-002",
+        "storage-001",
+        "storage-002",
+        "pods-001",
+        "workloads-001",
+        "unanswerable-001",
+        "unanswerable-002",
+        "version-sensitive-001",
+        "version-sensitive-002",
     ]
 
     # Logging
     log_level: str = "INFO"
 
     # Evaluation thresholds - dropping below any triggers a build failure.
-    # Calibrated from the 2026-07-04 ablation study
-    # (evals/experiments/ablation_20260704T092511+0000_e148311.md).
-    # Values sit below both HyDE-baseline and full-baseline observations with
-    # a small buffer for LLM-judge noise, so both strong-baseline configurations
-    # pass reliably while genuine regressions still fail the gate.
-    threshold_context_recall: float = 0.70
+    # Recalibrated from the 2026-07-14 ablation on the expanded 160-case
+    # golden set (evals/experiments/ablation_20260714T064826+0000_164ff8c.md).
+    # The gate protects the production config (dense); values sit below its
+    # bootstrap CI lower bounds (recall 0.912, faithfulness 0.903,
+    # correctness 0.875 per ADR-0011) with a buffer for small-sample and
+    # LLM-judge noise, so production passes reliably while genuine
+    # regressions fail. The heavy 'full' pipeline underperforms on this
+    # factoid-heavy set and is not the gated config.
+    threshold_context_recall: float = 0.85
     threshold_faithfulness: float = 0.85
-    threshold_correctness: float = 0.80
+    threshold_correctness: float = 0.82
 
 
 settings = Settings()

@@ -378,7 +378,9 @@ async def test_run_audit_ceiling_probe_scores_base_and_all_perturbations() -> No
 
     async def fake_score(metric: str, case: GoldenCase, answer: str) -> float:
         calls.append(answer)
-        return 1.0 if answer == case.reference_answer else 0.8
+        # Perturbed answers score 0.9 - clearly above any gate threshold, so
+        # the "no flip" assertion below does not depend on the exact cut.
+        return 1.0 if answer == case.reference_answer else 0.9
 
     with patch("rag_harness.evaluation.judge_audit._score_case", side_effect=fake_score):
         report = await run_audit(cases=cases, probes=("ceiling",))
@@ -394,8 +396,8 @@ async def test_run_audit_ceiling_probe_scores_base_and_all_perturbations() -> No
     assert len(correctness.shifts) == len(PERTURBATIONS)
     assert all(s.perturbation != "verbose_pad" for s in correctness.shifts)
     for s in correctness.shifts:
-        assert s.mean_abs_shift == pytest.approx(0.2)
-        assert s.flip_rate == 0.0  # 0.8 sits exactly on the 0.80 gate - still a pass
+        assert s.mean_abs_shift == pytest.approx(0.1)
+        assert s.flip_rate == 0.0  # both 1.0 and 0.9 pass the gate - no flip
 
 
 @pytest.mark.asyncio
@@ -421,7 +423,7 @@ async def test_run_audit_boundary_probe_judges_truncated_answers() -> None:
     assert [r.metric for r in report.probes] == ["correctness"]
     # boundary carries the verbosity probe
     assert any(s.perturbation == "verbose_pad" for s in report.probes[0].shifts)
-    # 0.75 sits below the 0.80 correctness gate - nothing passes
+    # 0.75 sits below the correctness gate - nothing passes
     assert report.probes[0].base_pass_rate == 0.0
 
 
