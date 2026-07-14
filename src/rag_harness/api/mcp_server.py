@@ -97,6 +97,11 @@ def get_ablation_report_impl(experiments_dir: Path | None = None) -> str:
     return files[-1].read_text()
 
 
+def _get_ablation_report_tool() -> str:
+    """The latest ablation table comparing retrieval strategies (markdown)."""
+    return get_ablation_report_impl()
+
+
 def build_server() -> Any:
     """Construct the FastMCP server with the tools registered.
 
@@ -108,26 +113,30 @@ def build_server() -> Any:
         raise ImportError("the MCP server needs the 'mcp' extra: pip install -e '.[mcp]'") from e
 
     server = FastMCP("rag-harness")
-
-    @server.tool()
-    async def query_docs(question: str, top_k: int = 5) -> dict[str, Any]:
-        """Answer a question grounded in the pinned documentation corpus.
-
-        Returns the answer, its source files, and chunk-level citations.
-        """
-        return await query_docs_impl(question, top_k)
-
-    @server.tool()
-    def get_eval_report() -> dict[str, Any]:
-        """Latest evaluation metrics for the production retrieval config,
-        including whether the reliability gate passed."""
-        return get_eval_report_impl()
-
-    @server.tool()
-    def get_ablation_report() -> str:
-        """The latest ablation table comparing retrieval strategies (markdown)."""
-        return get_ablation_report_impl()
-
+    # add_tool (a method call, not a decorator) registers the typed impls
+    # directly, which keeps mypy strict happy even when the mcp SDK is absent
+    # and FastMCP resolves to Any.
+    server.add_tool(
+        query_docs_impl,
+        name="query_docs",
+        description=(
+            "Answer a question grounded in the pinned documentation corpus, "
+            "returning the answer, its source files, and chunk-level citations."
+        ),
+    )
+    server.add_tool(
+        get_eval_report_impl,
+        name="get_eval_report",
+        description=(
+            "Latest evaluation metrics for the production retrieval config, "
+            "including whether the reliability gate passed."
+        ),
+    )
+    server.add_tool(
+        _get_ablation_report_tool,
+        name="get_ablation_report",
+        description="The latest ablation table comparing retrieval strategies (markdown).",
+    )
     return server
 
 

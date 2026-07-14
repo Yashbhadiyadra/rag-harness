@@ -88,6 +88,7 @@ module = [
     "sentence_transformers",
     "phoenix.*",
     "openinference.*",
+    "mcp.*",
 ]
 ignore_missing_imports = true
 
