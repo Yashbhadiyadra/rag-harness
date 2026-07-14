@@ -179,6 +179,31 @@ def _cmd_judge_audit(args: argparse.Namespace) -> None:
     print(f"\nReport written to {md_path}")
 
 
+def _cmd_judge_matrix(args: argparse.Namespace) -> None:
+    from pathlib import Path
+
+    from rag_harness.evaluation.judge_audit import run_selection_matrix_sync, write_matrix
+
+    models = [m.strip() for m in args.models.split(",") if m.strip()]
+    if len(models) < 2:
+        print("judge-matrix needs at least 2 comma-separated models to compare.")
+        sys.exit(1)
+
+    rows, commit, timestamp = run_selection_matrix_sync(models)
+    md_path = write_matrix(rows, commit, timestamp, out_dir=Path(args.output_dir))
+
+    print("\nJudge selection matrix (ADR-0014)")
+    print("=" * 68)
+    print(f"  {'model':<22} {'ceiling':>8} {'worst flip':>11} {'false-acc':>10} {'cost $':>9}")
+    for r in rows:
+        print(
+            f"  {r.model:<22} {r.ceiling_correctness:>8.3f} "
+            f"{r.boundary_worst_flip_rate:>10.0%} {r.discrimination_false_accept:>10.0%} "
+            f"{r.cost_usd:>9.4f}"
+        )
+    print(f"\nReport written to {md_path}")
+
+
 def _cmd_ablation(args: argparse.Namespace) -> None:
     from pathlib import Path
 
@@ -356,6 +381,22 @@ def main() -> None:
         ),
     )
 
+    judge_matrix_p = sub.add_parser(
+        "judge-matrix",
+        help="Compare candidate judge models on reliability and cost (ADR-0014).",
+    )
+    judge_matrix_p.add_argument(
+        "--models",
+        required=True,
+        metavar="M1,M2,...",
+        help="Comma-separated judge models to compare (at least 2). E.g. gpt-4o-mini,gpt-4o.",
+    )
+    judge_matrix_p.add_argument(
+        "--output-dir",
+        default="evals/experiments",
+        help="Directory to write judge-matrix_<ts>_<sha>.{md,json} into (default: %(default)s).",
+    )
+
     # Golden-set management: currently one action (review). Uses nested
     # subparsers so future actions (e.g., `golden validate`, `golden stats`)
     # slot in without renaming existing commands.
@@ -383,6 +424,7 @@ def main() -> None:
         "eval": _cmd_eval,
         "ablation": _cmd_ablation,
         "judge-audit": _cmd_judge_audit,
+        "judge-matrix": _cmd_judge_matrix,
     }[args.command](args)
 
 

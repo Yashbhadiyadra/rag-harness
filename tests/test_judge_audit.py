@@ -17,14 +17,17 @@ from rag_harness.evaluation.judge_audit import (
     ShiftStats,
     cohens_kappa,
     cross_pair_answers,
+    matrix_row,
     prompt_hash,
     render_markdown,
+    render_matrix_markdown,
     run_audit,
     scale_stats,
     score_shift_stats,
     stability_stats,
     truncate_half,
     verbose_pad,
+    write_matrix,
     write_report,
 )
 from rag_harness.models import GoldenCase
@@ -460,3 +463,78 @@ async def test_run_audit_discrimination_probe_reports_false_accept_rate() -> Non
     assert result.probe == "discrimination"
     assert result.base_mean == pytest.approx(0.1)
     assert result.base_pass_rate == 0.0  # no wrong answer passed the gate
+
+
+# --- Selection matrix ----------------------------------------------------
+
+
+def _report_with_probes(
+    ceiling: float, boundary_flips: list[float], false_accept: float
+) -> AuditReport:
+    return AuditReport(
+        judge_model="m",
+        commit="c",
+        timestamp="t",
+        n_cases=1,
+        prompt_hashes={},
+        probes=[
+            ProbeResult(
+                probe="ceiling",
+                metric="correctness",
+                base_mean=ceiling,
+                base_pass_rate=1.0,
+            ),
+            ProbeResult(
+                probe="boundary",
+                metric="correctness",
+                base_mean=0.7,
+                base_pass_rate=0.3,
+                shifts=[
+                    ShiftStats(
+                        perturbation=f"p{i}",
+                        n=1,
+                        mean_abs_shift=0.0,
+                        max_abs_shift=0.0,
+                        flip_rate=f,
+                    )
+                    for i, f in enumerate(boundary_flips)
+                ],
+            ),
+            ProbeResult(
+                probe="discrimination",
+                metric="correctness",
+                base_mean=0.05,
+                base_pass_rate=false_accept,
+            ),
+        ],
+    )
+
+
+def test_matrix_row_extracts_the_four_numbers() -> None:
+    report = _report_with_probes(ceiling=0.99, boundary_flips=[0.10, 0.23, 0.05], false_accept=0.0)
+    row = matrix_row("gpt-4o-mini", report, cost_usd=0.0123)
+    assert row.model == "gpt-4o-mini"
+    assert row.ceiling_correctness == pytest.approx(0.99)
+    assert row.boundary_worst_flip_rate == pytest.approx(0.23)  # worst of the shifts
+    assert row.discrimination_false_accept == 0.0
+    assert row.cost_usd == pytest.approx(0.0123)
+
+
+def test_render_matrix_markdown_lists_every_model() -> None:
+    rows = [
+        matrix_row("gpt-4o-mini", _report_with_probes(0.99, [0.23], 0.0), 0.01),
+        matrix_row("gpt-4o", _report_with_probes(1.0, [0.10], 0.0), 0.30),
+    ]
+    md = render_matrix_markdown(rows, commit="abc1234", timestamp="20260713T000000+0000")
+    assert "gpt-4o-mini" in md
+    assert "gpt-4o" in md
+    assert "abc1234" in md
+    assert "0.0100" in md and "0.3000" in md
+
+
+def test_write_matrix_creates_md_and_json(tmp_path: Path) -> None:
+    rows = [matrix_row("m", _report_with_probes(1.0, [0.1], 0.0), 0.05)]
+    md_path = write_matrix(rows, commit="c", timestamp="t", out_dir=tmp_path)
+    assert md_path.exists()
+    assert md_path.with_suffix(".json").exists()
+    assert "judge-matrix_" in md_path.name

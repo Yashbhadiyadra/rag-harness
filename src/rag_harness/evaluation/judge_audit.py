@@ -32,6 +32,7 @@ from rag_harness.evaluation.metrics import (
 )
 from rag_harness.evaluation.runner import load_golden_cases
 from rag_harness.models import GoldenCase
+from rag_harness.observability.usage import collect_usage
 
 logger = logging.getLogger(__name__)
 
@@ -615,3 +616,122 @@ def run_audit_sync(
 ) -> AuditReport:
     """Sync facade for the CLI."""
     return asyncio.run(run_audit(cases=cases, probes=probes, retest=retest, scales=scales))
+
+
+# --- Judge selection matrix ----------------------------------------------
+#
+# The verified finding (arXiv:2603.05399) is that a cheaper judge can match
+# or beat an expensive one on reliability, so judge choice should be
+# evidence-based, not price-based. This runs the same audit under each
+# candidate model and lays the four decision numbers side by side:
+# calibration (ceiling), robustness (worst boundary flip rate),
+# discrimination (false-accept rate), and cost per audit.
+
+
+@dataclass
+class MatrixRow:
+    """One judge model's audit summary for the selection matrix."""
+
+    model: str
+    ceiling_correctness: float  # calibration: reference vs itself, want ~1.0
+    boundary_worst_flip_rate: float  # robustness: worst perturbation flip rate, want low
+    discrimination_false_accept: float  # want ~0.0: wrong answers must not pass
+    cost_usd: float  # total spend for this model's audit (cache off)
+
+
+def matrix_row(model: str, report: AuditReport, cost_usd: float) -> MatrixRow:
+    """Extract the four selection numbers from a completed audit report."""
+    ceiling = next(
+        r.base_mean for r in report.probes if r.probe == "ceiling" and r.metric == "correctness"
+    )
+    boundary = next(r for r in report.probes if r.probe == "boundary" and r.metric == "correctness")
+    discrimination = next(
+        r for r in report.probes if r.probe == "discrimination" and r.metric == "correctness"
+    )
+    return MatrixRow(
+        model=model,
+        ceiling_correctness=ceiling,
+        boundary_worst_flip_rate=max((s.flip_rate for s in boundary.shifts), default=0.0),
+        discrimination_false_accept=discrimination.base_pass_rate,
+        cost_usd=cost_usd,
+    )
+
+
+async def run_selection_matrix(
+    models: list[str], cases: list[GoldenCase] | None = None
+) -> list[MatrixRow]:
+    """Audit each candidate judge model and collect a comparison row per model.
+
+    The cache is forced off so every model's cost is real and comparable
+    (a cached model would report zero cost). The caller's configured model
+    and cache setting are restored afterward.
+    """
+    if cases is None:
+        cases = load_golden_cases()
+    rows: list[MatrixRow] = []
+    prev_model = settings.generation_model
+    prev_cache = settings.llm_cache_enabled
+    settings.llm_cache_enabled = False
+    try:
+        for model in models:
+            settings.generation_model = model
+            with collect_usage() as usage:
+                report = await run_audit(cases=cases)
+            cost = sum(u.estimated_cost_usd for u in usage)
+            rows.append(matrix_row(model, report, cost))
+            logger.info(
+                "matrix %s: ceiling %.3f, worst flip %.0f%%, false-accept %.0f%%, $%.4f",
+                model,
+                rows[-1].ceiling_correctness,
+                rows[-1].boundary_worst_flip_rate * 100,
+                rows[-1].discrimination_false_accept * 100,
+                rows[-1].cost_usd,
+            )
+    finally:
+        settings.generation_model = prev_model
+        settings.llm_cache_enabled = prev_cache
+    return rows
+
+
+def render_matrix_markdown(rows: list[MatrixRow], commit: str, timestamp: str) -> str:
+    """Render the selection matrix in the experiments-file house style."""
+    lines = [
+        "# Judge selection matrix (ADR-0014)",
+        "",
+        f"- Commit: `{commit}`  ·  Timestamp: {timestamp}",
+        "- Cache off (real per-model cost). Lower flip rate and false-accept",
+        "  are better; ceiling should sit near 1.0. Cost is one full audit.",
+        "",
+        "| Judge model | Ceiling calib | Worst boundary flip | False-accept | Cost (USD) |",
+        "|---|---|---|---|---|",
+    ]
+    for r in rows:
+        lines.append(
+            f"| {r.model} | {r.ceiling_correctness:.3f} "
+            f"| {r.boundary_worst_flip_rate:.0%} | {r.discrimination_false_accept:.0%} "
+            f"| {r.cost_usd:.4f} |"
+        )
+    lines.append("")
+    return "\n".join(lines)
+
+
+def write_matrix(
+    rows: list[MatrixRow], commit: str, timestamp: str, out_dir: Path | None = None
+) -> Path:
+    """Write the selection matrix markdown + JSON; return the markdown path."""
+    out_dir = out_dir or Path("evals/experiments")
+    out_dir.mkdir(parents=True, exist_ok=True)
+    stem = f"judge-matrix_{timestamp}_{commit}"
+    md_path = out_dir / f"{stem}.md"
+    md_path.write_text(render_matrix_markdown(rows, commit, timestamp))
+    payload = {"commit": commit, "timestamp": timestamp, "rows": [vars(r) for r in rows]}
+    (out_dir / f"{stem}.json").write_text(json.dumps(payload, indent=2))
+    return md_path
+
+
+def run_selection_matrix_sync(models: list[str]) -> tuple[list[MatrixRow], str, str]:
+    """Sync facade: returns (rows, commit, timestamp) for the CLI to write."""
+    commit = _current_git_commit()
+    timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S+0000")
+    rows = asyncio.run(run_selection_matrix(models))
+    return rows, commit, timestamp
