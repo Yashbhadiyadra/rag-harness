@@ -128,6 +128,9 @@ def target_file_for_category(category: str, golden_dir: Path) -> tuple[Path, str
     - ``topic-workloads`` → ``golden_dir/workloads.json``, prefix ``workloads``.
     - ``unanswerable`` → ``golden_dir/unanswerable.json``, prefix ``unanswerable``.
     - ``version-sensitive`` → ``golden_dir/version-sensitive.json``, prefix ``version-sensitive``.
+    - ``multihop`` → ``golden_dir/multihop.json``, prefix ``multihop``. These
+      cases carry two or more ``relevant_doc_ids`` and exist as their own file
+      so the ablation can isolate the multi-hop subset.
     """
     if category.startswith("topic-"):
         topic = category[len("topic-") :]
@@ -136,6 +139,8 @@ def target_file_for_category(category: str, golden_dir: Path) -> tuple[Path, str
         return golden_dir / "unanswerable.json", "unanswerable"
     if category == "version-sensitive":
         return golden_dir / "version-sensitive.json", "version-sensitive"
+    if category == "multihop":
+        return golden_dir / "multihop.json", "multihop"
     raise ValueError(f"unknown candidate category: {category!r}")
 
 

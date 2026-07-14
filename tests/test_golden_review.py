@@ -222,6 +222,12 @@ def test_target_file_maps_version_sensitive(tmp_path: Path) -> None:
     assert prefix == "version-sensitive"
 
 
+def test_target_file_maps_multihop(tmp_path: Path) -> None:
+    p, prefix = target_file_for_category("multihop", tmp_path)
+    assert p == tmp_path / "multihop.json"
+    assert prefix == "multihop"
+
+
 def test_target_file_rejects_unknown_category(tmp_path: Path) -> None:
     with pytest.raises(ValueError):
         target_file_for_category("bogus", tmp_path)
