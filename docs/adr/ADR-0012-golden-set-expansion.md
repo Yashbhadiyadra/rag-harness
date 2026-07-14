@@ -47,6 +47,27 @@ assisted then hand-reviewed:
 | **version-sensitive** (new file `evals/golden/version-sensitive.json`) | 40 candidates → ~20 accepted | Score cross-version misinformation. Correct behavior is the answer derivable from the pinned chunk. |
 | **Total** | 160 candidates → ~100 accepted | |
 
+### Outcome (review closed 2026-07-14)
+
+The generator's drop gates produced 143 candidates (fewer than the 160
+target, mainly in the filtered unanswerable and version-sensitive
+categories). The owner reviewed all 143 by hand; 130 were accepted and
+13 skipped. The golden set grew from 30 to 160 cases.
+
+| Category | Candidates | Accepted | Skipped |
+|---|---|---|---|
+| topic (cluster/networking/rbac/scheduling/storage/workloads) | 80 | 71 | 9 |
+| unanswerable | 24 | 21 | 3 |
+| version-sensitive | 39 | 38 | 1 |
+| **Total** | **143** | **130** | **13** |
+
+Skips fell into four defensible buckets: mislabeled unanswerables the
+pinned corpus actually documents (3), degenerate answers that were only
+unrendered doc-template markup or a tautology (4), navigation questions
+with link-only answers (5), and one weak standalone question. Every
+accepted case was human-reviewed and its answer confirmed grounded in
+the cited source chunk. Landed in commit 164ff8c.
+
 ### Two-stage pipeline
 
 **Stage 1 - candidate generation** (`scripts/expand_golden_set.py`,

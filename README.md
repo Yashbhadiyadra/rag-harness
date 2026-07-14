@@ -15,13 +15,16 @@ independently lets you pinpoint exactly what broke, not just that
 
 | Stage | Failure | Metric | Threshold |
 |---|---|---|---|
-| Retrieval | Wrong chunks fetched | Context Recall | ≥ 0.80 |
+| Retrieval | Wrong chunks fetched | Context Recall | ≥ 0.85 |
 | Generation | Answer not grounded in context | Faithfulness | ≥ 0.85 |
-| Generation | Answer is factually wrong | Correctness | ≥ 0.75 |
+| Generation | Answer is factually wrong | Correctness | ≥ 0.82 |
 
-The evaluation suite runs against a hand-verified golden set of 30 cases
-spanning workloads, networking, storage, scheduling, and cluster operations.
-A build fails when any metric drops below its threshold.
+The evaluation suite runs against a hand-verified golden set of 160 cases
+spanning cluster, networking, rbac, scheduling, storage, and workloads
+topics, plus dedicated unanswerable (refusal-path) and version-sensitive
+categories. Thresholds are recalibrated from the ablation to sit below the
+production config's bootstrap CI lower bounds (see `config.py`). A build
+fails when any gated metric drops below its threshold.
 
 ## Public demo
 
@@ -151,10 +154,10 @@ thresholds; the difference is coverage vs cost. PR gate config lives in
 ### Ablation study
 
 `python -m rag_harness ablation` sweeps every retrieval strategy in
-`{dense, hybrid, hybrid-rerank, hyde, full}` × `{baseline, corrective}` (10
-configurations) and emits a comparative markdown table + full CSV. Highlights
-the **relevant-but-incorrect** category (confident, on-topic answers that get
-the facts wrong) as a dedicated column.
+`{dense, hybrid, hybrid-rerank, hyde, full, decompose}` × `{baseline,
+corrective}` (12 configurations) and emits a comparative markdown table +
+full CSV. Highlights the **relevant-but-incorrect** category (confident,
+on-topic answers that get the facts wrong) as a dedicated column.
 
 Outputs land in `evals/experiments/ablation_<utc-ts>_<git-sha>.{md,csv}`.
 Every run also appends one line per configuration to
@@ -164,37 +167,38 @@ to commits. See `evals/history/README.md` for the schema.
 The LLM judge cache is opt-in on by default for ablation runs, making
 subsequent runs against unchanged code near-free.
 
-**Latest results** (2026-07-04, `e148311`, 30 golden cases, `gpt-4o-mini`):
+**Latest results** (2026-07-14, `164ff8c`, 160 golden cases, `gpt-4o-mini`,
+baseline mode):
 
 | Strategy | Corrective | Recall | Precision | Faith | Correct | Relevancy | Cost | p50 |
 |---|:---:|---:|---:|---:|---:|---:|---:|---:|
-| dense | no | 0.77 | 0.91 | 0.87 | 0.74 | 0.80 | $0.009 | 3.0s |
-| hybrid | no | 0.78 | 0.86 | 0.86 | 0.76 | 0.87 | $0.010 | 2.5s |
-| hybrid-rerank | no | 0.73 | 0.86 | 0.92 | 0.83 | 0.93 | $0.021 | 5.6s |
-| **hyde** | no | **0.90** | **0.95** | 0.93 | **0.87** | 0.93 | $0.017 | 6.1s |
-| full | no | 0.72 | 0.94 | **0.98** | **0.91** | **1.00** | $0.028 | 10.5s |
+| dense | no | 0.95 | 0.81 | **0.94** | 0.92 | 0.81 | $0.094 | 4.4s |
+| hybrid | no | 0.94 | 0.80 | 0.91 | 0.93 | 0.82 | $0.098 | 3.7s |
+| hybrid-rerank | no | 0.93 | 0.80 | 0.91 | 0.92 | 0.82 | $0.105 | 4.6s |
+| hyde | no | 0.94 | 0.81 | 0.92 | 0.92 | 0.81 | $0.113 | 6.0s |
+| full | no | 0.88 | 0.76 | 0.87 | 0.87 | 0.78 | $0.137 | 8.2s |
+| **decompose** | no | **0.96** | 0.80 | 0.89 | **0.93** | **0.83** | $0.120 | 4.3s |
 
-Full 10-row table (both corrective modes) and per-case data in
-[`evals/experiments/`](evals/experiments/).
+Full 12-row table (both corrective modes), bootstrap 95% CIs, and per-case
+data in [`evals/experiments/`](evals/experiments/) and the metrics page.
 
-Key findings:
-- **HyDE dominates on retrieval quality** (recall 0.90, precision 0.95) at
-  moderate cost. The vocabulary bridge between short questions and long
-  answer chunks matters more than any other single technique on this corpus.
-- **Cross-encoder reranking is a precision play, not a recall play.**
-  `hybrid-rerank` has the lowest recall but the highest faithfulness. The
-  reranker drops relevant chunks alongside noise; survivors are extremely tight.
-- **Corrective showed no consistent improvement across strategies** and
-  added latency (p50 grows by 1-8s depending on strategy). Single-metric
-  moves at n=30 sit within small-sample noise; larger golden sets are
-  needed to determine whether corrective actually helps on the weakest
-  retrievers.
-- **Zero relevant-but-incorrect cases across every configuration.** A
-  genuine null result about this corpus. The RBI metric is designed to
-  catch confident-sounding hallucination (high relevancy, low correctness);
-  on 30 K8s docs cases across 10 configs, it fired zero times. The LLM
-  either answers correctly or refuses cleanly on this material, so RBI
-  will be a more informative signal on corpora that produce richer
+Key findings (this table reverses the earlier 30-case result, which is the
+point of re-running on a larger, more varied set):
+- **Simplicity wins on this factoid-heavy set.** `dense`, `hybrid`, and
+  `decompose` lead on correctness (0.92-0.93). The expanded golden set adds
+  many precise factoids, version-sensitive facts, and refusals where exact
+  retrieval beats query rewriting.
+- **The heavy `full` pipeline is now the worst and most expensive** (correct
+  0.87, cost $0.137). Stacking HyDE hypothesis generation on top of
+  reranking over-transforms short precise queries and hurts retrieval. On
+  the old 30-case set `full`/`hyde` led; the larger set inverts that.
+- **Query decomposition tops recall (0.96) and ties for best correctness
+  (0.93)** at ~1.3x dense cost, without regressing on single-hop questions.
+- **Corrective still shows no consistent gain** and adds latency, so it
+  stays opt-in.
+- **Relevant-but-incorrect stays near zero** (0-2 cases per config, <=1%
+  across all 12). The model answers correctly or refuses cleanly on this
+  material; RBI will be a more informative signal on corpora with richer
   hallucination patterns.
 
 Serve the API:
