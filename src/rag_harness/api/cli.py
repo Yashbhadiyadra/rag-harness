@@ -240,6 +240,40 @@ def _cmd_security_eval(args: argparse.Namespace) -> None:
     print(f"\nReport written to {md_path}")
 
 
+def _cmd_citation_eval(args: argparse.Namespace) -> None:
+    from datetime import UTC, datetime
+    from pathlib import Path
+
+    from rag_harness.evaluation.citation_eval import (
+        render_markdown,
+        run_citation_eval_sync,
+    )
+    from rag_harness.evaluation.judge_audit import _current_git_commit
+    from rag_harness.evaluation.runner import load_golden_cases
+
+    if not args.no_cache:
+        settings.llm_cache_enabled = True
+
+    cases = load_golden_cases()
+    result = run_citation_eval_sync(cases, args.strategy)
+
+    commit = _current_git_commit()
+    timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S+0000")
+    out_dir = Path(args.output_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    md_path = out_dir / f"citation-accuracy_{timestamp}_{commit}.md"
+    md_path.write_text(render_markdown(result, commit, timestamp))
+
+    print("\nCitation accuracy (ADR-0016, Phase 3)")
+    print("=" * 56)
+    print(f"  Coverage : {result.coverage:.0%} ({result.n_cited_sentences}/{result.n_sentences})")
+    print(
+        f"  Accuracy : {result.accuracy:.0%} "
+        f"({result.n_supported}/{result.n_citations} citations supported)"
+    )
+    print(f"\nReport written to {md_path}")
+
+
 def _cmd_reference_free(args: argparse.Namespace) -> None:
     from datetime import UTC, datetime
     from pathlib import Path
@@ -531,6 +565,26 @@ def main() -> None:
         help="Directory to write security-eval_<ts>_<sha>.md into (default: %(default)s).",
     )
 
+    citation_eval_p = sub.add_parser(
+        "citation-eval",
+        help="Measure citation coverage and accuracy over the golden set (ADR-0016).",
+    )
+    citation_eval_p.add_argument(
+        "--strategy",
+        default=settings.retrieval_strategy,
+        help="Retrieval strategy to use (default: %(default)s).",
+    )
+    citation_eval_p.add_argument(
+        "--output-dir",
+        default="evals/experiments",
+        help="Directory to write citation-accuracy_<ts>_<sha>.md into (default: %(default)s).",
+    )
+    citation_eval_p.add_argument(
+        "--no-cache",
+        action="store_true",
+        help="Disable the LLM judge cache (default: on).",
+    )
+
     reference_free_p = sub.add_parser(
         "reference-free",
         help="Measure whether reference-free faithfulness catches ungrounded answers.",
@@ -619,6 +673,7 @@ def main() -> None:
         "noise-eval": _cmd_noise_eval,
         "abstention": _cmd_abstention,
         "reference-free": _cmd_reference_free,
+        "citation-eval": _cmd_citation_eval,
     }[args.command](args)
 
 
