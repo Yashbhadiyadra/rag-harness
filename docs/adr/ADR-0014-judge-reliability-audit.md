@@ -244,3 +244,39 @@ Note the boundary flip rates carry the test-retest nondeterminism
 measured above (gpt-4o showed 7% on one run, 13% on another): near-gate
 flip rates are themselves noisy, which is exactly why single runs are
 never read as exact and the CIs are mandatory.
+
+## Eighth measurement (2026-07-14): judge-vs-truth kappa
+
+The literature's headline demand is chance-corrected agreement (Cohen's
+kappa), not raw agreement (arXiv:2606.19544). `--kappa` measures it on
+the expanded 160-case set against a known ground truth: each golden
+reference answer is known-correct, each cross-paired answer (case i
+answered with case i+1's reference) is known-incorrect. The judge's
+correctness gate verdict is compared to that truth.
+
+Result (gpt-4o-mini, 160 known-correct + 160 known-incorrect):
+
+| Cohen's kappa | Raw agreement | False accepts | False rejects |
+|---|---|---|---|
+| **0.875** | 0.938 | 20/160 | 0/160 |
+
+Three honest readings:
+
+1. Kappa 0.875 is substantial agreement, and raw agreement (0.938)
+   overstates it by 6.3 points - demonstrating the field's core warning
+   on our own judge, exactly why we report kappa and not raw agreement.
+2. Zero false rejects: the judge never fails a correct golden answer, so
+   the gate does not punish good answers. That is the property that
+   matters most for a quality gate.
+3. Twelve percent false accepts (20/160): the judge passes some wrong
+   answers. Caveat on the ground truth: cross-pairing pairs each case
+   with its file neighbour, and the golden files are grouped by topic, so
+   an adjacent "wrong" answer is often the same topic and can be partly
+   applicable - some of these 20 are not clean errors. A topic-shuffled
+   cross-pairing would tighten the negative set; that refinement, plus
+   human-labeled correctness (the true gold standard here), is future
+   work. The number is reported as-is rather than tuned to look better.
+
+This is the capstone of the judge audit: the judge behind every score on
+this project is now validated by chance-corrected agreement against known
+truth, with the false-accept limit stated plainly.

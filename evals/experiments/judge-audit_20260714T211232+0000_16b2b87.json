@@ -1,0 +1,20 @@
+{
+  "judge_model": "gpt-4o-mini",
+  "commit": "16b2b87",
+  "timestamp": "20260714T211232+0000",
+  "n_cases": 160,
+  "prompt_hashes": {
+    "correctness": "0efa46ebdf04"
+  },
+  "probes": [],
+  "stability": [],
+  "scales": [],
+  "kappa": {
+    "n_known_correct": 160,
+    "n_known_incorrect": 160,
+    "kappa": 0.875,
+    "raw_agreement": 0.938,
+    "false_accepts": 20,
+    "false_rejects": 0
+  }
+}

@@ -146,7 +146,12 @@ def _cmd_judge_audit(args: argparse.Namespace) -> None:
     if args.judge_model:
         settings.generation_model = args.judge_model
 
-    report = run_audit_sync(retest=args.retest, scales=args.scales, kappa=args.kappa)
+    cases = None
+    if args.sample:
+        from rag_harness.evaluation.runner import load_golden_cases
+
+        cases = load_golden_cases()[: args.sample]
+    report = run_audit_sync(cases=cases, retest=args.retest, scales=args.scales, kappa=args.kappa)
     md_path = write_report(report, out_dir=Path(args.output_dir))
 
     print("\nJudge reliability audit (ADR-0014)")
@@ -575,6 +580,16 @@ def main() -> None:
         help=(
             "Report Cohen's kappa agreement of the judge's gate verdict with a "
             "known-correct/known-incorrect ground truth (ADR-0014)."
+        ),
+    )
+    judge_audit_p.add_argument(
+        "--sample",
+        type=int,
+        default=None,
+        metavar="N",
+        help=(
+            "Audit only the first N golden cases. The full 160-case audit is "
+            "slow (thousands of judge calls); use a sample for a quick run."
         ),
     )
 
