@@ -240,6 +240,44 @@ def _cmd_security_eval(args: argparse.Namespace) -> None:
     print(f"\nReport written to {md_path}")
 
 
+def _cmd_noise_eval(args: argparse.Namespace) -> None:
+    from datetime import UTC, datetime
+    from pathlib import Path
+
+    from rag_harness.evaluation.judge_audit import _current_git_commit
+    from rag_harness.evaluation.noise_eval import (
+        degradation,
+        render_markdown,
+        run_noise_probe_sync,
+    )
+    from rag_harness.evaluation.runner import load_golden_cases
+
+    # The judge cache keeps reruns cheap; noise robustness re-scores stable inputs.
+    if not args.no_cache:
+        settings.llm_cache_enabled = True
+
+    cases = load_golden_cases()
+    results = run_noise_probe_sync(cases)
+
+    commit = _current_git_commit()
+    timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S+0000")
+    out_dir = Path(args.output_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    md_path = out_dir / f"noise-robustness_{timestamp}_{commit}.md"
+    md_path.write_text(render_markdown(results, commit, timestamp))
+
+    print("\nNoise robustness (Phase 2)")
+    print("=" * 56)
+    for r in results:
+        print(
+            f"  k={r.k:<2} faithfulness {r.mean_faithfulness:.3f}"
+            f"  correctness {r.mean_correctness:.3f}"
+        )
+    faith_drop, correct_drop = degradation(results)
+    print(f"  degradation: faithfulness -{faith_drop:.3f}, correctness -{correct_drop:.3f}")
+    print(f"\nReport written to {md_path}")
+
+
 def _cmd_abstention(args: argparse.Namespace) -> None:
     from datetime import UTC, datetime
     from pathlib import Path
@@ -457,6 +495,21 @@ def main() -> None:
         help="Directory to write security-eval_<ts>_<sha>.md into (default: %(default)s).",
     )
 
+    noise_eval_p = sub.add_parser(
+        "noise-eval",
+        help="Measure noise robustness: quality degradation as irrelevant chunks are added.",
+    )
+    noise_eval_p.add_argument(
+        "--output-dir",
+        default="evals/experiments",
+        help="Directory to write noise-robustness_<ts>_<sha>.md into (default: %(default)s).",
+    )
+    noise_eval_p.add_argument(
+        "--no-cache",
+        action="store_true",
+        help="Disable the LLM judge cache (default: on).",
+    )
+
     abstention_p = sub.add_parser(
         "abstention",
         help="Measure negative rejection: does the system refuse out-of-corpus questions?",
@@ -512,6 +565,7 @@ def main() -> None:
         "judge-audit": _cmd_judge_audit,
         "judge-matrix": _cmd_judge_matrix,
         "security-eval": _cmd_security_eval,
+        "noise-eval": _cmd_noise_eval,
         "abstention": _cmd_abstention,
     }[args.command](args)
 
