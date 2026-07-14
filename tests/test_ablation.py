@@ -122,14 +122,14 @@ def test_run_ablation_invokes_run_eval_per_configuration() -> None:
     ):
         runs = asyncio.run(run_ablation())
 
-    # 5 strategies × 2 modes = 10 configurations
-    assert len(runs) == 10
-    assert mock_build.call_count == 10
-    assert mock_run_eval.call_count == 10
+    # 6 strategies × 2 modes = 12 configurations
+    assert len(runs) == 12
+    assert mock_build.call_count == 12
+    assert mock_run_eval.call_count == 12
     # Corrective flag is threaded through
     corrective_flags = [c.kwargs.get("use_corrective") for c in mock_run_eval.call_args_list]
-    assert corrective_flags.count(True) == 5
-    assert corrective_flags.count(False) == 5
+    assert corrective_flags.count(True) == 6
+    assert corrective_flags.count(False) == 6
 
 
 def test_run_ablation_respects_explicit_strategies_and_modes() -> None:

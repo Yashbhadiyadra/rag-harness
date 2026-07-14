@@ -10,6 +10,7 @@ Strategies:
     hybrid-rerank   - HybridRetriever wrapped in RerankingRetriever
     hyde            - HyDERetriever wrapping DenseRetriever
     full            - HyDE ∘ Hybrid ∘ Rerank (the whole pipeline)
+    decompose       - DecompositionRetriever wrapping HybridRetriever
 """
 
 import logging
@@ -21,7 +22,7 @@ from rag_harness.retrieval.hyde import HyDERetriever
 
 logger = logging.getLogger(__name__)
 
-VALID_STRATEGIES = {"dense", "hybrid", "hybrid-rerank", "hyde", "full"}
+VALID_STRATEGIES = {"dense", "hybrid", "hybrid-rerank", "hyde", "full", "decompose"}
 
 
 def build_retriever(strategy: str) -> Retriever:
@@ -51,6 +52,11 @@ def build_retriever(strategy: str) -> Retriever:
 
     if strategy == "hyde":
         return HyDERetriever(base_retriever=DenseRetriever())
+
+    if strategy == "decompose":
+        from rag_harness.retrieval.decomposition import DecompositionRetriever
+
+        return DecompositionRetriever(base_retriever=HybridRetriever())
 
     # "full" - HyDE around Rerank around Hybrid
     from rag_harness.retrieval.reranker import RerankingRetriever

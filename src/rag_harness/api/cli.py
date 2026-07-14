@@ -449,7 +449,9 @@ def main() -> None:
 
     sub.add_parser("ingest", help="Clone, chunk, embed, and index the K8s docs.")
 
-    strategy_choices = ["dense", "hybrid", "hybrid-rerank", "hyde", "full"]
+    from rag_harness.retrieval.factory import VALID_STRATEGIES
+
+    strategy_choices = sorted(VALID_STRATEGIES)
 
     query_p = sub.add_parser("query", help="Ask a question and print the grounded answer.")
     query_p.add_argument("question", help="The question to answer.")

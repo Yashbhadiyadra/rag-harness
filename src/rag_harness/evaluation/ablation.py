@@ -1,7 +1,7 @@
 """Ablation runner - golden set × strategy × corrective-mode → comparative table.
 
 Runs the golden eval suite across every retrieval strategy in
-``VALID_STRATEGIES`` × {baseline, corrective} = 10 configurations by default.
+``VALID_STRATEGIES`` × {baseline, corrective} = 12 configurations by default.
 Emits three artifacts per run:
 
   1. Markdown table (for a README, an interviewer, or the metrics page).
@@ -36,7 +36,7 @@ from rag_harness.retrieval.factory import VALID_STRATEGIES, build_retriever
 logger = logging.getLogger(__name__)
 
 # Preferred display order for the ablation table (dense → most sophisticated)
-_STRATEGY_ORDER = ["dense", "hybrid", "hybrid-rerank", "hyde", "full"]
+_STRATEGY_ORDER = ["dense", "hybrid", "hybrid-rerank", "hyde", "full", "decompose"]
 
 
 class AblationRun(BaseModel):
