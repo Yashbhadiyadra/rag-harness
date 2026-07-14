@@ -1,0 +1,20 @@
+{
+  "commit": "2865bf9",
+  "timestamp": "20260714T014634+0000",
+  "rows": [
+    {
+      "model": "gpt-4o-mini",
+      "ceiling_correctness": 1.0,
+      "boundary_worst_flip_rate": 0.23333333333333334,
+      "discrimination_false_accept": 0.0,
+      "cost_usd": 0.02879115
+    },
+    {
+      "model": "gpt-4o",
+      "ceiling_correctness": 1.0,
+      "boundary_worst_flip_rate": 0.13333333333333333,
+      "discrimination_false_accept": 0.0,
+      "cost_usd": 0.47985249999999996
+    }
+  ]
+}

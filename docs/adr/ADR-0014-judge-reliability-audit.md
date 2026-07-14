@@ -210,3 +210,37 @@ found, and it argues for pinning one scale (we keep numeric) and never
 mixing scales within a comparison. It is also the strongest single
 entry for the public report: the scale you pick is not a cosmetic
 choice, it moves a fifth of the verdicts.
+
+## Seventh measurement (2026-07-14): judge selection matrix
+
+`judge-matrix` runs the full audit under each candidate model and lays
+the four decision numbers side by side. Cache off, so cost is real and
+comparable. Result:
+
+| Judge model | Ceiling calib | Worst boundary flip | False-accept | Cost (USD) |
+|---|---|---|---|---|
+| gpt-4o-mini | 1.000 | 23% | 0% | 0.0288 |
+| gpt-4o | 1.000 | 13% | 0% | 0.4799 |
+
+Both models are perfectly calibrated (ceiling 1.0) and perfectly
+discriminating (0% false-accept). They differ only in boundary
+robustness: gpt-4o flips 13% of near-gate verdicts under formatting
+versus gpt-4o-mini's 23% - genuinely more robust - but costs **16.7x
+more** per audit.
+
+This did NOT reproduce the generic "a cheap judge always matches an
+expensive one" claim: here the expensive model is measurably better at
+the boundary. That is the point of the matrix - reliability is model-
+and task-dependent, so the choice must be measured, not assumed. The
+evidence-based call for this project: gpt-4o-mini stays the default
+(the 23% boundary noise is mitigated by cache-on scoring, which pins
+one score per input, plus the ADR-0011 bootstrap CIs), and gpt-4o is
+the option when near-gate precision must be maximised and cost is
+secondary. The matrix also surfaced a real bug on first run - gpt-4o
+was unpriced and reported a false $0.00 cost - now fixed in the
+pricing table.
+
+Note the boundary flip rates carry the test-retest nondeterminism
+measured above (gpt-4o showed 7% on one run, 13% on another): near-gate
+flip rates are themselves noisy, which is exactly why single runs are
+never read as exact and the CIs are mandatory.
