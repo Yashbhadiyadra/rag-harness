@@ -436,6 +436,7 @@ All non-trivial decisions are captured as Architecture Decision Records in
 - [ADR-0019](docs/adr/ADR-0019-bring-your-own-corpus.md): Bring-your-own-corpus ingestion
 - [ADR-0020](docs/adr/ADR-0020-closed-loop-eval.md): Closed-loop eval (production traces to review queue)
 - [ADR-0021](docs/adr/ADR-0021-mcp-server.md): MCP server (agent tools, secure by default)
+- [ADR-0022](docs/adr/ADR-0022-multilingual-support.md): Multilingual support (design)
 
 ## Research foundations
 
