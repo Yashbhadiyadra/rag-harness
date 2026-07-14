@@ -274,7 +274,10 @@ def _cmd_noise_eval(args: argparse.Namespace) -> None:
             f"  correctness {r.mean_correctness:.3f}"
         )
     faith_drop, correct_drop = degradation(results)
-    print(f"  degradation: faithfulness -{faith_drop:.3f}, correctness -{correct_drop:.3f}")
+    print(
+        f"  degradation: faithfulness {max(0.0, faith_drop):.3f}, "
+        f"correctness {max(0.0, correct_drop):.3f} (0.000 = none)"
+    )
     print(f"\nReport written to {md_path}")
 
 

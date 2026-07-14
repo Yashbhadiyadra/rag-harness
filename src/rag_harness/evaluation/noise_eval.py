@@ -126,12 +126,15 @@ def render_markdown(results: list[NoiseLevelResult], commit: str, timestamp: str
             f"| {r.k} | {r.n_cases} | {r.mean_faithfulness:.3f} | {r.mean_correctness:.3f} |"
         )
     lines.append("")
-    lines.append(
-        f"Degradation from k={results[0].k} to k={results[-1].k}: "
-        f"faithfulness -{faith_drop:.3f}, correctness -{correct_drop:.3f}."
-        if len(results) >= 2
-        else ""
-    )
+    if len(results) >= 2:
+        # A negative drop means quality improved with noise; report it as zero
+        # degradation rather than a confusing double negative.
+        lines.append(
+            f"Degradation from k={results[0].k} to k={results[-1].k}: "
+            f"faithfulness {max(0.0, faith_drop):.3f}, "
+            f"correctness {max(0.0, correct_drop):.3f} "
+            "(0.000 = no measurable degradation)."
+        )
     lines.append("")
     return "\n".join(lines)
 
