@@ -119,6 +119,12 @@ class Settings(BaseSettings):
         "version-sensitive-002",
     ]
 
+    # Closed-loop eval (ADR-0020) - capture low-confidence /query traces as
+    # golden-set review candidates. Off by default; the owner still reviews
+    # every captured candidate before it can enter the golden set.
+    closed_loop_enabled: bool = False
+    closed_loop_queue_path: str = "./evals/review-queue/closed-loop.jsonl"
+
     # Logging
     log_level: str = "INFO"
 

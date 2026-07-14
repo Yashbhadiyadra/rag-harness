@@ -434,6 +434,7 @@ All non-trivial decisions are captured as Architecture Decision Records in
 - [ADR-0017](docs/adr/ADR-0017-query-decomposition.md): Query decomposition retrieval strategy
 - [ADR-0018](docs/adr/ADR-0018-otel-genai-conventions.md): OpenTelemetry GenAI semantic conventions
 - [ADR-0019](docs/adr/ADR-0019-bring-your-own-corpus.md): Bring-your-own-corpus ingestion
+- [ADR-0020](docs/adr/ADR-0020-closed-loop-eval.md): Closed-loop eval (production traces to review queue)
 
 ## Research foundations
 

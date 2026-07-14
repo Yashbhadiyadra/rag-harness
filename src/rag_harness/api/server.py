@@ -31,6 +31,7 @@ from rag_harness.api.middleware.daily_cap import DailyCapMiddleware
 from rag_harness.api.middleware.kill_switch import KillSwitchMiddleware
 from rag_harness.api.middleware.security_headers import SecurityHeadersMiddleware
 from rag_harness.config import settings
+from rag_harness.evaluation.closed_loop import capture_query
 from rag_harness.generation.citations import cited_chunk_indices
 from rag_harness.generation.corrective import NO_INFO_MESSAGE, corrective_generate_async
 from rag_harness.generation.generator import generate_async
@@ -251,6 +252,15 @@ async def query(request: Request, body: QueryRequest) -> QueryResponse:
             QUERY_LATENCY_SECONDS.labels(strategy=strategy).observe(latency_seconds)
 
     QUERY_TOTAL.labels(strategy=strategy, corrective=corrective_label).inc()
+
+    # Closed-loop eval (ADR-0020): a low-confidence answer signals a golden-set
+    # gap. Capture it as a review candidate (never touches the golden files).
+    # Opt-in and cheap - the refusal signal needs no extra LLM call.
+    if settings.closed_loop_enabled:
+        try:
+            capture_query(body.question, answer, chunks, Path(settings.closed_loop_queue_path))
+        except Exception:  # noqa: BLE001 - capture must never break a response
+            logger.warning("closed-loop capture failed", exc_info=True)
 
     # Aggregate usage from every LLM call into the token and cost counters,
     # and sum for the this-query cost returned on the response.
