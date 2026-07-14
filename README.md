@@ -2,10 +2,14 @@
 
 [![CI](https://github.com/Yashbhadiyadra/rag-harness/actions/workflows/ci.yml/badge.svg)](https://github.com/Yashbhadiyadra/rag-harness/actions/workflows/ci.yml)
 
-A reliability-first Retrieval-Augmented Generation (RAG) system over the
-[Kubernetes documentation](https://github.com/kubernetes/website). The goal is
-not just to answer questions. It is to **measure** answer quality independently
-across each failure mode and catch regressions before they ship.
+A reliability lab for retrieval systems, built over the
+[Kubernetes documentation](https://github.com/kubernetes/website). Most RAG
+projects stop at a demo. This one treats reliability as the product: it
+measures answer quality across each failure mode, **validates the LLM judge
+that does the scoring before trusting it**, **red-teams its own corpus** for
+prompt injection and data poisoning, and gates every change on the numbers
+with bootstrap confidence intervals. Every claim below links to the ADR and
+the measured result behind it.
 
 ## Why
 
@@ -25,6 +29,36 @@ topics, plus dedicated unanswerable (refusal-path) and version-sensitive
 categories. Thresholds are recalibrated from the ablation to sit below the
 production config's bootstrap CI lower bounds (see `config.py`). A build
 fails when any gated metric drops below its threshold.
+
+## What's measured
+
+Reliability is measured in four layers, each with real numbers and honest
+limits. Run any of them and the result lands in `evals/experiments/` and on
+the metrics page.
+
+- **Answer quality** - context recall, precision, faithfulness, correctness,
+  and answer relevancy, scored per failure mode by an LLM judge, with an
+  opt-in corrective-retry loop and bootstrap 95% confidence intervals on every
+  comparison ([ADR-0011](docs/adr/ADR-0011-statistical-significance.md)).
+  `python -m rag_harness ablation`
+- **Judge reliability** - the judge is validated before its scores are
+  trusted. A three-probe audit (calibration on right answers, near-gate noise,
+  wrong-answer discrimination) plus verbosity, format, scale, and test-retest
+  stability checks, and a reliability-vs-cost selection matrix across judge
+  models ([ADR-0014](docs/adr/ADR-0014-judge-reliability-audit.md)). Raw
+  agreement is never reported; chance-corrected kappa is.
+  `python -m rag_harness judge-audit`
+- **Security and robustness** - injection resistance against poisoned context
+  (OWASP LLM01), counterfactual and noise robustness, and negative rejection
+  (does it refuse when it should?). The generation prompt is hardened and the
+  before/after delta measured
+  ([ADR-0015](docs/adr/ADR-0015-retrieved-context-injection-hardening.md)).
+  `python -m rag_harness security-eval`
+- **Attribution** - chunk-level inline citations tied to the exact passage
+  behind each claim, plus a citation-accuracy metric that checks each cited
+  passage actually supports its sentence
+  ([ADR-0016](docs/adr/ADR-0016-chunk-level-citations.md)).
+  `python -m rag_harness citation-eval`
 
 ## Public demo
 
