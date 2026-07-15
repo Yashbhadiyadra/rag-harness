@@ -12,6 +12,44 @@ for the design decisions this runbook implements.
 paste into your own shell and review before running. Anything that
 changes state is called out explicitly.
 
+## Go live: condensed checklist
+
+The full detail is in Steps 1-6 below. This is the copy-paste order,
+assuming the `Variables` block further down is exported in your shell.
+
+- [ ] 1. Project + APIs (Step 1)
+- [ ] 2. Artifact Registry repo (Step 2)
+- [ ] 3. OpenAI key in Secret Manager (Step 3)
+- [ ] 4. Runtime service account + IAM (Step 4)
+- [ ] 5. Workload Identity Federation + deploy SA (Step 5)
+- [ ] 6. **Set the two GitHub repo variables.** This is the step whose
+      absence makes the deploy job fail in about 9 seconds at
+      "Authenticate to Google Cloud". The values are printed at the end
+      of Step 5.
+
+  ```bash
+  gh variable set GCP_WIF_PROVIDER \
+    --body "projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${WIF_POOL}/providers/${WIF_PROVIDER}"
+  gh variable set GCP_DEPLOY_SA \
+    --body "${DEPLOY_SA}@${PROJECT_ID}.iam.gserviceaccount.com"
+  # OPENAI_API_KEY secret is already set. Optional overrides (defaults
+  # baked into release.yml): GCP_PROJECT_ID, GCP_REGION, GCP_ARTIFACT_REPO,
+  # GCP_SERVICE_NAME.
+  gh variable list   # confirm the two are set before releasing
+  ```
+
+- [ ] 7. Billing budget with alerts (Step 6, optional but recommended)
+- [ ] 8. **Trigger the deploy** by pushing a tag:
+
+  ```bash
+  git tag v1.0.1 && git push origin v1.0.1
+  gh run watch      # or the Actions tab
+  ```
+
+  On success the release summary prints the Cloud Run URL. Put it in
+  `docs/DEMO.md` and the README "Public demo" section, and flip their
+  "not live yet" wording.
+
 ## Authentication (required for non-demo deployments)
 
 This runbook deploys the **public demo**, which runs with API
