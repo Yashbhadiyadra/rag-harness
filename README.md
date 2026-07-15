@@ -17,7 +17,7 @@ and the same reliability machinery applies
 ## Reliability at a glance
 
 Every number here is produced by a command in this repo and recorded under
-`evals/`. Measured on the 160-case reviewed golden set unless noted.
+`evals/`. Measured on the 160-case single-hop golden set unless noted.
 
 | What | Result | Command |
 |---|---|---|
@@ -47,10 +47,12 @@ independently lets you pinpoint exactly what broke, not just that
 | Generation | Answer not grounded in context | Faithfulness | ≥ 0.85 |
 | Generation | Answer is factually wrong | Correctness | ≥ 0.82 |
 
-The evaluation suite runs against a hand-verified golden set of 160 cases
-spanning cluster, networking, rbac, scheduling, storage, and workloads
+The evaluation suite runs against a hand-verified golden set of 160 single-hop
+cases spanning cluster, networking, rbac, scheduling, storage, and workloads
 topics, plus dedicated unanswerable (refusal-path) and version-sensitive
-categories. Thresholds are recalibrated from the ablation to sit below the
+categories, and an 8-case multi-hop slice (168 reviewed cases in total). The
+headline quality numbers are on the 160 single-hop cases; the multi-hop slice
+is scored separately. Thresholds are recalibrated from the ablation to sit below the
 production config's bootstrap CI lower bounds (see `config.py`). A build
 fails when any gated metric drops below its threshold.
 
@@ -89,9 +91,11 @@ the metrics page.
 
 ## Public demo
 
-A minimal hosted instance runs on Cloud Run with scale-to-zero. Ask a
-question, see the answer, sources, per-stage trace, and this query's
-cost/latency. Guardrails keep the demo cheap to run:
+The service is configured for Cloud Run with scale-to-zero, and the deploy
+pipeline (build, full eval-gate, deploy, smoke-test) is wired in
+`.github/workflows/release.yml`. It is not live yet: the hosting project has
+not been provisioned, so there is no public URL. Everything below runs locally
+today (`make serve`); the same guardrails apply once hosted:
 
 - Per-IP: **10/hour + 3/minute burst**.
 - Global daily cap: **200 requests/day** (00:00 UTC reset).

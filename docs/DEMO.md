@@ -1,7 +1,8 @@
 # Public demo
 
-A minimal, hosted instance of the RAG harness for visitors to try
-without setting anything up. See
+A minimal instance of the RAG harness designed to run on Cloud Run so
+visitors can try it without setting anything up. It is not yet hosted
+(no public URL - see below); run it locally today with `make serve`. See
 [ADR-0010](adr/ADR-0010-cloud-run-and-persistence.md) for the design
 decisions this document implements.
 
@@ -79,8 +80,8 @@ make serve         # uvicorn on http://localhost:8000
 ```
 
 Open `http://localhost:8000` in a browser. The demo UI, guardrails,
-and per-stage trace all work identically to the hosted instance;
-the deploy adds infrastructure, not features.
+and per-stage trace are exactly what a hosted instance would serve;
+deploying adds infrastructure, not features.
 
 To iterate on the demo UI itself: files live under
 `src/rag_harness/api/static/` (`index.html`, `styles.css`, `app.js`).
