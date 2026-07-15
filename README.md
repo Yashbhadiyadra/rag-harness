@@ -14,6 +14,27 @@ but ingestion is corpus-agnostic: point `CORPUS_*` at any markdown docs repo
 and the same reliability machinery applies
 ([ADR-0019](docs/adr/ADR-0019-bring-your-own-corpus.md)).
 
+## Reliability at a glance
+
+Every number here is produced by a command in this repo and recorded under
+`evals/`. Measured on the 160-case reviewed golden set unless noted.
+
+| What | Result | Command |
+|---|---|---|
+| Answer quality (production `dense` config) | recall 0.95, faithfulness 0.94, correctness 0.92, 0% relevant-but-incorrect | `rag-harness eval` |
+| Judge trustworthiness | Cohen's kappa 0.875 (raw agreement 0.938 overstates it by 6.3 points), 0 false-rejects | `rag-harness judge-audit --kappa` |
+| Judge fragility (honest) | 10-13% of gate verdicts flip on meaning-preserving formatting near the threshold; padding is penalized | `rag-harness judge-audit` |
+| Refusal / negative rejection | 100% abstention on out-of-corpus questions | `rag-harness abstention` |
+| Prompt injection (OWASP LLM01) | 100% resistance to direct-override and forged-system; 17% on compliance-appendix (documented survivor) | `rag-harness security-eval` |
+| Data poisoning (OWASP LLM04) | corpus pinning is the real defense: a context-faithful model repeats a planted lie by design | `rag-harness security-eval` |
+| Citation integrity | 86% of cited passages actually support their sentence | `rag-harness citation-eval` |
+| Multi-hop (8-case slice) | query decomposition lifts correctness from 0.59 to 0.73 vs dense | `rag-harness ablation` |
+
+Cost is about $0.09 per full eval run at p50 latency around 4.4s per query. The
+heavy `full` pipeline underperforms on this factoid corpus (0.87 correctness)
+and is deliberately not the gated config: measured, not assumed. Run the whole
+showcase end to end with `scripts/demo_reel.sh`.
+
 ## Why
 
 A RAG pipeline has three independent failure modes. Scoring each one

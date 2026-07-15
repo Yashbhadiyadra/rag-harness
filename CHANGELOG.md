@@ -6,6 +6,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- **Reliability-at-a-glance showcase.** The README now opens with a table
+  of the headline reliability numbers (answer quality, judge kappa vs raw
+  agreement, format-flip fragility, abstention, injection resistance,
+  citation integrity, multi-hop lift), each tied to the command that
+  produces it and the recorded result under ``evals/``. A runnable
+  ``scripts/demo_reel.sh`` drives four live flows end to end (grounded
+  answer, honest refusal, prompt-injection ignored, gate passing) for a
+  terminal recording.
 - **Secrets-management posture recorded and guarded (ADR-0026).** The
   production ``OPENAI_API_KEY`` is injected from Secret Manager at
   runtime (never baked into the image); ``.env`` is the local-dev
