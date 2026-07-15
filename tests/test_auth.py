@@ -173,6 +173,37 @@ def test_rate_limit_identity_falls_back_to_ip(monkeypatch: pytest.MonkeyPatch) -
     assert bad == "203.0.113.7"
 
 
+def test_per_key_quota_is_isolated(monkeypatch: pytest.MonkeyPatch) -> None:
+    """One key exhausting its burst quota (429) does not affect a different key.
+
+    End-to-end proof of the per-key rate limit: the 3/minute burst trips a 429
+    for key A's fourth request, while key B - a distinct bucket - still gets 200.
+    """
+    second_raw = "second-client-key"
+    monkeypatch.setattr(settings, "api_auth_enabled", True)
+    monkeypatch.setattr(settings, "api_keys", f"{KEY_HASH},{hash_key(second_raw)}")
+
+    mock_retriever = MagicMock()
+    mock_retriever.retrieve_async = AsyncMock(return_value=[_make_chunk()])
+    with (
+        patch("rag_harness.api.server._get_retriever", return_value=mock_retriever),
+        patch(
+            "rag_harness.api.server.generate_async",
+            new_callable=AsyncMock,
+            return_value="An answer.",
+        ),
+    ):
+        key_a = {"Authorization": f"Bearer {RAW_KEY}"}
+        # Burst limit is 3/minute: three succeed, the fourth is throttled.
+        for _ in range(3):
+            assert client.post("/query", json={"question": "q?"}, headers=key_a).status_code == 200
+        assert client.post("/query", json={"question": "q?"}, headers=key_a).status_code == 429
+
+        # A different key has its own bucket and is unaffected by key A's throttle.
+        key_b = {"Authorization": f"Bearer {second_raw}"}
+        assert client.post("/query", json={"question": "q?"}, headers=key_b).status_code == 200
+
+
 # --- fail-closed configuration ----------------------------------------------
 
 
