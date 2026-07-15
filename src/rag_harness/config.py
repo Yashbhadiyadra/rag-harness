@@ -1,5 +1,6 @@
 """Application settings loaded from environment variables and the .env file."""
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -55,6 +56,16 @@ class Settings(BaseSettings):
     # a demo_disabled body while health/ready/metrics stay reachable.
     demo_enabled: bool = True
     demo_daily_request_cap: int = 200
+
+    # API authentication (ADR-0023). Opt-in: the public demo runs with auth off
+    # (rate-limited + capped). Set API_AUTH_ENABLED=true for any non-demo
+    # deployment. API_KEYS is a comma-separated list of SHA-256 hex digests of
+    # accepted keys - never plaintext; generate one with `rag-harness hash-key`.
+    # Enabling auth with an empty allowlist is a configuration error and fails
+    # at startup (see _validate_auth_config), so a deployment can never believe
+    # it is protected while accepting every request.
+    api_auth_enabled: bool = False
+    api_keys: str = ""
 
     # Retrieval
     retrieval_top_k: int = 5
@@ -140,6 +151,27 @@ class Settings(BaseSettings):
     threshold_context_recall: float = 0.85
     threshold_faithfulness: float = 0.85
     threshold_correctness: float = 0.82
+
+    @property
+    def api_key_hashes(self) -> set[str]:
+        """The parsed allowlist of accepted key hashes (API_KEYS is comma-separated)."""
+        return {h.strip() for h in self.api_keys.split(",") if h.strip()}
+
+    @model_validator(mode="after")
+    def _validate_auth_config(self) -> "Settings":
+        """Refuse to start with authentication enabled but no keys configured.
+
+        Fail-closed on misconfiguration: an operator who sets API_AUTH_ENABLED
+        must also supply API_KEYS, so "auth on" can never silently accept every
+        request.
+        """
+        if self.api_auth_enabled and not self.api_key_hashes:
+            raise ValueError(
+                "API_AUTH_ENABLED is true but API_KEYS is empty - refusing to "
+                "start authenticated with no keys configured. Add at least one "
+                "key hash (rag-harness hash-key) or set API_AUTH_ENABLED=false."
+            )
+        return self
 
 
 settings = Settings()

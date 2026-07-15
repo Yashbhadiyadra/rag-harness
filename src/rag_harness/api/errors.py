@@ -32,6 +32,18 @@ class RagHarnessError(Exception):
         return self.message
 
 
+class AuthenticationError(RagHarnessError):
+    """Request lacked a valid API key while authentication is enabled (ADR-0023)."""
+
+    def __init__(self, message: str, detail: str | None = None) -> None:
+        super().__init__(
+            message=message,
+            detail=detail,
+            status_code=401,
+            error_type="authentication_error",
+        )
+
+
 class GuardrailRejection(RagHarnessError):
     """Request rejected at the input-guardrail boundary."""
 

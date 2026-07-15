@@ -5,6 +5,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+- **API-key authentication (ADR-0023).** Opt-in via ``API_AUTH_ENABLED``
+  (off by default, so the public demo is unchanged). When enabled,
+  ``/query`` requires ``Authorization: Bearer <key>``; keys are stored
+  only as SHA-256 digests in the ``API_KEYS`` allowlist (no plaintext at
+  rest, revocable). ``/health``, ``/ready``, and ``/metrics`` stay open
+  for probes and scrapers. The rate limiter now keys per-API-key for
+  authenticated callers and falls back to per-IP for anonymous traffic,
+  so clients get fair quotas behind shared NAT. Enabling auth with an
+  empty allowlist fails at startup (fail-closed on misconfiguration).
+  New ``rag-harness hash-key`` helper hashes a key without echoing it.
+
 ## [1.0.0] - 2026-07-14
 
 ### Added (Phase 11 - pre-v1.0 audit + hardening)

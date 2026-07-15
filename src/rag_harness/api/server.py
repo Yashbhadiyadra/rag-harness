@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from importlib.metadata import version as _pkg_version
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from openai import OpenAIError
@@ -15,8 +15,8 @@ from pydantic import BaseModel, Field
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
-from slowapi.util import get_remote_address
 
+from rag_harness.api.auth import rate_limit_identity, require_api_key
 from rag_harness.api.budget import DailyBudget
 from rag_harness.api.errors import GuardrailRejection, RagHarnessError
 from rag_harness.api.guardrails import screen_for_injection
@@ -73,11 +73,12 @@ app = FastAPI(
     redoc_url=None,
 )
 
-# Rate limiting: per-IP by default. See settings.api_rate_limit
-# (default 10/hour;3/minute for the public demo - ADR-0010) and .env.example.
-# In a single-instance demo the in-memory limiter is fine; swap to a Redis
-# backend later without code changes if we horizontally scale.
-limiter = Limiter(key_func=get_remote_address, default_limits=[settings.api_rate_limit])
+# Rate limiting: per-API-key when authenticated, else per-IP (ADR-0023 key_func).
+# See settings.api_rate_limit (default 10/hour;3/minute for the public demo -
+# ADR-0010) and .env.example. In a single-instance demo the in-memory limiter
+# is fine; swap to a Redis backend later without code changes if we
+# horizontally scale.
+limiter = Limiter(key_func=rate_limit_identity, default_limits=[settings.api_rate_limit])
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 app.add_middleware(SlowAPIMiddleware)
@@ -114,10 +115,13 @@ async def _rag_harness_error_handler(request: Request, exc: RagHarnessError) -> 
         "message": exc.message,
         "detail": exc.detail,
     }
+    # A 401 must advertise the accepted scheme so clients know how to authenticate.
+    headers = {"WWW-Authenticate": "Bearer"} if exc.status_code == 401 else None
     return Response(
         content=json.dumps(body),
         status_code=exc.status_code,
         media_type="application/json",
+        headers=headers,
     )
 
 
@@ -183,7 +187,11 @@ class QueryResponse(BaseModel):
 
 @app.post("/query", response_model=QueryResponse)
 @limiter.limit(settings.api_rate_limit)
-async def query(request: Request, body: QueryRequest) -> QueryResponse:
+async def query(
+    request: Request,
+    body: QueryRequest,
+    _auth: None = Depends(require_api_key),
+) -> QueryResponse:
     """Retrieve relevant chunks and return a grounded answer with source attribution.
 
     Rate-limited at ``settings.api_rate_limit`` (default 60/minute per IP).

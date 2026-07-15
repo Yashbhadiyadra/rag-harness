@@ -16,6 +16,20 @@ def _cmd_ingest(args: argparse.Namespace) -> None:
     asyncio.run(run_ingest_async())
 
 
+def _cmd_hash_key(args: argparse.Namespace) -> None:
+    """Print the SHA-256 hash of an API key for the API_KEYS allowlist (ADR-0023)."""
+    import getpass
+
+    from rag_harness.api.auth import hash_key
+
+    raw = args.key if args.key is not None else getpass.getpass("API key (input hidden): ")
+    if not raw:
+        print("No key provided.", file=sys.stderr)
+        sys.exit(1)
+    # Print only the digest. Put this in API_KEYS; keep the raw key secret.
+    print(hash_key(raw))
+
+
 def _cmd_query(args: argparse.Namespace) -> None:
     from rag_harness.generation.corrective import corrective_generate_async
     from rag_harness.generation.generator import generate_async
@@ -472,6 +486,17 @@ def main() -> None:
 
     sub.add_parser("ingest", help="Clone, chunk, embed, and index the K8s docs.")
 
+    hash_key_p = sub.add_parser(
+        "hash-key",
+        help="Hash an API key for the API_KEYS allowlist (ADR-0023); store the OUTPUT.",
+    )
+    hash_key_p.add_argument(
+        "key",
+        nargs="?",
+        default=None,
+        help="Raw API key to hash. Omit to be prompted without echo (keeps it out of history).",
+    )
+
     from rag_harness.retrieval.factory import VALID_STRATEGIES
 
     strategy_choices = sorted(VALID_STRATEGIES)
@@ -712,6 +737,7 @@ def main() -> None:
         return
     {
         "ingest": _cmd_ingest,
+        "hash-key": _cmd_hash_key,
         "query": _cmd_query,
         "eval": _cmd_eval,
         "ablation": _cmd_ablation,
