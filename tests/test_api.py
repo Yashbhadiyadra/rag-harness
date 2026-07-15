@@ -318,3 +318,18 @@ def test_rate_limit_burst_returns_429() -> None:
             assert r.status_code == 200, f"request {i + 1} unexpectedly rejected: {r.text}"
         r = client.post("/query", json={"question": "test?"})
         assert r.status_code == 429, f"4th request should trip burst limit, got {r.status_code}"
+
+
+def test_api_version_matches_installed_package() -> None:
+    """The FastAPI app version is single-sourced from package metadata.
+
+    Guards against the drift that existed before Phase 0: the app declared
+    a hardcoded version that diverged from pyproject and the release tag.
+    Reading importlib.metadata here means the OpenAPI schema can never again
+    report a version different from the installed package.
+    """
+    from importlib.metadata import version as pkg_version
+
+    installed = pkg_version("rag-harness")
+    assert app.version == installed
+    assert client.get("/openapi.json").json()["info"]["version"] == installed

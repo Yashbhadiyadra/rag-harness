@@ -5,6 +5,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-07-14
+
 ### Added (Phase 11 - pre-v1.0 audit + hardening)
 - **Secret + dep-vulnerability scanning in CI.** New parallel
   ``security`` job in ``ci.yml`` runs on every push and PR:

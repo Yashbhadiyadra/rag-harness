@@ -4,6 +4,7 @@ import logging
 import time
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from importlib.metadata import version as _pkg_version
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request, Response
@@ -65,7 +66,9 @@ async def _lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 app = FastAPI(
     title="RAG Harness",
     description="Reliability-first RAG over Kubernetes documentation.",
-    version="0.1.0",
+    # Single source of truth: the installed package version from pyproject.
+    # Reading it here means the API version can never drift from the package.
+    version=_pkg_version("rag-harness"),
     lifespan=_lifespan,
     redoc_url=None,
 )
