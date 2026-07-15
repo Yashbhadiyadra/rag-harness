@@ -28,7 +28,9 @@ spec:
     metadata:
       annotations:
         # Scale-to-zero + single-instance ceiling. See ADR-0010 §
-        # "Cost guardrail architecture" for the max=1 rationale.
+        # "Cost guardrail architecture" for the max=1 rationale. Raising
+        # maxScale requires a shared REDIS_URL first (ADR-0024) or the
+        # rate limit and daily cap multiply per instance.
         autoscaling.knative.dev/minScale: "0"
         autoscaling.knative.dev/maxScale: "1"
         # CPU throttling: only allocated during requests. Keeps idle

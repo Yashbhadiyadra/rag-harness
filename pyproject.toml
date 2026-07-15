@@ -48,6 +48,13 @@ mcp = [
     # module lazy-imports it and is only reachable via `rag_harness mcp`.
     "mcp>=1.2",
 ]
+redis = [
+    # Shared rate-limit + daily-cap state for horizontal scale-out (ADR-0024).
+    # Optional so the base install and the demo image stay lightweight; only
+    # imported when REDIS_URL is set. slowapi/limits also needs it for the
+    # redis storage backend.
+    "redis>=5.0",
+]
 dev = [
     "ruff>=0.4",
     "mypy>=1.10",
@@ -56,6 +63,7 @@ dev = [
     "httpx>=0.27",
     "pre-commit>=3.7",
     "opentelemetry-sdk>=1.20",  # needed for tests with InMemorySpanExporter
+    "fakeredis>=2.20",  # in-process Redis fake to test the ADR-0024 scale-out path
 ]
 
 [project.urls]
@@ -89,6 +97,8 @@ module = [
     "phoenix.*",
     "openinference.*",
     "mcp.*",
+    "redis",
+    "redis.*",
 ]
 ignore_missing_imports = true
 

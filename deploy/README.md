@@ -296,6 +296,24 @@ before wiring the release workflow.
 
 ---
 
+## Scaling beyond one instance (ADR-0024)
+
+The demo runs at `maxScale: 1` because the rate limiter and daily cap are
+in-memory (single writer). To run more than one instance, move that state
+to a shared Redis first - otherwise each instance keeps its own counters
+and the limits multiply by the instance count:
+
+1. Provision a Redis (e.g. Cloud Memorystore) reachable from the service.
+2. Deploy with the `[redis]` extra and set `REDIS_URL=redis://<host>:<port>`
+   (via env or Secret Manager). The limiter and daily cap then share it.
+3. Only then raise `autoscaling.knative.dev/maxScale` above `1` in
+   `cloud-run.yaml`.
+
+Order matters: lifting `maxScale` before `REDIS_URL` is set silently breaks
+the global cap. See [`ADR-0024`](../docs/adr/ADR-0024-horizontal-scale.md).
+
+---
+
 ## Teardown
 
 To remove everything the runbook created:

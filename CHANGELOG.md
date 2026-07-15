@@ -6,6 +6,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- **Horizontal scale-out via shared state (ADR-0024).** A single
+  ``REDIS_URL`` (default empty) is the scale-out switch. Empty keeps the
+  in-memory rate limiter and daily cap (single-instance demo, no new
+  infra). Set it to a ``redis://`` URL and both the slowapi limiter and
+  the daily request cap share one Redis, so the limits hold across
+  instances and Cloud Run ``max-instances`` can rise above 1. The daily
+  cap gains a ``RedisDailyBudget`` behind a ``Budget`` protocol
+  (in-memory ``DailyBudget`` stays the default); ``redis`` is an opt-in
+  ``[redis]`` extra, imported only when ``REDIS_URL`` is set. The
+  Redis-backed cap fails open on a Redis outage (a governance-store
+  outage degrades limiting, not the service).
 - **API-key authentication (ADR-0023).** Opt-in via ``API_AUTH_ENABLED``
   (off by default, so the public demo is unchanged). When enabled,
   ``/query`` requires ``Authorization: Bearer <key>``; keys are stored

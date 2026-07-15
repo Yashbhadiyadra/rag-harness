@@ -50,6 +50,12 @@ class Settings(BaseSettings):
     api_rate_limit: str = "10/hour;3/minute"
     api_max_question_length: int = 2000
 
+    # Horizontal scale-out (ADR-0024). Empty = in-memory limiter + daily cap
+    # (single-instance demo, no external infra). Set to redis://<host>:<port>
+    # to share both across instances via one Redis; requires the [redis] extra
+    # and lets Cloud Run max-instances rise above 1.
+    redis_url: str = ""
+
     # Public-demo cost guardrails (ADR-0010). The daily cap is enforced
     # in-process - Cloud Run max-instances=1 keeps the counter single-writer.
     # DEMO_ENABLED=false is the emergency kill switch: /query returns 503 with

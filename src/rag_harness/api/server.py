@@ -17,7 +17,7 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
 from rag_harness.api.auth import rate_limit_identity, require_api_key
-from rag_harness.api.budget import DailyBudget
+from rag_harness.api.budget import build_daily_budget
 from rag_harness.api.errors import GuardrailRejection, RagHarnessError
 from rag_harness.api.guardrails import screen_for_injection
 from rag_harness.api.metrics import (
@@ -78,7 +78,13 @@ app = FastAPI(
 # ADR-0010) and .env.example. In a single-instance demo the in-memory limiter
 # is fine; swap to a Redis backend later without code changes if we
 # horizontally scale.
-limiter = Limiter(key_func=rate_limit_identity, default_limits=[settings.api_rate_limit])
+limiter = Limiter(
+    key_func=rate_limit_identity,
+    default_limits=[settings.api_rate_limit],
+    # In-memory by default; a shared Redis store when REDIS_URL is set lets the
+    # limit hold across instances (ADR-0024). storage_uri wants a non-empty URI.
+    storage_uri=settings.redis_url or "memory://",
+)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 app.add_middleware(SlowAPIMiddleware)
@@ -90,7 +96,7 @@ app.add_middleware(SlowAPIMiddleware)
 # the inbound path. Order below = security headers → kill switch →
 # daily cap → slowapi. Security headers outermost so every response -
 # including kill-switch and rate-limit rejections - carries them.
-app.state.daily_budget = DailyBudget(cap=settings.demo_daily_request_cap)
+app.state.daily_budget = build_daily_budget(settings.demo_daily_request_cap, settings.redis_url)
 app.add_middleware(DailyCapMiddleware, budget=app.state.daily_budget)
 app.add_middleware(KillSwitchMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)

@@ -17,7 +17,7 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 from starlette.requests import Request
 from starlette.responses import Response
 
-from rag_harness.api.budget import DailyBudget
+from rag_harness.api.budget import Budget
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 class DailyCapMiddleware(BaseHTTPMiddleware):
     """Enforce a global daily request cap on POST /query."""
 
-    def __init__(self, app: object, budget: DailyBudget) -> None:
+    def __init__(self, app: object, budget: Budget) -> None:
         super().__init__(app)  # type: ignore[arg-type]
         self._budget = budget
 
