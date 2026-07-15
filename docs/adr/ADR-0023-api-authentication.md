@@ -50,8 +50,11 @@ minimal secure step - not a user/identity system, which multi-tenancy
 4. **Only `/query` is authenticated.** `/health`, `/ready`, and `/metrics`
    stay open: liveness/readiness probes and Prometheus scrapers cannot carry
    a key, and `/metrics` exposes only aggregate counters (ADR-0013). The
-   demo UI at `/` stays open; when auth is on it is a thin client that must
-   supply a key.
+   bundled demo UI at `/` is the unauthenticated public-demo surface and is
+   deliberately not wired to send a key - you do not distribute API keys
+   through a public page. Authenticated access is via API clients that set the
+   header themselves. A first-class authenticated web UI is deferred to the
+   multi-tenancy phase, when there is an identity model to build it against.
 
 5. **Rate limiting keys on the caller identity.** The slowapi `key_func`
    returns a per-key bucket for authenticated requests and falls back to the

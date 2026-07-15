@@ -12,6 +12,24 @@ for the design decisions this runbook implements.
 paste into your own shell and review before running. Anything that
 changes state is called out explicitly.
 
+## Authentication (required for non-demo deployments)
+
+This runbook deploys the **public demo**, which runs with API
+authentication OFF - it is protected by per-IP rate limiting and a
+daily cap (ADR-0010). Any non-demo deployment must enable auth before
+the service is exposed:
+
+- Set `API_AUTH_ENABLED=true`.
+- Generate a key hash with `rag-harness hash-key` and put it in
+  `API_KEYS` (comma-separated for multiple keys). Store the raw keys in
+  Secret Manager and hand them only to clients; the manifest holds only
+  hashes.
+- Enabling auth with an empty `API_KEYS` fails at startup by design, so
+  a service can never come up "authenticated" while accepting every
+  request.
+
+See [`ADR-0023`](../docs/adr/ADR-0023-api-authentication.md).
+
 ## Prerequisites
 
 - `gcloud` CLI installed and authenticated (`gcloud auth login`).

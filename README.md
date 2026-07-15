@@ -440,6 +440,7 @@ All non-trivial decisions are captured as Architecture Decision Records in
 - [ADR-0020](docs/adr/ADR-0020-closed-loop-eval.md): Closed-loop eval (production traces to review queue)
 - [ADR-0021](docs/adr/ADR-0021-mcp-server.md): MCP server (agent tools, secure by default)
 - [ADR-0022](docs/adr/ADR-0022-multilingual-support.md): Multilingual support (design)
+- [ADR-0023](docs/adr/ADR-0023-api-authentication.md): API-key authentication
 
 ## Research foundations
 
@@ -468,6 +469,15 @@ See [ADR-0013](docs/adr/ADR-0013-api-security-hardening.md).
   global daily request cap (`DEMO_DAILY_REQUEST_CAP`), an emergency
   kill switch (`DEMO_ENABLED=false`), bounded question length, and
   capped `top_k`.
+- **Authentication.** Optional API-key auth (`API_AUTH_ENABLED`, off
+  for the public demo). When on, `/query` requires
+  `Authorization: Bearer <key>` and the rate limiter meters per key;
+  `/health`, `/ready`, and `/metrics` stay open for probes. Keys are
+  stored only as SHA-256 digests (`API_KEYS`), never plaintext, and
+  enabling auth with no keys fails at startup. The bundled demo UI is
+  the unauthenticated public surface by design; authenticated access is
+  via API clients. See
+  [ADR-0023](docs/adr/ADR-0023-api-authentication.md).
 - **Injection screening.** Requests matching common prompt-injection
   patterns are rejected at the boundary; generation runs with a
   context-only prompt. This is a hygiene layer, not a guarantee - see
