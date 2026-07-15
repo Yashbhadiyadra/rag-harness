@@ -8,12 +8,31 @@ the ``API_KEYS`` allowlist, so no plaintext key is ever stored or logged.
 
 import hashlib
 import hmac
+from dataclasses import dataclass
 
 from fastapi import Request
 from slowapi.util import get_remote_address
 
 from rag_harness.api.errors import AuthenticationError
 from rag_harness.config import settings
+
+
+@dataclass(frozen=True)
+class TenantContext:
+    """The resolved identity of a request: which tenant, and its corpus (ADR-0025)."""
+
+    tenant_id: str
+    collection: str
+
+
+def default_tenant() -> TenantContext:
+    """The single-tenant context: the default collection.
+
+    Used when auth is off (public demo) and for flat-allowlist keys that are
+    not assigned to a named tenant. Reads ``settings.chroma_collection`` at call
+    time so test overrides are respected.
+    """
+    return TenantContext(tenant_id="default", collection=settings.chroma_collection)
 
 
 def hash_key(raw_key: str) -> str:
@@ -41,28 +60,49 @@ def _extract_bearer(authorization: str | None) -> str | None:
 
 
 def verify_key(raw_key: str) -> bool:
-    """Constant-time check that ``raw_key``'s hash is in the configured allowlist.
+    """Constant-time check that ``raw_key``'s hash is an accepted key.
 
-    Uses :func:`hmac.compare_digest` per candidate so comparison time does not
-    leak how many leading characters of a digest matched.
+    Accepts any valid key of any tenant plus the flat allowlist. Uses
+    :func:`hmac.compare_digest` per candidate so comparison time does not leak
+    how many leading characters of a digest matched.
     """
     candidate = hash_key(raw_key)
-    return any(hmac.compare_digest(candidate, known) for known in settings.api_key_hashes)
+    return any(hmac.compare_digest(candidate, known) for known in settings.all_key_hashes)
 
 
-async def require_api_key(request: Request) -> None:
-    """FastAPI dependency enforcing a valid API key when auth is enabled.
+def resolve_tenant(raw_key: str) -> TenantContext | None:
+    """Map a raw API key to its tenant context, or None if the key is unknown.
 
-    A no-op when ``API_AUTH_ENABLED`` is false (the public demo). Otherwise a
-    missing or unknown key raises :class:`AuthenticationError`, which the
-    server's error handler renders as ``401`` with a ``WWW-Authenticate:
-    Bearer`` header.
+    A key listed under a named tenant resolves to that tenant's collection; a
+    key only in the flat allowlist resolves to the default tenant. Named
+    tenants are checked first (ADR-0025).
+    """
+    candidate = hash_key(raw_key)
+    for tenant_id, spec in settings.tenants.items():
+        if any(hmac.compare_digest(candidate, known) for known in spec.key_hashes):
+            return TenantContext(tenant_id=tenant_id, collection=spec.collection)
+    for known in settings.api_key_hashes:
+        if hmac.compare_digest(candidate, known):
+            return default_tenant()
+    return None
+
+
+async def require_api_key(request: Request) -> TenantContext:
+    """FastAPI dependency resolving the request's tenant, enforcing auth.
+
+    Returns the default tenant when ``API_AUTH_ENABLED`` is false (the public
+    demo). Otherwise a missing or unknown key raises :class:`AuthenticationError`
+    (401 with ``WWW-Authenticate: Bearer``); a valid key returns its resolved
+    :class:`TenantContext`, which ``/query`` uses to select the tenant's corpus.
     """
     if not settings.api_auth_enabled:
-        return
+        return default_tenant()
     token = _extract_bearer(request.headers.get("Authorization"))
-    if token is None or not verify_key(token):
-        raise AuthenticationError("valid API key required")
+    if token is not None:
+        tenant = resolve_tenant(token)
+        if tenant is not None:
+            return tenant
+    raise AuthenticationError("valid API key required")
 
 
 def rate_limit_identity(request: Request) -> str:

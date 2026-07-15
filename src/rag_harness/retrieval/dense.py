@@ -18,10 +18,15 @@ logger = logging.getLogger(__name__)
 class DenseRetriever(Retriever):
     """Retrieves chunks using dense vector similarity search against ChromaDB."""
 
-    def __init__(self) -> None:
+    def __init__(self, collection_name: str | None = None) -> None:
+        """Open the given Chroma collection (default ``settings.chroma_collection``).
+
+        ``collection_name`` is the per-tenant isolation boundary (ADR-0025): a
+        retriever bound to tenant A's collection can only ever return A's chunks.
+        """
         self._openai = build_async_client()
         client = chromadb.PersistentClient(path=settings.chroma_db_path)
-        self._collection = client.get_collection(name=settings.chroma_collection)
+        self._collection = client.get_collection(name=collection_name or settings.chroma_collection)
 
     async def _embed_query(self, query: str) -> list[float]:
         response = await self._openai.embeddings.create(

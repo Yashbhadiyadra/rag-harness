@@ -58,6 +58,7 @@ class HybridRetriever(Retriever):
         bm25: BM25Store | None = None,
         rrf_k: int | None = None,
         candidate_multiplier: int = 3,
+        collection_name: str | None = None,
     ) -> None:
         """Construct a hybrid retriever.
 
@@ -66,9 +67,13 @@ class HybridRetriever(Retriever):
         stable top-5 is the standard pattern - the extra candidates ensure the
         best documents survive the fusion even if only one ranker ranks them
         highly.
+
+        ``collection_name`` binds both the dense retriever and the BM25 index to
+        one tenant's collection (ADR-0025); it is applied only when the
+        respective backing ranker is not supplied explicitly.
         """
-        self._dense = dense or DenseRetriever()
-        self._bm25 = bm25 or BM25Store()
+        self._dense = dense or DenseRetriever(collection_name=collection_name)
+        self._bm25 = bm25 or BM25Store(collection_name=collection_name)
         self._k = rrf_k if rrf_k is not None else settings.hybrid_rrf_k
         self._multiplier = candidate_multiplier
 

@@ -25,8 +25,13 @@ logger = logging.getLogger(__name__)
 VALID_STRATEGIES = {"dense", "hybrid", "hybrid-rerank", "hyde", "full", "decompose"}
 
 
-def build_retriever(strategy: str) -> Retriever:
+def build_retriever(strategy: str, collection_name: str | None = None) -> Retriever:
     """Return a Retriever composed according to *strategy*.
+
+    ``collection_name`` selects the Chroma collection to retrieve from (default
+    ``settings.chroma_collection``). It is threaded to the leaf dense/BM25
+    rankers so every strategy - including the wrappers (HyDE, rerank,
+    decompose) - retrieves only from that one tenant's corpus (ADR-0025).
 
     Raises ValueError for unknown strategies, and ImportError (from the
     reranker) if a strategy needing sentence-transformers is requested
@@ -37,28 +42,34 @@ def build_retriever(strategy: str) -> Retriever:
             f"Unknown retrieval strategy: {strategy!r}. Valid choices: {sorted(VALID_STRATEGIES)}"
         )
 
-    logger.info("building retriever with strategy=%s", strategy)
+    logger.info("building retriever with strategy=%s collection=%s", strategy, collection_name)
 
     if strategy == "dense":
-        return DenseRetriever()
+        return DenseRetriever(collection_name=collection_name)
 
     if strategy == "hybrid":
-        return HybridRetriever()
+        return HybridRetriever(collection_name=collection_name)
 
     if strategy == "hybrid-rerank":
         from rag_harness.retrieval.reranker import RerankingRetriever
 
-        return RerankingRetriever(base_retriever=HybridRetriever())
+        return RerankingRetriever(base_retriever=HybridRetriever(collection_name=collection_name))
 
     if strategy == "hyde":
-        return HyDERetriever(base_retriever=DenseRetriever())
+        return HyDERetriever(base_retriever=DenseRetriever(collection_name=collection_name))
 
     if strategy == "decompose":
         from rag_harness.retrieval.decomposition import DecompositionRetriever
 
-        return DecompositionRetriever(base_retriever=HybridRetriever())
+        return DecompositionRetriever(
+            base_retriever=HybridRetriever(collection_name=collection_name)
+        )
 
     # "full" - HyDE around Rerank around Hybrid
     from rag_harness.retrieval.reranker import RerankingRetriever
 
-    return HyDERetriever(base_retriever=RerankingRetriever(base_retriever=HybridRetriever()))
+    return HyDERetriever(
+        base_retriever=RerankingRetriever(
+            base_retriever=HybridRetriever(collection_name=collection_name)
+        )
+    )

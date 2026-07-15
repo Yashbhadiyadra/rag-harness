@@ -38,10 +38,15 @@ def tokenize(text: str) -> list[str]:
 class BM25Store:
     """In-memory BM25Okapi index over all chunks in the ChromaDB collection."""
 
-    def __init__(self) -> None:
-        """Load all chunks from ChromaDB and build the BM25 index."""
+    def __init__(self, collection_name: str | None = None) -> None:
+        """Load all chunks from a Chroma collection and build the BM25 index.
+
+        ``collection_name`` must match the dense retriever's collection so hybrid
+        fusion never mixes one tenant's dense hits with another's BM25 hits
+        (ADR-0025). Defaults to ``settings.chroma_collection``.
+        """
         client = chromadb.PersistentClient(path=settings.chroma_db_path)
-        collection = client.get_collection(name=settings.chroma_collection)
+        collection = client.get_collection(name=collection_name or settings.chroma_collection)
 
         raw = collection.get(include=["documents", "metadatas"])
         documents = raw["documents"] or []

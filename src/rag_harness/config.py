@@ -1,7 +1,19 @@
 """Application settings loaded from environment variables and the .env file."""
 
-from pydantic import model_validator
+from pydantic import BaseModel, Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class TenantSpec(BaseModel):
+    """A single tenant's identity and corpus binding (ADR-0025).
+
+    ``key_hashes`` are SHA-256 digests of the tenant's API keys (never
+    plaintext, as in ADR-0023). ``collection`` is the Chroma collection that
+    holds only this tenant's documents - the isolation boundary.
+    """
+
+    key_hashes: set[str] = set()
+    collection: str = Field(min_length=1)
 
 
 class Settings(BaseSettings):
@@ -72,6 +84,15 @@ class Settings(BaseSettings):
     # it is protected while accepting every request.
     api_auth_enabled: bool = False
     api_keys: str = ""
+
+    # Multi-tenant corpus isolation (ADR-0025). JSON mapping of tenant id to its
+    # key hashes and Chroma collection, e.g.
+    #   TENANTS={"acme": {"key_hashes": ["<sha256>"], "collection": "tenant_acme"}}
+    # A key in a tenant's list resolves to that tenant's collection; a key only
+    # in API_KEYS resolves to the default tenant on CHROMA_COLLECTION. Empty
+    # (default) = single-tenant, unchanged behaviour. Key hashes must be
+    # disjoint across tenants and API_KEYS (a key = exactly one identity).
+    tenants: dict[str, TenantSpec] = {}
 
     # Retrieval
     retrieval_top_k: int = 5
@@ -160,23 +181,44 @@ class Settings(BaseSettings):
 
     @property
     def api_key_hashes(self) -> set[str]:
-        """The parsed allowlist of accepted key hashes (API_KEYS is comma-separated)."""
+        """The parsed flat allowlist of key hashes (API_KEYS is comma-separated)."""
         return {h.strip() for h in self.api_keys.split(",") if h.strip()}
+
+    @property
+    def all_key_hashes(self) -> set[str]:
+        """Every accepted key hash: the flat allowlist plus all tenants' keys."""
+        hashes = set(self.api_key_hashes)
+        for spec in self.tenants.values():
+            hashes |= spec.key_hashes
+        return hashes
 
     @model_validator(mode="after")
     def _validate_auth_config(self) -> "Settings":
-        """Refuse to start with authentication enabled but no keys configured.
+        """Refuse misconfigurations that would weaken auth or make identity ambiguous.
 
-        Fail-closed on misconfiguration: an operator who sets API_AUTH_ENABLED
-        must also supply API_KEYS, so "auth on" can never silently accept every
-        request.
+        Fail-closed: authentication on with no keys anywhere is rejected, so
+        "auth on" can never silently accept every request. And a key hash may
+        appear in only one place (the flat allowlist or a single tenant), so a
+        key always resolves to exactly one identity (ADR-0025).
         """
-        if self.api_auth_enabled and not self.api_key_hashes:
+        if self.api_auth_enabled and not self.all_key_hashes:
             raise ValueError(
-                "API_AUTH_ENABLED is true but API_KEYS is empty - refusing to "
-                "start authenticated with no keys configured. Add at least one "
-                "key hash (rag-harness hash-key) or set API_AUTH_ENABLED=false."
+                "API_AUTH_ENABLED is true but no keys are configured (API_KEYS "
+                "and TENANTS are both empty) - refusing to start authenticated "
+                "with no keys. Add a key hash (rag-harness hash-key) or set "
+                "API_AUTH_ENABLED=false."
             )
+        seen: set[str] = set()
+        groups = [self.api_key_hashes, *(spec.key_hashes for spec in self.tenants.values())]
+        for group in groups:
+            for h in group:
+                if h in seen:
+                    raise ValueError(
+                        f"API key hash {h[:8]}... is assigned to more than one "
+                        "identity. Each key must belong to exactly one tenant "
+                        "(or the default allowlist), never several."
+                    )
+                seen.add(h)
         return self
 
 

@@ -16,7 +16,7 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
-from rag_harness.api.auth import rate_limit_identity, require_api_key
+from rag_harness.api.auth import TenantContext, rate_limit_identity, require_api_key
 from rag_harness.api.budget import build_daily_budget
 from rag_harness.api.errors import GuardrailRejection, RagHarnessError
 from rag_harness.api.guardrails import screen_for_injection
@@ -131,18 +131,25 @@ async def _rag_harness_error_handler(request: Request, exc: RagHarnessError) -> 
     )
 
 
-_retriever: Retriever | None = None
+_retrievers: dict[tuple[str, str], Retriever] = {}
 
 
-def _get_retriever() -> Retriever:
-    """Return the module-level retriever, initialising it on first call.
+def _get_retriever(collection: str) -> Retriever:
+    """Return a retriever for *collection*, building and caching per collection.
 
-    Uses the strategy set by RETRIEVAL_STRATEGY in .env.
+    Keyed by ``(strategy, collection)`` so each tenant (ADR-0025) gets its own
+    retriever, bound to its own corpus, built lazily and reused. Uses the
+    strategy set by RETRIEVAL_STRATEGY. If the collection does not exist (an
+    unprovisioned tenant), ``build_retriever`` raises rather than falling back
+    to another corpus - the request errors, it never serves the wrong tenant.
     """
-    global _retriever
-    if _retriever is None:
-        _retriever = build_retriever(settings.retrieval_strategy)
-    return _retriever
+    strategy = settings.retrieval_strategy
+    cache_key = (strategy, collection)
+    retriever = _retrievers.get(cache_key)
+    if retriever is None:
+        retriever = build_retriever(strategy, collection_name=collection)
+        _retrievers[cache_key] = retriever
+    return retriever
 
 
 class QueryRequest(BaseModel):
@@ -196,7 +203,7 @@ class QueryResponse(BaseModel):
 async def query(
     request: Request,
     body: QueryRequest,
-    _auth: None = Depends(require_api_key),
+    tenant: TenantContext = Depends(require_api_key),
 ) -> QueryResponse:
     """Retrieve relevant chunks and return a grounded answer with source attribution.
 
@@ -216,7 +223,7 @@ async def query(
     if reason is not None:
         raise GuardrailRejection("input rejected by guardrail", detail=reason)
 
-    retriever = _get_retriever()
+    retriever = _get_retriever(tenant.collection)
     strategy = settings.retrieval_strategy
     use_corrective = (
         body.corrective if body.corrective is not None else settings.corrective_rag_enabled

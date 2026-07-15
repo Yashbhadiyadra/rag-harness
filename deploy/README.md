@@ -30,6 +30,35 @@ the service is exposed:
 
 See [`ADR-0023`](../docs/adr/ADR-0023-api-authentication.md).
 
+## Onboarding a tenant (ADR-0025)
+
+Each tenant gets its own Chroma collection; a query authenticated as that
+tenant retrieves only from it. To add a tenant:
+
+1. Hash the tenant's key(s): `rag-harness hash-key`.
+2. Ingest the tenant's corpus into a named collection using the
+   bring-your-own-corpus settings (ADR-0019):
+
+   ```bash
+   CHROMA_COLLECTION="tenant_acme" \
+   CORPUS_REPO_URL="https://github.com/acme/docs.git" \
+   CORPUS_GIT_REF="<pinned-sha>" \
+     rag-harness ingest
+   ```
+
+3. Add the tenant to `TENANTS` (env or Secret Manager):
+
+   ```
+   TENANTS={"acme": {"key_hashes": ["<sha256>"], "collection": "tenant_acme"}}
+   ```
+
+Key hashes must be disjoint across tenants and `API_KEYS`; the service
+refuses to start otherwise. A tenant whose collection has not been ingested
+gets an error, never another tenant's data. Multi-tenant runs also need
+`API_AUTH_ENABLED=true` (identity comes from the key).
+
+See [`ADR-0025`](../docs/adr/ADR-0025-multi-tenancy.md).
+
 ## Prerequisites
 
 - `gcloud` CLI installed and authenticated (`gcloud auth login`).

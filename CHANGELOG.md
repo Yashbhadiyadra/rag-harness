@@ -6,6 +6,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- **Multi-tenant corpus isolation (ADR-0025).** A ``TENANTS`` config maps
+  each tenant to its API-key hashes and its own Chroma collection, so a
+  query authenticated as one tenant retrieves only that tenant's
+  documents - isolation by separate collection, not a shared collection
+  filtered by a field. Retrieval threads a per-tenant collection through
+  every strategy (dense, hybrid, hyde, rerank, decompose); a request
+  resolves its tenant from the API key and is served from that tenant's
+  corpus. An unprovisioned tenant errors rather than falling back to
+  another corpus, key hashes must be disjoint across tenants (validated
+  at startup), and with ``TENANTS`` empty behaviour is unchanged
+  (single default tenant on ``CHROMA_COLLECTION``). Corpora are
+  operator-provisioned via the existing bring-your-own-corpus ingest.
 - **Horizontal scale-out via shared state (ADR-0024).** A single
   ``REDIS_URL`` (default empty) is the scale-out switch. Empty keeps the
   in-memory rate limiter and daily cap (single-instance demo, no new
