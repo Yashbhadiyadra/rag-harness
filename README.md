@@ -441,6 +441,9 @@ All non-trivial decisions are captured as Architecture Decision Records in
 - [ADR-0021](docs/adr/ADR-0021-mcp-server.md): MCP server (agent tools, secure by default)
 - [ADR-0022](docs/adr/ADR-0022-multilingual-support.md): Multilingual support (design)
 - [ADR-0023](docs/adr/ADR-0023-api-authentication.md): API-key authentication
+- [ADR-0024](docs/adr/ADR-0024-horizontal-scale.md): Horizontal scale via shared Redis state
+- [ADR-0025](docs/adr/ADR-0025-multi-tenancy.md): Multi-tenant corpus isolation
+- [ADR-0026](docs/adr/ADR-0026-secrets-management.md): Secrets management posture
 
 ## Research foundations
 
@@ -488,8 +491,12 @@ See [ADR-0013](docs/adr/ADR-0013-api-security-hardening.md).
 - **Supply chain.** Dependencies are scanned with `pip-audit` in CI;
   the documentation corpus is pinned to an immutable commit whose SHA
   is verified at ingest and recorded per chunk.
-- **Secrets.** Keys live only in the git-ignored `.env`;
-  `.env.example` documents every variable with placeholders.
+- **Secrets.** In production the `OPENAI_API_KEY` is injected from
+  Secret Manager at runtime and is never baked into the image (`.env`
+  is docker-ignored, the Dockerfile hardcodes no key, and a guard test
+  enforces this). Locally the key comes from the git-ignored `.env`;
+  `.env.example` documents every variable with placeholders. See
+  [ADR-0026](docs/adr/ADR-0026-secrets-management.md).
 
 ## Development
 

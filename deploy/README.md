@@ -333,8 +333,11 @@ to a shared Redis first - otherwise each instance keeps its own counters
 and the limits multiply by the instance count:
 
 1. Provision a Redis (e.g. Cloud Memorystore) reachable from the service.
-2. Deploy with the `[redis]` extra and set `REDIS_URL=redis://<host>:<port>`
-   (via env or Secret Manager). The limiter and daily cap then share it.
+2. Deploy with the `[redis]` extra and set `REDIS_URL=redis://<host>:<port>`.
+   An authenticated URL carries credentials, so store it in Secret Manager and
+   inject it via the commented `secretKeyRef` block in `cloud-run.yaml`
+   (ADR-0026), not as a plaintext env value. The limiter and daily cap then
+   share it.
 3. Only then raise `autoscaling.knative.dev/maxScale` above `1` in
    `cloud-run.yaml`.
 

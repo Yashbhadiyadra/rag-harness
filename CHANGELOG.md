@@ -6,6 +6,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- **Secrets-management posture recorded and guarded (ADR-0026).** The
+  production ``OPENAI_API_KEY`` is injected from Secret Manager at
+  runtime (never baked into the image); ``.env`` is the local-dev
+  fallback only. A new guard test asserts ``.env`` is docker-ignored and
+  the Dockerfile hardcodes no key, so the "no secret in the image"
+  property is checked, not assumed. The manifest documents injecting a
+  credentialed ``REDIS_URL`` from Secret Manager for scale-out, and the
+  README security note now states the real posture instead of the stale
+  "keys live only in .env".
 - **Multi-tenant corpus isolation (ADR-0025).** A ``TENANTS`` config maps
   each tenant to its API-key hashes and its own Chroma collection, so a
   query authenticated as one tenant retrieves only that tenant's

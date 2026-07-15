@@ -63,6 +63,16 @@ spec:
                 secretKeyRef:
                   name: openai-api-key
                   key: latest
+            # REDIS_URL for horizontal scale-out (ADR-0024, ADR-0026). An
+            # authenticated Redis URL carries credentials, so inject it from
+            # Secret Manager - never as a plaintext env value. Commented out
+            # because Redis is opt-in and the default demo runs single-instance
+            # (maxScale=1). Uncomment together with raising maxScale.
+            # - name: REDIS_URL
+            #   valueFrom:
+            #     secretKeyRef:
+            #       name: redis-url
+            #       key: latest
           resources:
             limits:
               cpu: "1"
