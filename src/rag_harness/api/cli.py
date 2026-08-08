@@ -378,6 +378,12 @@ def _cmd_mcp(args: argparse.Namespace) -> None:
     mcp_main()  # blocks, serving over stdio
 
 
+def _cmd_mcp_http(args: argparse.Namespace) -> None:
+    from rag_harness.api.mcp_server import main_http
+
+    main_http(host=args.host, port=args.port)  # blocks, serving stateless HTTP
+
+
 def _cmd_reference_free(args: argparse.Namespace) -> None:
     from datetime import UTC, datetime
     from pathlib import Path
@@ -705,6 +711,15 @@ def main() -> None:
         help="Run the MCP server (stdio) exposing query/eval/ablation as agent tools.",
     )
 
+    mcp_http_p = sub.add_parser(
+        "mcp-http",
+        help="Run the stateless HTTP MCP server with bearer-token tenant auth (ADR-0028).",
+    )
+    mcp_http_p.add_argument("--host", default="127.0.0.1", help="Bind host (default: %(default)s).")
+    mcp_http_p.add_argument(
+        "--port", type=int, default=8080, help="Bind port (default: %(default)s)."
+    )
+
     citation_eval_p = sub.add_parser(
         "citation-eval",
         help="Measure citation coverage and accuracy over the golden set (ADR-0016).",
@@ -879,6 +894,7 @@ def main() -> None:
         "claim-eval": _cmd_claim_eval,
         "audit": _cmd_audit,
         "mcp": _cmd_mcp,
+        "mcp-http": _cmd_mcp_http,
     }[args.command](args)
 
 
