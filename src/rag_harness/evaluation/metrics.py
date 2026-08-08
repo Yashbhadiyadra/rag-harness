@@ -107,19 +107,15 @@ Respond with ONLY a decimal number, nothing else. Example: 0.6
 """
 
 
-async def _llm_score_async(
-    system_prompt: str,
-    user_message: str,
-    parser: "Callable[[str], float] | None" = None,
-) -> float:
-    """Async judge call. See sync facade below for details.
+async def _llm_raw_async(system_prompt: str, user_message: str) -> str:
+    """Cached raw judge call: return the model's reply string, unparsed.
 
-    ``parser`` converts the raw judge reply to a [0,1] score; it defaults
-    to the numeric parser. An alternate parser (e.g. a letter-grade mapper)
-    lets the same call path score under a different response scale, which
-    is how the judge audit measures scale-format sensitivity.
+    Shared by the numeric scorers below and by structured probes that parse the
+    reply themselves (claim-level groundedness, ADR-0027). The cache stores the
+    raw reply keyed on ``(model, system_prompt, user_message)``, so a hit skips
+    the API call and records no usage. An empty completion degrades to ``"0"``
+    to keep the numeric parsers safe.
     """
-    parse = parser or _parse_score
     cache = _get_cache()
     cache_key: str | None = None
     if cache is not None:
@@ -128,7 +124,7 @@ async def _llm_score_async(
         )
         cached_raw = cache.get(cache_key)
         if cached_raw is not None:
-            return parse(cached_raw)
+            return cached_raw
 
     response = await _client.chat.completions.create(
         model=settings.generation_model,
@@ -142,7 +138,23 @@ async def _llm_score_async(
     raw = (response.choices[0].message.content or "0").strip()
     if cache is not None and cache_key is not None:
         cache.set(cache_key, raw)
-    return parse(raw)
+    return raw
+
+
+async def _llm_score_async(
+    system_prompt: str,
+    user_message: str,
+    parser: "Callable[[str], float] | None" = None,
+) -> float:
+    """Async judge call. See sync facade below for details.
+
+    ``parser`` converts the raw judge reply to a [0,1] score; it defaults
+    to the numeric parser. An alternate parser (e.g. a letter-grade mapper)
+    lets the same call path score under a different response scale, which
+    is how the judge audit measures scale-format sensitivity.
+    """
+    parse = parser or _parse_score
+    return parse(await _llm_raw_async(system_prompt, user_message))
 
 
 def _llm_score(system_prompt: str, user_message: str) -> float:

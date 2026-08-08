@@ -469,6 +469,7 @@ All non-trivial decisions are captured as Architecture Decision Records in
 - [ADR-0024](docs/adr/ADR-0024-horizontal-scale.md): Horizontal scale via shared Redis state
 - [ADR-0025](docs/adr/ADR-0025-multi-tenancy.md): Multi-tenant corpus isolation
 - [ADR-0026](docs/adr/ADR-0026-secrets-management.md): Secrets management posture
+- [ADR-0027](docs/adr/ADR-0027-claim-level-groundedness.md): Claim-level groundedness (four-way typology)
 
 ## Research foundations
 

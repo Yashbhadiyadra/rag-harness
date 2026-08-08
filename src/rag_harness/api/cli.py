@@ -305,6 +305,42 @@ def _cmd_citation_eval(args: argparse.Namespace) -> None:
     print(f"\nReport written to {md_path}")
 
 
+def _cmd_claim_eval(args: argparse.Namespace) -> None:
+    from datetime import UTC, datetime
+    from pathlib import Path
+
+    from rag_harness.evaluation.claim_eval import render_markdown, run_claim_eval_sync
+    from rag_harness.evaluation.judge_audit import _current_git_commit
+    from rag_harness.evaluation.runner import load_golden_cases
+
+    if not args.no_cache:
+        settings.llm_cache_enabled = True
+
+    cases = load_golden_cases()
+    if args.sample:
+        cases = cases[: args.sample]
+    result = run_claim_eval_sync(cases, args.strategy)
+
+    commit = _current_git_commit()
+    timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S+0000")
+    out_dir = Path(args.output_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    md_path = out_dir / f"claim-groundedness_{timestamp}_{commit}.md"
+    md_path.write_text(render_markdown(result, commit, timestamp))
+
+    print("\nClaim-level groundedness (ADR-0027)")
+    print("=" * 56)
+    print(f"  Cases           : {result.n_cases}")
+    print(f"  Atomic claims   : {result.n_claims}")
+    print(
+        f"  Grounded/Compl. : {result.n_grounded}/{result.n_complementary}"
+        f"   Ungrounded/Contra.: {result.n_ungrounded}/{result.n_contradicted}"
+    )
+    print(f"  Groundedness    : {result.groundedness:.3f}")
+    print(f"  Hallucination   : {result.hallucination_rate:.3f}")
+    print(f"\nReport written to {md_path}")
+
+
 def _cmd_audit(args: argparse.Namespace) -> None:
     from pathlib import Path
 
@@ -729,6 +765,34 @@ def main() -> None:
         help="Directory to write abstention_<ts>_<sha>.md into (default: %(default)s).",
     )
 
+    claim_eval_p = sub.add_parser(
+        "claim-eval",
+        help="Claim-level groundedness: classify each atomic claim (ADR-0027).",
+    )
+    claim_eval_p.add_argument(
+        "--strategy",
+        choices=strategy_choices,
+        default=settings.retrieval_strategy,
+        help="Retrieval strategy to use (default: %(default)s).",
+    )
+    claim_eval_p.add_argument(
+        "--sample",
+        type=int,
+        default=None,
+        metavar="N",
+        help="Limit to the first N golden cases (default: full set).",
+    )
+    claim_eval_p.add_argument(
+        "--output-dir",
+        default="evals/experiments",
+        help="Directory to write claim-groundedness_<ts>_<sha>.md into (default: %(default)s).",
+    )
+    claim_eval_p.add_argument(
+        "--no-cache",
+        action="store_true",
+        help="Disable the LLM judge cache (default: on).",
+    )
+
     audit_p = sub.add_parser(
         "audit",
         help="One shareable Reliability Audit: run every probe and grade the system.",
@@ -812,6 +876,7 @@ def main() -> None:
         "abstention": _cmd_abstention,
         "reference-free": _cmd_reference_free,
         "citation-eval": _cmd_citation_eval,
+        "claim-eval": _cmd_claim_eval,
         "audit": _cmd_audit,
         "mcp": _cmd_mcp,
     }[args.command](args)
