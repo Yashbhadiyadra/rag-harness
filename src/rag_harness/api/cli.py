@@ -319,7 +319,7 @@ def _cmd_claim_eval(args: argparse.Namespace) -> None:
     cases = load_golden_cases()
     if args.sample:
         cases = cases[: args.sample]
-    result = run_claim_eval_sync(cases, args.strategy)
+    result = run_claim_eval_sync(cases, args.strategy, detector=args.detector)
 
     commit = _current_git_commit()
     timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S+0000")
@@ -828,6 +828,15 @@ def main() -> None:
         default=None,
         metavar="N",
         help="Limit to the first N golden cases (default: full set).",
+    )
+    claim_eval_p.add_argument(
+        "--detector",
+        choices=["llm", "open"],
+        default="llm",
+        help=(
+            "Classifier: 'llm' judge (ADR-0027, default) or 'open' local NLI model "
+            "(ADR-0030, EXPERIMENTAL - measured unreliable, over-flags grounded claims)."
+        ),
     )
     claim_eval_p.add_argument(
         "--output-dir",

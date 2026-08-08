@@ -139,15 +139,27 @@ def aggregate(per_case: list[list[ClaimLabel]]) -> ClaimEvalResult:
     )
 
 
-async def run_claim_eval(cases: list[GoldenCase], retriever: object) -> ClaimEvalResult:
-    """Retrieve, generate, and claim-classify the answer for each golden case."""
+async def run_claim_eval(
+    cases: list[GoldenCase], retriever: object, detector: str = "llm"
+) -> ClaimEvalResult:
+    """Retrieve, generate, and claim-classify the answer for each golden case.
+
+    *detector* selects the classifier: "llm" uses the LLM claim judge (ADR-0027);
+    "open" uses the local NLI cross-encoder (ADR-0030), which is free but has no
+    complementary class.
+    """
     from rag_harness.generation.generator import generate_async
 
     per_case: list[list[ClaimLabel]] = []
     for case in cases:
         chunks = await retriever.retrieve_async(case.question)  # type: ignore[attr-defined]
         answer = await generate_async(case.question, chunks)
-        per_case.append(await classify_claims(case.question, answer, chunks))
+        if detector == "open":
+            from rag_harness.evaluation.open_detector import classify_claims_open
+
+            per_case.append(classify_claims_open(answer, chunks))
+        else:
+            per_case.append(await classify_claims(case.question, answer, chunks))
     return aggregate(per_case)
 
 
@@ -178,11 +190,13 @@ def render_markdown(result: ClaimEvalResult, commit: str, timestamp: str) -> str
     )
 
 
-def run_claim_eval_sync(cases: list[GoldenCase], strategy: str) -> ClaimEvalResult:
+def run_claim_eval_sync(
+    cases: list[GoldenCase], strategy: str, detector: str = "llm"
+) -> ClaimEvalResult:
     """Sync facade for the CLI."""
     import asyncio
 
     from rag_harness.retrieval.factory import build_retriever
 
     retriever = build_retriever(strategy)
-    return asyncio.run(run_claim_eval(cases, retriever))
+    return asyncio.run(run_claim_eval(cases, retriever, detector=detector))

@@ -105,6 +105,11 @@ class Settings(BaseSettings):
     rerank_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
     rerank_candidate_multiplier: int = 4  # retrieve top_k*4 candidates before reranking
 
+    # Open-model claim groundedness detector (ADR-0030). A small NLI cross-encoder
+    # (reuses the [rerank] extra: transformers/torch), so no new dependency. Runs
+    # locally at zero API cost as a cheap alternative to the LLM claim judge.
+    open_detector_model: str = "cross-encoder/nli-MiniLM2-L6-H768"
+
     # Corrective RAG - critic-and-retry loop (higher quality, higher cost)
     corrective_rag_enabled: bool = False
     critic_correct_threshold: float = 0.7  # any chunk above this = Correct
