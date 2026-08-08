@@ -471,6 +471,7 @@ All non-trivial decisions are captured as Architecture Decision Records in
 - [ADR-0026](docs/adr/ADR-0026-secrets-management.md): Secrets management posture
 - [ADR-0027](docs/adr/ADR-0027-claim-level-groundedness.md): Claim-level groundedness (four-way typology)
 - [ADR-0028](docs/adr/ADR-0028-http-mcp-server.md): Stateless HTTP MCP server
+- [ADR-0029](docs/adr/ADR-0029-factuality-gateway.md): Factuality gateway (claim-level verify-and-regenerate)
 
 ## Research foundations
 

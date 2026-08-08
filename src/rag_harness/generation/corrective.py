@@ -60,6 +60,7 @@ class CorrectiveResult:
     attempts: int  # 1 = no retry; 2 = one retry; etc.
     scores: list[float] = field(default_factory=list)
     reformulated_query: str | None = None
+    factuality_revised: bool = False  # the factuality gateway rewrote the answer (ADR-0029)
 
 
 async def _reformulate_query_async(client: AsyncOpenAI, model: str, query: str) -> str:
@@ -129,6 +130,13 @@ async def corrective_generate_async(
                 c for c, s in zip(chunks, scores, strict=True) if s >= critic._incorrect_threshold
             ]
             answer = await generate_async(query, survivors)
+            factuality_revised = False
+            if settings.factuality_gateway_enabled:
+                from rag_harness.generation.factuality import factuality_gateway
+
+                gateway = await factuality_gateway(query, answer, survivors)
+                answer = gateway.answer
+                factuality_revised = gateway.revised
             return CorrectiveResult(
                 answer=answer,
                 chunks_used=survivors,
@@ -136,6 +144,7 @@ async def corrective_generate_async(
                 attempts=attempts,
                 scores=scores,
                 reformulated_query=reformulated,
+                factuality_revised=factuality_revised,
             )
 
         # Incorrect - reformulate and retry, unless we've hit the cap

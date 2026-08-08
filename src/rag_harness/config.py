@@ -111,6 +111,12 @@ class Settings(BaseSettings):
     critic_incorrect_threshold: float = 0.3  # top chunk below this = Incorrect
     corrective_max_retries: int = 1  # extra retrieval attempts after query reformulation
 
+    # Factuality gateway - claim-level verify-and-regenerate pass (ADR-0029).
+    # Off by default: it adds LLM calls and earns its keep on low-trust corpora,
+    # not on the already-grounded pinned demo corpus. Only runs inside the
+    # corrective loop when enabled.
+    factuality_gateway_enabled: bool = False
+
     # Observability - override the built-in pricing table without editing source.
     # Values are (input_rate_per_million, output_rate_per_million) in USD.
     model_rates_overrides: dict[str, tuple[float, float]] = {}
