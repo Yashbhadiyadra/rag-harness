@@ -132,5 +132,9 @@ async def test_auth_disabled_falls_back_to_default_tenant() -> None:
 
 
 def test_build_http_app_wraps_in_auth_middleware() -> None:
+    # build_http_app needs the optional 'mcp' extra; skip where it is not
+    # installed (CI installs .[dev] only). The auth/tenant/provenance logic
+    # above is covered without mcp, so the important behaviour is always tested.
+    pytest.importorskip("mcp")
     app = mcp_server.build_http_app()
     assert isinstance(app, TenantAuthMiddleware)
