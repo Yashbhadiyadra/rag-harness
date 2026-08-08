@@ -372,6 +372,38 @@ def _cmd_audit(args: argparse.Namespace) -> None:
     print(f"\nReport written to {md_path}")
 
 
+def _cmd_human_label(args: argparse.Namespace) -> None:
+    from pathlib import Path
+
+    from rag_harness.evaluation.human_label import (
+        build_label_sample,
+        load_sample,
+        score_human_kappa_sync,
+        write_sample,
+    )
+
+    if args.human_label_command == "sample":
+        items = build_label_sample(args.n)
+        out = Path(args.out)
+        write_sample(items, out)
+        print(f"Wrote {len(items)} items to {out}.")
+        print("Fill each line's human_label with 'correct' or 'incorrect', then run:")
+        print(f"  rag-harness human-label score --file {out}")
+        return
+
+    # score
+    if not args.no_cache:
+        settings.llm_cache_enabled = True
+    items = load_sample(Path(args.file))
+    result = score_human_kappa_sync(items)
+    print("\nJudge vs human agreement (ADR-0014 follow-up)")
+    print("=" * 56)
+    print(f"  Labeled items       : {result.n_labeled}")
+    print(f"  Cohen's kappa       : {result.kappa:.3f}")
+    print(f"  Raw agreement       : {result.raw_agreement:.3f}")
+    print(f"  Judge/human disagree: {result.judge_human_disagreements}")
+
+
 def _cmd_mcp(args: argparse.Namespace) -> None:
     from rag_harness.api.mcp_server import main as mcp_main
 
@@ -874,9 +906,34 @@ def main() -> None:
         choices=["pending", "flagged", "accepted", "skipped"],
     )
 
+    human_label_p = sub.add_parser(
+        "human-label",
+        help="Validate the judge against hand labels: judge-vs-human kappa (ADR-0014).",
+    )
+    human_label_sub = human_label_p.add_subparsers(dest="human_label_command", required=True)
+    hl_sample_p = human_label_sub.add_parser(
+        "sample", help="Write a balanced sample of answer pairs to hand-label."
+    )
+    hl_sample_p.add_argument(
+        "--n", type=int, default=25, help="Golden cases to draw from (2 items each)."
+    )
+    hl_sample_p.add_argument(
+        "--out", default="evals/human-labels/sample.jsonl", help="Output JSONL path."
+    )
+    hl_score_p = human_label_sub.add_parser(
+        "score", help="Score judge-vs-human kappa from a hand-labeled sample."
+    )
+    hl_score_p.add_argument("--file", required=True, help="The hand-labeled JSONL sample.")
+    hl_score_p.add_argument(
+        "--no-cache", action="store_true", help="Disable the LLM judge cache (default: on)."
+    )
+
     args = parser.parse_args()
     if args.command == "golden":
         _cmd_golden(args)
+        return
+    if args.command == "human-label":
+        _cmd_human_label(args)
         return
     {
         "ingest": _cmd_ingest,
