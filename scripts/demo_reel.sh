@@ -6,6 +6,7 @@
 #   1. a grounded answer with inline citations and sources
 #   2. an honest refusal when the corpus cannot answer
 #   3. the reliability gate passing on the per-PR golden subset
+#   4. the one-command Reliability Audit that grades the whole system
 #
 # Injection resistance, judge reliability, and citation accuracy are their own
 # measured commands (security-eval / judge-audit / citation-eval) rather than a
@@ -38,16 +39,20 @@ banner() {
   sleep 1
 }
 
-banner "1/3  A grounded answer, with inline citations and sources"
+banner "1/4  A grounded answer, with inline citations and sources"
 $PY query "How do I expose a Deployment as a Service?"
 sleep 2
 
-banner "2/3  It refuses when the corpus cannot answer (no hallucination)"
+banner "2/4  It refuses when the corpus cannot answer (no hallucination)"
 $PY query "What is the airspeed velocity of an unladen swallow?"
 sleep 2
 
-banner "3/3  The reliability gate on the per-PR golden subset"
+banner "3/4  The reliability gate on the per-PR golden subset"
 $PY eval --subset pr
+sleep 2
+
+banner "4/4  One-command Reliability Audit: every probe, one trust grade"
+$PY audit --sample 5 --no-judge
 
 printf '\n\033[1;32mDeeper measurements:\033[0m '
-printf 'rag-harness judge-audit / security-eval / citation-eval / ablation\n'
+printf 'rag-harness judge-audit / security-eval / citation-eval / claim-eval / ablation\n'

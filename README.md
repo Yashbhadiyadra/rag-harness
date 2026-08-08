@@ -28,7 +28,9 @@ Every number here is produced by a command in this repo and recorded under
 | Prompt injection (OWASP LLM01) | 100% resistance to direct-override and forged-system; 17% on compliance-appendix (documented survivor) | `rag-harness security-eval` |
 | Data poisoning (OWASP LLM04) | corpus pinning is the real defense: a context-faithful model repeats a planted lie by design | `rag-harness security-eval` |
 | Citation integrity | 86% of cited passages actually support their sentence | `rag-harness citation-eval` |
+| Claim-level groundedness (168 cases) | 0.961 across 465 atomic claims; 1.7% ungrounded-or-contradicted, named per claim | `rag-harness claim-eval` |
 | Multi-hop (8-case slice) | query decomposition lifts correctness from 0.59 to 0.73 vs dense | `rag-harness ablation` |
+| One-command reliability audit | every probe above rolled into one graded, shareable report | `rag-harness audit` |
 
 Cost is about $0.09 per full eval run at p50 latency around 4.4s per query. The
 heavy `full` pipeline underperforms on this factoid corpus (0.87 correctness)
