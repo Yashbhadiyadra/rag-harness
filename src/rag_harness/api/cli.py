@@ -305,6 +305,37 @@ def _cmd_citation_eval(args: argparse.Namespace) -> None:
     print(f"\nReport written to {md_path}")
 
 
+def _cmd_audit(args: argparse.Namespace) -> None:
+    from pathlib import Path
+
+    from rag_harness.evaluation.audit import render_markdown, run_reliability_audit
+
+    # The judge cache makes reruns of the re-scoring probes effectively free.
+    if not args.no_cache:
+        settings.llm_cache_enabled = True
+
+    report = run_reliability_audit(
+        strategy=args.strategy,
+        sample=args.sample,
+        include_judge=not args.no_judge,
+    )
+
+    out_dir = Path(args.output_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    md_path = out_dir / f"reliability-audit_{report.timestamp}_{report.commit}.md"
+    md_path.write_text(render_markdown(report))
+
+    print("\nReliability Audit")
+    print("=" * 56)
+    print(f"  Overall      : {report.grade} (trust score {report.score_pct:.0%})")
+    if report.headline:
+        print(f"  Signature    : {report.headline}")
+    print("  " + "-" * 40)
+    for d in report.dimensions:
+        print(f"  {d.name:<40} {d.value:>12}  [{d.verdict}]")
+    print(f"\nReport written to {md_path}")
+
+
 def _cmd_mcp(args: argparse.Namespace) -> None:
     from rag_harness.api.mcp_server import main as mcp_main
 
@@ -698,6 +729,39 @@ def main() -> None:
         help="Directory to write abstention_<ts>_<sha>.md into (default: %(default)s).",
     )
 
+    audit_p = sub.add_parser(
+        "audit",
+        help="One shareable Reliability Audit: run every probe and grade the system.",
+    )
+    audit_p.add_argument(
+        "--strategy",
+        choices=strategy_choices,
+        default=settings.retrieval_strategy,
+        help="Retrieval strategy to audit (default: %(default)s).",
+    )
+    audit_p.add_argument(
+        "--sample",
+        type=int,
+        default=None,
+        metavar="N",
+        help="Limit to the first N golden cases to keep the run cheap (default: full set).",
+    )
+    audit_p.add_argument(
+        "--no-judge",
+        action="store_true",
+        help="Skip the judge-reliability probe (the most expensive part).",
+    )
+    audit_p.add_argument(
+        "--no-cache",
+        action="store_true",
+        help="Disable the LLM judge cache (default: on).",
+    )
+    audit_p.add_argument(
+        "--output-dir",
+        default="evals/experiments",
+        help="Directory to write reliability-audit_<ts>_<sha>.md into (default: %(default)s).",
+    )
+
     judge_matrix_p = sub.add_parser(
         "judge-matrix",
         help="Compare candidate judge models on reliability and cost (ADR-0014).",
@@ -748,6 +812,7 @@ def main() -> None:
         "abstention": _cmd_abstention,
         "reference-free": _cmd_reference_free,
         "citation-eval": _cmd_citation_eval,
+        "audit": _cmd_audit,
         "mcp": _cmd_mcp,
     }[args.command](args)
 
