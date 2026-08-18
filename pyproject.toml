@@ -78,6 +78,9 @@ rag-harness = "rag_harness.api.cli:main"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+"rag_harness.api" = ["static/*"]
+
 [tool.ruff]
 src = ["src"]
 line-length = 100
