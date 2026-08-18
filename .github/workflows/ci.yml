@@ -36,6 +36,46 @@ jobs:
       - name: Run checks
         run: make check
 
+  wheel-smoke:
+    name: Wheel packaging smoke test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Build the wheel
+        run: uv build --wheel -o dist
+
+      - name: Install the built wheel into an isolated environment
+        # Not `-e .` and not the source tree - a clean venv so the import
+        # below resolves against the installed package, exactly as the
+        # deployed container does.
+        run: |
+          uv venv /tmp/wheel-env --python 3.12
+          uv pip install --python /tmp/wheel-env dist/*.whl
+
+      - name: Import the app from the installed wheel
+        # Reproduces the deploy path: the container runs from the installed
+        # package, not the source tree. Importing server.py mounts /static,
+        # which raises at import if the static UI assets are missing from
+        # the wheel - the bug fixed in 9aebe2c, which source-tree tests
+        # could not catch. A dummy key satisfies the settings model; no
+        # network call happens at import time.
+        working-directory: /tmp
+        env:
+          OPENAI_API_KEY: dummy-key-for-import-only
+        run: /tmp/wheel-env/bin/python -c "from rag_harness.api.server import app; print('app imported from installed wheel OK')"
+
   security:
     name: Secret + dep-vulnerability scan
     runs-on: ubuntu-latest
