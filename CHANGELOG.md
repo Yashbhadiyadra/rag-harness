@@ -5,6 +5,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-08-19
+
 ### Added
 - **Streaming answers (ADR-0031).** A ``POST /query/stream`` Server-Sent
   Events endpoint streams the answer token by token for the demo UI:
