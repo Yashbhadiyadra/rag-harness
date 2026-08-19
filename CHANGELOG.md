@@ -6,6 +6,34 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- **Streaming answers (ADR-0031).** A ``POST /query/stream`` Server-Sent
+  Events endpoint streams the answer token by token for the demo UI:
+  sources render as soon as retrieval returns, answer text appears as it
+  is generated, and a final frame carries citations, trace, cost, latency,
+  and time-to-first-token. ``/query`` and its JSON contract are unchanged;
+  the streamed path serves the non-corrective flow. A new
+  ``rag_query_stream_ttft_seconds`` metric measures it: time-to-first-token
+  is ~1.0-1.1s versus 3.4-7.5s for the blocking full answer, with sources
+  painting in ~0.3-0.5s. No reliability number moves.
+- **Live public deployment to Cloud Run.** The service is deployed and
+  reachable at a public URL with scale-to-zero, per-IP and daily-cap
+  guardrails, and a monthly billing ceiling. The image is built with Cloud
+  Build (native amd64) and applied from ``deploy/cloud-run.yaml``.
+- **Claim-level groundedness scorer (ADR-0027).** ``rag-harness claim-eval``
+  scores each answer claim against the retrieved context with the four-way
+  GSAR typology; additive, the gate is untouched.
+- **Stateless HTTP MCP server (ADR-0028).** ``rag-harness mcp-http`` exposes
+  the harness over streamable HTTP alongside stdio, with bearer-token auth
+  resolving to a tenant before any tool call and corpus provenance surfaced
+  in tool results.
+- **Factuality gateway, off by default (ADR-0029).** An atomic-claim verify
+  loop that can strip or regenerate unsupported claims; shipped off, a null
+  result on the already-grounded base corpus, mechanism verified on a
+  crafted claim.
+- **Open-model groundedness detector, experimental (ADR-0030).** A local NLI
+  cross-encoder second opinion; shipped off by default as a measured
+  negative result (0.366 vs the LLM judge's 0.967) and kept as the
+  reproduction.
 - **Reliability-at-a-glance showcase.** The README now opens with a table
   of the headline reliability numbers (answer quality, judge kappa vs raw
   agreement, format-flip fragility, abstention, injection resistance,
@@ -56,6 +84,28 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   so clients get fair quotas behind shared NAT. Enabling auth with an
   empty allowlist fails at startup (fail-closed on misconfiguration).
   New ``rag-harness hash-key`` helper hashes a key without echoing it.
+
+### Changed
+- **Cloud Build upload context (``.gcloudignore``).** Added so
+  ``gcloud builds submit`` keeps the git-ignored ``chroma_db/`` baked index
+  in the build context while still excluding the large ``k8s_docs/`` corpus;
+  without it the runtime image build fails on ``COPY chroma_db/``.
+- **CI wheel-smoke guard.** A job builds the wheel, installs it into an
+  isolated environment, and imports the app, so packaging regressions fail
+  CI at the import boundary instead of only surfacing in a container build.
+
+### Fixed
+- **Static UI assets missing from the packaged wheel.** The demo UI files
+  under ``api/static`` were not declared as package data, so the installed
+  package omitted them and the container crashed on startup mounting
+  ``/static``. Declared as package data; a CI guard prevents regression.
+- **Reserved ``PORT`` env in the Cloud Run manifest.** ``deploy/cloud-run.yaml``
+  declared ``PORT``, which Cloud Run reserves and injects automatically, so
+  ``gcloud run services replace`` rejected the service. Removed the explicit
+  ``PORT``; the container reads the injected value.
+- **Empty completion now refuses honestly.** ``generate_async`` returned
+  ``""`` on a content-filtered or empty completion (and would ``IndexError``
+  on an empty choices list); it now returns the grounded fallback.
 
 ## [1.0.0] - 2026-07-14
 
