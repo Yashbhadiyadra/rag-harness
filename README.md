@@ -1,6 +1,7 @@
 # rag-harness
 
 [![CI](https://github.com/Yashbhadiyadra/rag-harness/actions/workflows/ci.yml/badge.svg)](https://github.com/Yashbhadiyadra/rag-harness/actions/workflows/ci.yml)
+[![Live demo](https://img.shields.io/badge/demo-live-brightgreen)](https://rag-harness-277002385573.us-central1.run.app)
 
 A reliability lab for retrieval systems, built over the
 [Kubernetes documentation](https://github.com/kubernetes/website). Most RAG
