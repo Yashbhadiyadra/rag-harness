@@ -1,21 +1,24 @@
 # Public demo
 
-A minimal instance of the RAG harness designed to run on Cloud Run so
-visitors can try it without setting anything up. It is not yet hosted
-(no public URL - see below); run it locally today with `make serve`. See
+A minimal instance of the RAG harness running on Cloud Run so visitors
+can try it without setting anything up. See
 [ADR-0010](adr/ADR-0010-cloud-run-and-persistence.md) for the design
 decisions this document implements.
 
 ## Try it
 
-> **Live URL:** _to be added after the first tagged release; the
-> service will be reachable at `https://rag-harness-<hash>.<region>.run.app`
-> and this section will be updated in the follow-up commit that
-> attaches a custom domain._
+> **Live URL:** https://rag-harness-277002385573.us-central1.run.app
 
-Open the URL, type a question about Kubernetes documentation
+Open the URL in a browser, type a question about Kubernetes documentation
 (e.g. "What is a Pod?", "How do I configure RBAC?", "What's the
 difference between a Deployment and a StatefulSet?"), and click **Ask**.
+Or query it directly:
+
+```bash
+curl -sf -X POST https://rag-harness-277002385573.us-central1.run.app/query \
+     -H 'content-type: application/json' \
+     -d '{"question":"What is a Pod?"}'
+```
 
 ## What you're seeing
 

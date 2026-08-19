@@ -93,11 +93,14 @@ the metrics page.
 
 ## Public demo
 
-The service is configured for Cloud Run with scale-to-zero, and the deploy
-pipeline (build, full eval-gate, deploy, smoke-test) is wired in
-`.github/workflows/release.yml`. It is not live yet: the hosting project has
-not been provisioned, so there is no public URL. Everything below runs locally
-today (`make serve`); the same guardrails apply once hosted:
+**Live:** https://rag-harness-277002385573.us-central1.run.app - open it and
+ask a Kubernetes question (e.g. "What is a Pod?"), or run it locally with
+`make serve`. The service runs on Cloud Run with scale-to-zero. The current
+instance was deployed by building the image with Cloud Build and applying
+`deploy/cloud-run.yaml`; the automated release-on-tag pipeline (build, full
+eval-gate, deploy, smoke-test) is scaffolded in
+`.github/workflows/release.yml` but not yet wired to a deploy identity. The
+demo runs auth-off, protected by three independent guardrails:
 
 - Per-IP: **10/hour + 3/minute burst**.
 - Global daily cap: **200 requests/day** (00:00 UTC reset).
