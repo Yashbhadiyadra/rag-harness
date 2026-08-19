@@ -25,20 +25,62 @@
     setBusy(true);
     hideError();
     hideResults();
+    resetResults();
+
+    let sawFirstToken = false;
     try {
-      const res = await fetch("/query", {
+      // Streaming endpoint (ADR-0031): sources arrive first, then answer
+      // tokens as they are generated, then a final metadata frame. This is
+      // what drops the felt latency from ~4.4s to time-to-first-token.
+      const res = await fetch("/query/stream", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ question }),
       });
 
-      if (!res.ok) {
+      // Pre-stream rejections (guardrail, empty, rate limit) come back as a
+      // normal JSON error, not SSE - handle them exactly as before.
+      if (!res.ok || !res.body) {
         await handleErrorResponse(res);
         return;
       }
 
-      const body = await res.json();
-      renderResults(body);
+      resultsEl.hidden = false;
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        let sep;
+        while ((sep = buffer.indexOf("\n\n")) !== -1) {
+          const frame = parseFrame(buffer.slice(0, sep));
+          buffer = buffer.slice(sep + 2);
+          if (!frame) continue;
+
+          if (frame.event === "sources") {
+            renderSources(frame.data.sources || []);
+          } else if (frame.event === "token") {
+            if (!sawFirstToken) {
+              sawFirstToken = true;
+              statusEl.textContent = "Streaming…";
+            }
+            answerEl.textContent += frame.data.text || "";
+          } else if (frame.event === "done") {
+            renderTrace(frame.data.trace || []);
+            renderFooter(frame.data);
+          } else if (frame.event === "error") {
+            showError({
+              kind: "error",
+              title: "Streaming failed",
+              message: frame.data.message || "Something went wrong. Please try again.",
+            });
+          }
+        }
+      }
     } catch (err) {
       showError({
         kind: "error",
@@ -49,6 +91,25 @@
     } finally {
       setBusy(false);
     }
+  }
+
+  // Parse one SSE frame ("event: X\ndata: {...}") into {event, data}, or null.
+  function parseFrame(frame) {
+    let event = null;
+    let data = null;
+    for (const line of frame.split("\n")) {
+      if (line.startsWith("event: ")) {
+        event = line.slice(7);
+      } else if (line.startsWith("data: ")) {
+        try {
+          data = JSON.parse(line.slice(6));
+        } catch {
+          data = null;
+        }
+      }
+    }
+    if (event === null || data === null) return null;
+    return { event, data };
   }
 
   async function handleErrorResponse(res) {
@@ -104,12 +165,17 @@
     }
   }
 
-  function renderResults(body) {
-    answerEl.textContent = body.answer;
-
+  function resetResults() {
+    answerEl.textContent = "";
     sourcesEl.innerHTML = "";
-    if (Array.isArray(body.sources) && body.sources.length > 0) {
-      for (const src of body.sources) {
+    traceEl.innerHTML = "";
+    footerEl.innerHTML = "";
+  }
+
+  function renderSources(sources) {
+    sourcesEl.innerHTML = "";
+    if (Array.isArray(sources) && sources.length > 0) {
+      for (const src of sources) {
         const li = document.createElement("li");
         const file = document.createElement("code");
         file.textContent = src.source_file;
@@ -128,11 +194,6 @@
       li.textContent = "(no sources returned)";
       sourcesEl.appendChild(li);
     }
-
-    renderTrace(body.trace || []);
-    renderFooter(body);
-
-    resultsEl.hidden = false;
   }
 
   function renderTrace(spans) {
@@ -173,6 +234,7 @@
   function renderFooter(body) {
     footerEl.innerHTML = "";
     const parts = [
+      ["First token", body.ttft_ms != null ? formatMs(body.ttft_ms) : "-"],
       ["Cost", body.cost_usd != null ? formatCost(body.cost_usd) : "-"],
       ["Latency", body.latency_ms != null ? formatMs(body.latency_ms) : "-"],
       ["Spans", String((body.trace || []).length)],
