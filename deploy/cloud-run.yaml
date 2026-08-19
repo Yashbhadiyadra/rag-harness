@@ -51,10 +51,11 @@ spec:
             - name: http1
               containerPort: 8080
           env:
-            # Cloud Run injects PORT; setting it explicitly makes the
-            # manifest self-documenting and matches the Dockerfile default.
-            - name: PORT
-              value: "8080"
+            # PORT is a reserved env var on Cloud Run - it is injected
+            # automatically (set to containerPort, 8080) and must not be
+            # declared here, or `services replace` rejects the manifest.
+            # The Dockerfile CMD reads ${PORT:-8000}, so the injected value
+            # is honoured at start.
             # OPENAI_API_KEY comes from Secret Manager. Rotate by adding
             # a new version to the secret - the container reads
             # `latest` at cold start.
