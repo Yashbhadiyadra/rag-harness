@@ -80,7 +80,14 @@ async def generate_async(query: str, chunks: list[Chunk]) -> str:
         "chat", settings.generation_model, usage.input_tokens, usage.output_tokens
     )
 
-    answer = response.choices[0].message.content or ""
+    # A content-filtered or otherwise empty completion can come back with no
+    # choices or empty content. Fall back to the honest refusal rather than
+    # letting "" (or an IndexError on an empty choices list) reach the response
+    # and the downstream citation parser.
+    answer = response.choices[0].message.content if response.choices else None
+    if not answer:
+        logger.warning("empty completion for query: %.60s - returning fallback", query)
+        return _FALLBACK_ANSWER
     logger.debug("generated answer (%d chars) for query: %.60s...", len(answer), query)
     return answer
 

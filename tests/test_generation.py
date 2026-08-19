@@ -127,6 +127,30 @@ def test_generate_empty_chunks_returns_fallback() -> None:
     assert "not have enough information" in answer
 
 
+def test_generate_empty_content_returns_fallback() -> None:
+    # A content-filtered completion returns None content; do not emit "".
+    chunks = [_make_chunk("Content.")]
+    mock_response = MagicMock()
+    mock_response.choices[0].message.content = None
+
+    with patch("rag_harness.generation.generator._client", _mock_client_returning(mock_response)):
+        answer = generate("Q?", chunks)
+
+    assert "not have enough information" in answer
+
+
+def test_generate_no_choices_returns_fallback() -> None:
+    # An empty choices list must not IndexError - fall back to the refusal.
+    chunks = [_make_chunk("Content.")]
+    mock_response = MagicMock()
+    mock_response.choices = []
+
+    with patch("rag_harness.generation.generator._client", _mock_client_returning(mock_response)):
+        answer = generate("Q?", chunks)
+
+    assert "not have enough information" in answer
+
+
 def test_generate_uses_temperature_zero() -> None:
     chunks = [_make_chunk("Some content.")]
     mock_response = MagicMock()
