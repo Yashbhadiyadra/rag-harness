@@ -1,0 +1,26 @@
+# Upload context for `gcloud builds submit`. Mirrors .dockerignore so the
+# Cloud Build context matches what the Docker build expects.
+#
+# Without this file, gcloud falls back to .gitignore, which excludes
+# chroma_db/ (a gitignored build artifact) - that would drop the baked
+# index and break the runtime image (ADR-0010). chroma_db/ is deliberately
+# NOT ignored here.
+.env
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+k8s_docs/
+embedding_cache.db
+.git/
+.github/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+tests/
+docs/
+evals/
+*.md
