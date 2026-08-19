@@ -55,12 +55,24 @@ unaffected by design. The measurement for this change is a new Prometheus
 histogram `rag_query_stream_ttft_seconds` (time to first token), reported before
 and after against the local container and the live service.
 
-Target and measured TTFT are recorded here after the endpoint and client land
-(commit sequence: this ADR, then `generate_stream`, then the endpoint + metric,
-then the UI client, then redeploy and report). Cold start from scale-to-zero is
-unaffected - streaming hides the generation wait, not the container warm-up; that
-remains a separate concern (min-instances would trade cost for cold-start and is
-out of scope here).
+Measured on the same question ("How do I roll back a Deployment in Kubernetes?"),
+warm instance:
+
+| Path | What the visitor waits for | Local | Live (Cloud Run) |
+|---|---|---|---|
+| `/query` (blocking) | full answer, nothing before it | 3415 ms | 7475 ms |
+| `/query/stream` | sources rendered | 258 ms | 544 ms |
+| `/query/stream` | first answer token | 1017 ms | 1109 ms |
+
+Time-to-first-token is ~1.0-1.1s versus 3.4-7.5s for the blocking full answer, and
+sources paint in ~0.3-0.5s where the blocking path showed nothing until the whole
+answer was ready. No reliability number moved. The blocking total varies with
+answer length and API latency, so the honest headline is TTFT and time-to-sources,
+not a total-latency comparison.
+
+Cold start from scale-to-zero is unaffected - streaming hides the generation wait,
+not the container warm-up; that remains a separate concern (min-instances would
+trade cost for cold-start and is out of scope here).
 
 The cost of the addition is a second answer code path to maintain. It is bounded:
 `generate_stream` shares `_build_context` and the system prompt with
