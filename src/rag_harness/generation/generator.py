@@ -7,6 +7,7 @@ be retired once every caller is async (Phase 9 progression).
 
 import asyncio
 import logging
+from collections.abc import AsyncIterator
 
 from rag_harness.config import settings
 from rag_harness.models import Chunk
@@ -82,6 +83,57 @@ async def generate_async(query: str, chunks: list[Chunk]) -> str:
     answer = response.choices[0].message.content or ""
     logger.debug("generated answer (%d chars) for query: %.60s...", len(answer), query)
     return answer
+
+
+async def generate_stream(query: str, chunks: list[Chunk]) -> AsyncIterator[str]:
+    """Stream answer text deltas for the demo UI (ADR-0031).
+
+    Mirrors ``generate_async`` - same context builder, system prompt, and
+    temperature=0 - but yields content deltas as the model produces them so
+    the client can show time-to-first-token instead of waiting for the whole
+    answer. ``stream_options={"include_usage": True}`` makes OpenAI send a
+    final usage-only chunk (empty ``choices``); usage and cost are recorded
+    from it exactly as the non-stream path records them, so the streamed path
+    contributes to the same counters and per-query cost.
+
+    Callers accumulate the yielded deltas to reconstruct the full answer for
+    citation parsing. This path serves the non-corrective flow only; the
+    corrective loop stays on ``generate_async`` / ``/query``.
+    """
+    if not chunks:
+        yield _FALLBACK_ANSWER
+        return
+
+    context = _build_context(chunks)
+    # Same untrusted-data delimiting as generate_async (OWASP LLM01 mitigation).
+    user_message = f"<context>\n{context}\n</context>\n\nQuestion: {query}"
+
+    stream = await _client.chat.completions.create(
+        model=settings.generation_model,
+        messages=[
+            {"role": "system", "content": _SYSTEM_PROMPT},
+            {"role": "user", "content": user_message},
+        ],
+        temperature=0,  # deterministic - matches generate_async for reproducibility
+        stream=True,
+        stream_options={"include_usage": True},
+    )
+
+    char_count = 0
+    async for chunk in stream:
+        # The usage-only final chunk carries no choices; guard before indexing.
+        if chunk.choices:
+            delta = chunk.choices[0].delta.content
+            if delta:
+                char_count += len(delta)
+                yield delta
+        if chunk.usage is not None:
+            usage = TokenUsage.from_openai(settings.generation_model, chunk)
+            record_usage(usage)
+            set_current_genai_attributes(
+                "chat", settings.generation_model, usage.input_tokens, usage.output_tokens
+            )
+    logger.debug("streamed answer (%d chars) for query: %.60s...", char_count, query)
 
 
 def generate(query: str, chunks: list[Chunk]) -> str:

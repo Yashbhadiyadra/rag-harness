@@ -1,6 +1,8 @@
+import asyncio
+from collections.abc import AsyncIterator
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from rag_harness.generation.generator import generate
+from rag_harness.generation.generator import generate, generate_stream
 from rag_harness.models import Chunk
 from rag_harness.observability.usage import collect_usage
 
@@ -22,6 +24,90 @@ def _mock_client_returning(mock_response: MagicMock) -> MagicMock:
     client = MagicMock()
     client.chat.completions.create = AsyncMock(return_value=mock_response)
     return client
+
+
+def _make_stream_chunk(content: str | None = None, usage: MagicMock | None = None) -> MagicMock:
+    """A single streaming chunk. content=None -> usage-only final chunk (no choices)."""
+    chunk = MagicMock()
+    if content is None:
+        chunk.choices = []
+    else:
+        choice = MagicMock()
+        choice.delta.content = content
+        chunk.choices = [choice]
+    chunk.usage = usage
+    return chunk
+
+
+def _mock_streaming_client(deltas: list[str], usage: MagicMock | None = None) -> MagicMock:
+    """A mock _client whose awaited .create yields *deltas* then a usage-only chunk."""
+
+    async def _stream() -> AsyncIterator[MagicMock]:
+        for d in deltas:
+            yield _make_stream_chunk(content=d)
+        yield _make_stream_chunk(content=None, usage=usage)
+
+    client = MagicMock()
+    client.chat.completions.create = AsyncMock(return_value=_stream())
+    return client
+
+
+def _collect_stream(query: str, chunks: list[Chunk], client: MagicMock) -> list[str]:
+    async def _run() -> list[str]:
+        out: list[str] = []
+        with patch("rag_harness.generation.generator._client", client):
+            async for delta in generate_stream(query, chunks):
+                out.append(delta)
+        return out
+
+    return asyncio.run(_run())
+
+
+def test_generate_stream_yields_deltas_in_order() -> None:
+    chunks = [_make_chunk("RoleBinding grants permissions to a user.")]
+    client = _mock_streaming_client(["Use ", "RoleBinding", " to grant [1]."])
+
+    deltas = _collect_stream("How do I grant permissions?", chunks, client)
+
+    assert deltas == ["Use ", "RoleBinding", " to grant [1]."]
+    assert "".join(deltas) == "Use RoleBinding to grant [1]."
+
+
+def test_generate_stream_empty_chunks_yields_fallback() -> None:
+    deltas = _collect_stream("What is RBAC?", [], MagicMock())
+    assert len(deltas) == 1
+    assert "not have enough information" in deltas[0]
+
+
+def test_generate_stream_requests_streaming_with_usage() -> None:
+    chunks = [_make_chunk("Content.")]
+    client = _mock_streaming_client(["Answer."])
+
+    _collect_stream("Q?", chunks, client)
+
+    call_kwargs = client.chat.completions.create.call_args.kwargs
+    assert call_kwargs["stream"] is True
+    assert call_kwargs["stream_options"] == {"include_usage": True}
+    assert call_kwargs["temperature"] == 0
+
+
+def test_generate_stream_records_usage_from_final_chunk() -> None:
+    chunks = [_make_chunk("Content.")]
+    client = _mock_streaming_client(
+        ["Answer."], usage=MagicMock(prompt_tokens=42, completion_tokens=7)
+    )
+
+    async def _run() -> None:
+        with patch("rag_harness.generation.generator._client", client):
+            async for _ in generate_stream("Q?", chunks):
+                pass
+
+    with collect_usage() as usage_list:
+        asyncio.run(_run())
+
+    assert len(usage_list) == 1
+    assert usage_list[0].input_tokens == 42
+    assert usage_list[0].output_tokens == 7
 
 
 def test_generate_returns_answer() -> None:
