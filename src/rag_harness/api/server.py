@@ -1,5 +1,6 @@
 """FastAPI application exposing /query, /health, and /metrics endpoints."""
 
+import json
 import logging
 import time
 from collections.abc import AsyncGenerator
@@ -8,7 +9,7 @@ from importlib.metadata import version as _pkg_version
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from openai import OpenAIError
 from pydantic import BaseModel, Field
@@ -24,6 +25,7 @@ from rag_harness.api.metrics import (
     QUERY_COST_USD,
     QUERY_ERRORS_TOTAL,
     QUERY_LATENCY_SECONDS,
+    QUERY_STREAM_TTFT_SECONDS,
     QUERY_TOKENS,
     QUERY_TOTAL,
     prometheus_response,
@@ -35,7 +37,7 @@ from rag_harness.config import settings
 from rag_harness.evaluation.closed_loop import capture_query
 from rag_harness.generation.citations import cited_chunk_indices
 from rag_harness.generation.corrective import NO_INFO_MESSAGE, corrective_generate_async
-from rag_harness.generation.generator import generate_async
+from rag_harness.generation.generator import generate_async, generate_stream
 from rag_harness.logging_setup import configure_logging
 from rag_harness.models import Chunk
 from rag_harness.observability.tracing import (
@@ -316,6 +318,135 @@ async def query(
         trace=span_list,
         cost_usd=cost_usd,
         latency_ms=latency_seconds * 1000.0,
+    )
+
+
+def _sse(event: str, data: dict[str, object]) -> str:
+    """Format one Server-Sent Event frame. default=str guards stray types."""
+    return f"event: {event}\ndata: {json.dumps(data, default=str)}\n\n"
+
+
+@app.post("/query/stream")
+@limiter.limit(settings.api_rate_limit)
+async def query_stream(
+    request: Request,
+    body: QueryRequest,
+    tenant: TenantContext = Depends(require_api_key),
+) -> StreamingResponse:
+    """Streaming variant of /query for the demo UI (ADR-0031).
+
+    Emits Server-Sent Events: ``sources`` right after retrieval, repeated
+    ``token`` deltas as the answer is generated, then ``done`` with citations,
+    trace, cost, latency, and time-to-first-token - or ``error`` on failure.
+    Serves the non-corrective path only; ``/query`` (unchanged) serves the
+    corrective flow and the JSON contract every other caller depends on.
+
+    The pre-stream rejections (empty question, guardrail) raise here so the
+    client gets a normal HTTP error, exactly as ``/query`` does; failures once
+    streaming has begun are reported as SSE ``token``/``error`` frames.
+    """
+    if not body.question.strip():
+        raise HTTPException(status_code=422, detail="question must not be empty")
+
+    reason = screen_for_injection(body.question)
+    if reason is not None:
+        raise GuardrailRejection("input rejected by guardrail", detail=reason)
+
+    retriever = _get_retriever(tenant.collection)
+    strategy = settings.retrieval_strategy
+
+    async def _events() -> AsyncGenerator[str, None]:
+        start = time.perf_counter()
+        chunks: list[Chunk] = []
+        answer_parts: list[str] = []
+        ttft_ms: float | None = None
+        latency_ms = 0.0
+        with collect_spans() as span_list, collect_usage() as usage_list:
+            try:
+                with traced_span("query", strategy=strategy, corrective=False, top_k=body.top_k):
+                    with traced_span("retrieve"):
+                        chunks = await retriever.retrieve_async(body.question, top_k=body.top_k)
+                    # Sources are known before generation - paint them first.
+                    yield _sse(
+                        "sources",
+                        {
+                            "sources": [
+                                {"source_file": c.source_file, "heading_path": c.heading_path}
+                                for c in chunks
+                            ]
+                        },
+                    )
+                    with traced_span("generate", chunk_count=len(chunks)):
+                        async for delta in generate_stream(body.question, chunks):
+                            if ttft_ms is None:
+                                ttft_ms = (time.perf_counter() - start) * 1000.0
+                                QUERY_STREAM_TTFT_SECONDS.labels(strategy=strategy).observe(
+                                    ttft_ms / 1000.0
+                                )
+                            answer_parts.append(delta)
+                            yield _sse("token", {"text": delta})
+            except OpenAIError as e:
+                # Mirror /query: the LLM boundary exhausting retries yields the
+                # honest refusal as the answer, not a 5xx.
+                QUERY_ERRORS_TOTAL.labels(strategy=strategy, error_type=type(e).__name__).inc()
+                logger.warning(
+                    "LLM boundary exhausted on stream (%s: %s) for query: %.60s",
+                    type(e).__name__,
+                    e,
+                    body.question,
+                )
+                answer_parts = [NO_INFO_MESSAGE]
+                chunks = []
+                yield _sse("token", {"text": NO_INFO_MESSAGE})
+            except Exception as e:
+                QUERY_ERRORS_TOTAL.labels(strategy=strategy, error_type=type(e).__name__).inc()
+                logger.exception("unexpected error on /query/stream")
+                yield _sse(
+                    "error",
+                    {"error_type": "internal_error", "message": "Streaming failed. Try again."},
+                )
+                return
+            finally:
+                latency_ms = (time.perf_counter() - start) * 1000.0
+                QUERY_LATENCY_SECONDS.labels(strategy=strategy).observe(latency_ms / 1000.0)
+
+        answer = "".join(answer_parts)
+        cost_usd = 0.0
+        for usage in usage_list:
+            QUERY_TOKENS.labels(direction="input", model=usage.model).inc(usage.input_tokens)
+            QUERY_TOKENS.labels(direction="output", model=usage.model).inc(usage.output_tokens)
+            QUERY_COST_USD.inc(usage.estimated_cost_usd)
+            cost_usd += usage.estimated_cost_usd
+
+        cited_markers = set(cited_chunk_indices(answer))
+        citations = [
+            {"marker": i, "source_file": c.source_file, "heading_path": c.heading_path}
+            for i, c in enumerate(chunks, start=1)
+            if i in cited_markers
+        ]
+
+        if settings.closed_loop_enabled:
+            try:
+                capture_query(body.question, answer, chunks, Path(settings.closed_loop_queue_path))
+            except Exception:  # noqa: BLE001 - capture must never break a response
+                logger.warning("closed-loop capture failed", exc_info=True)
+
+        QUERY_TOTAL.labels(strategy=strategy, corrective="false").inc()
+        yield _sse(
+            "done",
+            {
+                "citations": citations,
+                "trace": [s.model_dump() for s in span_list],
+                "cost_usd": cost_usd,
+                "latency_ms": latency_ms,
+                "ttft_ms": ttft_ms,
+            },
+        )
+
+    return StreamingResponse(
+        _events(),
+        media_type="text/event-stream",
+        headers={"X-Accel-Buffering": "no", "Cache-Control": "no-cache"},
     )
 
 

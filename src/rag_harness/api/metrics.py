@@ -48,6 +48,13 @@ QUERY_LATENCY_SECONDS = Histogram(
     buckets=(0.1, 0.25, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0),
 )
 
+QUERY_STREAM_TTFT_SECONDS = Histogram(
+    "rag_query_stream_ttft_seconds",
+    "Time to first answer token on /query/stream, from receipt to first token.",
+    labelnames=("strategy",),
+    buckets=(0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 5.0),
+)
+
 # --- Token and cost accounting ---
 
 QUERY_TOKENS = Counter(
